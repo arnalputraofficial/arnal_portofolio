@@ -1,0 +1,486 @@
+import { useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Check,
+  Clock,
+  Copy,
+  Github,
+  Inbox,
+  Linkedin,
+  Mail,
+  MapPin,
+  Send,
+  ShieldCheck,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { PageIntro, StatStrip } from "@/components/layout/PageIntro";
+import { PageSection, SectionHeading } from "@/components/layout/SectionHeading";
+import { Reveal, RevealGroup, RevealItem } from "@/components/fx/Reveal";
+import { SpotlightCard } from "@/components/fx/SpotlightCard";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { profile } from "@/data/portfolio";
+import { cn } from "@/lib/utils";
+
+const MIN_MESSAGE = 20;
+
+const TOPICS = [
+  "IT Lead or SPV role",
+  "Infrastructure consulting",
+  "Operational readiness",
+  "Collaboration or mentoring",
+  "Questions about the portfolio",
+];
+
+const FIELD =
+  "flex w-full rounded-notch border border-input bg-background/60 px-3.5 py-2.5 " +
+  "font-mono text-sm text-foreground placeholder:text-muted-foreground/70 " +
+  "transition-colors duration-200 hover:border-foreground/25 " +
+  "focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35";
+
+interface FormState {
+  name: string;
+  email: string;
+  topic: string;
+  message: string;
+}
+
+type Errors = Partial<Record<keyof FormState, string>>;
+
+const EMPTY: FormState = { name: "", email: "", topic: TOPICS[0], message: "" };
+
+function validate(form: FormState): Errors {
+  const errors: Errors = {};
+  if (form.name.trim().length < 2) errors.name = "Write your name, at least two characters.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+    errors.email = "That email address is not shaped correctly.";
+  if (form.message.trim().length < MIN_MESSAGE)
+    errors.message = `${MIN_MESSAGE - form.message.trim().length} more characters to go.`;
+  return errors;
+}
+
+const SOCIAL_ICON = { GitHub: Github, LinkedIn: Linkedin, Email: Mail } as const;
+
+export default function Contact() {
+  const [form, setForm] = useState<FormState>(EMPTY);
+  const [errors, setErrors] = useState<Errors>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const messageLength = form.message.trim().length;
+  const ready = messageLength >= MIN_MESSAGE;
+
+  const plainText = useMemo(
+    () =>
+      [
+        `Name: ${form.name.trim() || "(not filled in yet)"}`,
+        `Email: ${form.email.trim() || "(not filled in yet)"}`,
+        `Topic: ${form.topic}`,
+        "",
+        form.message.trim(),
+      ].join("\n"),
+    [form],
+  );
+
+  const mailtoHref = `mailto:${profile.email}?subject=${encodeURIComponent(
+    `[Portfolio] ${form.topic}`,
+  )}&body=${encodeURIComponent(plainText)}`;
+
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+    setSubmitted(false);
+  }
+
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const found = validate(form);
+    setErrors(found);
+    setSubmitted(Object.keys(found).length === 0);
+  }
+
+  async function copyMessage() {
+    try {
+      await navigator.clipboard.writeText(plainText);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2400);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  const errorCount = Object.values(errors).filter(Boolean).length;
+
+  return (
+    <>
+      <PageIntro
+        index="07"
+        eyebrow="Contact File"
+        title="Send a specific question, and I will answer specifically"
+        lead="I prefer questions that name the real situation, the number of people, and the budget constraint. Questions like that I can answer from experience, not from generic theory."
+      >
+        <StatStrip
+          items={[
+            {
+              label: "Response time",
+              value: "1 business day",
+              hint: "Usually faster on weekdays",
+            },
+            {
+              label: "Time zone",
+              value: profile.timezone,
+              hint: `I work from ${profile.location}`,
+            },
+            {
+              label: "Direct channels",
+              value: `${profile.socials.length}`,
+              hint: profile.socials.map((s) => s.label).join(" · "),
+            },
+            {
+              label: "Status",
+              value: "Open",
+              hint: profile.availability,
+            },
+          ]}
+        />
+      </PageIntro>
+
+      {/* 01 - form */}
+      <PageSection>
+        <SectionHeading
+          index="01"
+          eyebrow="Form"
+          title="Write your message, then pick how to send it"
+          description="This form checks your input in the browser, then prepares a message ready to send. I collect no data quietly, because there is no server behind it."
+        />
+
+        <div className="mt-10 grid gap-6 lg:grid-cols-12">
+          <Reveal className="lg:col-span-7">
+            <form onSubmit={onSubmit} noValidate className="panel-flagged p-6 pl-8 sm:p-8">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="name"
+                    className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground"
+                  >
+                    name
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    value={form.name}
+                    onChange={(e) => update("name", e.target.value)}
+                    placeholder="Full name"
+                    aria-invalid={Boolean(errors.name)}
+                    aria-describedby={errors.name ? "name-error" : undefined}
+                    className={cn(FIELD, "mt-2", errors.name && "border-destructive/60")}
+                  />
+                  {errors.name && (
+                    <p id="name-error" className="mt-2 font-mono text-[11px] text-destructive">
+                      {errors.name}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground"
+                  >
+                    email
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => update("email", e.target.value)}
+                    placeholder="name@company.com"
+                    aria-invalid={Boolean(errors.email)}
+                    aria-describedby={errors.email ? "email-error" : undefined}
+                    className={cn(FIELD, "mt-2", errors.email && "border-destructive/60")}
+                  />
+                  {errors.email && (
+                    <p id="email-error" className="mt-2 font-mono text-[11px] text-destructive">
+                      {errors.email}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <label
+                  htmlFor="topic"
+                  className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground"
+                >
+                  topic
+                </label>
+                <Select value={form.topic} onValueChange={(value) => update("topic", value)}>
+                  <SelectTrigger id="topic" className="mt-2">
+                    <SelectValue placeholder="Choose a topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TOPICS.map((topic) => (
+                      <SelectItem key={topic} value={topic}>
+                        {topic}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="mt-5">
+                <div className="flex items-baseline justify-between gap-4">
+                  <label
+                    htmlFor="message"
+                    className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground"
+                  >
+                    message
+                  </label>
+                  <span
+                    className={cn(
+                      "font-mono text-[11px] tabular-nums",
+                      ready ? "text-moss-300" : "text-muted-foreground",
+                    )}
+                  >
+                    {messageLength} characters
+                  </span>
+                </div>
+                <textarea
+                  id="message"
+                  name="message"
+                  rows={7}
+                  value={form.message}
+                  onChange={(e) => update("message", e.target.value)}
+                  placeholder="Describe the situation: how many people are on the team, which systems are in use, and which constraint hurts the most."
+                  aria-invalid={Boolean(errors.message)}
+                  aria-describedby="message-hint"
+                  className={cn(FIELD, "mt-2 resize-y", errors.message && "border-destructive/60")}
+                />
+                <Progress
+                  value={Math.min(100, (messageLength / MIN_MESSAGE) * 100)}
+                  className="mt-3 h-1"
+                  indicatorClassName={ready ? "bg-moss-500" : "bg-primary"}
+                  aria-label="Message length"
+                />
+                <p
+                  id="message-hint"
+                  className={cn(
+                    "mt-2 font-mono text-[11px] leading-relaxed",
+                    errors.message ? "text-destructive" : "text-muted-foreground",
+                  )}
+                >
+                  {errors.message ??
+                    (ready
+                      ? "The message is long enough for me to answer usefully."
+                      : `At least ${MIN_MESSAGE} characters so I understand the context.`)}
+                </p>
+              </div>
+
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <Button type="submit">
+                  <Send aria-hidden />
+                  Compose message
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setForm(EMPTY);
+                    setErrors({});
+                    setSubmitted(false);
+                  }}
+                >
+                  Clear
+                </Button>
+                {errorCount > 0 && (
+                  <span
+                    role="alert"
+                    className="font-mono text-[11px] uppercase tracking-[0.1em] text-destructive"
+                  >
+                    {errorCount} fields need fixing
+                  </span>
+                )}
+              </div>
+
+              {submitted && (
+                <div
+                  role="status"
+                  className="mt-7 rounded-notch border border-moss-600/40 bg-moss-600/10 p-5"
+                >
+                  <p className="eyebrow flex items-center gap-2 text-moss-300">
+                    <Check className="size-3.5" aria-hidden />
+                    message ready
+                  </p>
+                  <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
+                    Your input passed the checks. Because this site has no server, the message has
+                    not been sent. Pick one of the ways below to send it to{" "}
+                    <span className="font-mono text-foreground">{profile.email}</span>.
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Button asChild size="sm">
+                      <a href={mailtoHref}>
+                        <Mail className="size-4" aria-hidden />
+                        Open mail app
+                      </a>
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={copyMessage}>
+                      {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+                      {copied ? "Copied" : "Copy message"}
+                    </Button>
+                  </div>
+
+                  <Separator dashed className="my-5" />
+
+                  <pre className="max-h-52 overflow-auto whitespace-pre-wrap rounded-sm border border-border bg-background/60 p-4 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                    {plainText}
+                  </pre>
+                </div>
+              )}
+            </form>
+          </Reveal>
+
+          {/* sidebar */}
+          <div className="space-y-6 lg:col-span-5">
+            <Reveal delay={0.08}>
+              <div className="panel p-6 sm:p-8">
+                <p className="eyebrow flex items-center gap-2">
+                  <Inbox className="size-3.5 text-primary" aria-hidden />
+                  what I will answer
+                </p>
+                <ul className="mt-5 space-y-3 text-[14px] leading-relaxed text-muted-foreground">
+                  {[
+                    "Technical questions that name the system, the scale, and the deadline.",
+                    "Second opinions on infrastructure design or IT budgeting.",
+                    "Interview invitations for a lead or supervisor role.",
+                    "Requests for reading material, not requests to do someone else's homework.",
+                  ].map((item) => (
+                    <li key={item} className="flex gap-3">
+                      <span aria-hidden className="mt-2 size-1 shrink-0 rotate-45 bg-primary" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+
+                <Separator className="my-6" />
+
+                <p className="eyebrow flex items-center gap-2">
+                  <ShieldCheck className="size-3.5 text-primary" aria-hidden />
+                  what I do not promise
+                </p>
+                <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
+                  I do not take on full-time freelance work, and I will not recommend tools without
+                  knowing the problem you are actually facing.
+                </p>
+              </div>
+            </Reveal>
+
+            <Reveal delay={0.16}>
+              <div className="panel-flagged p-6 pl-8">
+                <p className="eyebrow flex items-center gap-2">
+                  <AlertTriangle className="size-3.5 text-primary" aria-hidden />
+                  technical note
+                </p>
+                <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
+                  This form runs entirely in your browser. No network request is sent anywhere when
+                  you press the compose button. If you reload the page, the input is lost, and that
+                  is the behaviour I chose on purpose.
+                </p>
+              </div>
+            </Reveal>
+
+            <Reveal delay={0.24}>
+              <div className="panel p-6 sm:p-8">
+                <p className="eyebrow">direct channels</p>
+                <RevealGroup className="mt-5 space-y-px overflow-hidden rounded-notch border border-border bg-border">
+                  {profile.socials.map((social) => {
+                    const Icon = SOCIAL_ICON[social.label as keyof typeof SOCIAL_ICON] ?? Mail;
+                    return (
+                      <RevealItem key={social.label}>
+                        <SpotlightCard className="rounded-none border-0 p-0">
+                          <a
+                            href={social.href}
+                            className="group flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/40"
+                          >
+                            <span className="flex items-center gap-3">
+                              <Icon className="size-4 text-primary" aria-hidden />
+                              <span className="font-display text-[15px] font-medium tracking-tight">
+                                {social.label}
+                              </span>
+                            </span>
+                            <ArrowRight
+                              className="size-4 text-muted-foreground transition-transform duration-300 ease-out-expo group-hover:translate-x-1 group-hover:text-primary"
+                              aria-hidden
+                            />
+                          </a>
+                        </SpotlightCard>
+                      </RevealItem>
+                    );
+                  })}
+                </RevealGroup>
+
+                <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                  <span className="flex items-center gap-2">
+                    <MapPin className="size-3.5" aria-hidden />
+                    {profile.location}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Clock className="size-3.5" aria-hidden />
+                    {profile.timezone}
+                  </span>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-1.5">
+                  <Badge variant="moss" dot>
+                    open to discussion
+                  </Badge>
+                  <Badge variant="muted">replies within 1 business day</Badge>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </PageSection>
+
+      {/* CTA */}
+      <PageSection className="border-t border-border bg-card/25">
+        <Reveal>
+          <div className="panel-flagged relative overflow-hidden p-8 sm:p-10">
+            <div aria-hidden className="pointer-events-none absolute inset-0 grid-lines opacity-35" />
+            <div className="relative grid gap-8 lg:grid-cols-12 lg:items-center">
+              <div className="lg:col-span-8">
+                <p className="eyebrow">before you write</p>
+                <p className="mt-3 max-w-2xl font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
+                  If you have just opened this site, start with the project file. That is where the
+                  way I work shows up, not only the end result.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">
+                <Button asChild variant="outline">
+                  <Link to="/projects">
+                    Open the project file
+                    <ArrowRight className="size-4" aria-hidden />
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost">
+                  <Link to="/">Back to home</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </PageSection>
+    </>
+  );
+}

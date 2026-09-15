@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================================
+   Design tokens — "Rust & Ink"
+   Deliberately not the slate/zinc + purple palette typical of AI templates.
+   Base: warm ink. Accents: rust + moss.
+   ========================================================================= */
+
+@layer base {
+  :root {
+    --background: 40 30% 96%;
+    --foreground: 26 16% 11%;
+
+    --card: 40 34% 99%;
+    --card-foreground: 26 16% 11%;
+
+    --popover: 40 34% 99%;
+    --popover-foreground: 26 16% 11%;
+
+    --primary: 14 67% 46%;
+    --primary-foreground: 40 44% 97%;
+
+    --secondary: 36 20% 90%;
+    --secondary-foreground: 26 16% 14%;
+
+    --muted: 36 20% 91%;
+    --muted-foreground: 28 9% 38%;
+
+    --accent: 113 30% 34%;
+    --accent-foreground: 40 44% 97%;
+
+    --destructive: 0 66% 46%;
+    --destructive-foreground: 40 44% 97%;
+
+    --border: 32 16% 83%;
+    --input: 32 16% 83%;
+    --ring: 14 67% 46%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 26 12% 7%;
+    --foreground: 36 22% 92%;
+
+    --card: 26 11% 10%;
+    --card-foreground: 36 22% 92%;
+
+    --popover: 26 11% 9%;
+    --popover-foreground: 36 22% 92%;
+
+    --primary: 14 67% 52%;
+    --primary-foreground: 26 24% 8%;
+
+    --secondary: 26 9% 16%;
+    --secondary-foreground: 36 22% 92%;
+
+    --muted: 26 9% 15%;
+    --muted-foreground: 32 11% 62%;
+
+    --accent: 113 30% 42%;
+    --accent-foreground: 26 24% 8%;
+
+    --destructive: 0 62% 48%;
+    --destructive-foreground: 36 22% 92%;
+
+    --border: 28 10% 19%;
+    --input: 28 10% 21%;
+    --ring: 14 67% 52%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01" 1, "cv01" 1;
+    overflow-x: hidden;
+  }
+
+  /* Clear, consistent focus across the whole site */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary/70 ring-offset-2 ring-offset-background;
+  }
+
+  ::selection {
+    @apply bg-primary/25 text-foreground;
+  }
+
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full border-[3px] border-solid border-background bg-muted-foreground/35;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/60;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Machine-styled micro label, used sparingly rather than in every section */
+  .eyebrow {
+    @apply font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground;
+  }
+
+  /* Hairline rule for editorial separation */
+  .hairline {
+    @apply h-px w-full bg-border;
+  }
+
+  /* Main surface: a card with a thick left edge as a marker */
+  .panel {
+    @apply relative rounded-lg border border-border bg-card shadow-lift;
+  }
+
+  .panel-flagged {
+    @apply panel overflow-hidden;
+  }
+  .panel-flagged::before {
+    content: "";
+    @apply absolute inset-y-0 left-0 w-[3px] bg-primary/70;
+  }
+
+  /* Fine-lined background for technical areas */
+  .grid-lines {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.55) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  /* Large outlined text for display accents */
+  .text-outline {
+    -webkit-text-stroke: 1.5px hsl(var(--foreground) / 0.55);
+    color: transparent;
+  }
+
+  /* Sheen on hover for primary buttons and links */
+  .sheen {
+    @apply relative overflow-hidden;
+  }
+  .sheen::after {
+    content: "";
+    @apply pointer-events-none absolute inset-y-0 -left-full w-1/2 -skew-x-12 bg-white/20;
+  }
+  .sheen:hover::after {
+    @apply left-[150%] transition-[left] duration-700 ease-out-expo;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
