@@ -13,7 +13,7 @@
 import * as React from "react";
 import type { Session } from "@supabase/supabase-js";
 import { isSupabaseConfigured, MISSING_CONFIG_MESSAGE, supabase } from "@/lib/supabase";
-import { describeAuthError, resolveUsername } from "@/lib/adminAccount";
+import { describeAuthError, resolveAdminEmail, resolveUsername } from "@/lib/adminAccount";
 
 export type AdminStatus = "loading" | "signed-out" | "signed-in";
 
@@ -40,6 +40,10 @@ interface AdminAuthValue {
   configMessage: string | null;
   signIn: (username: string, password: string) => Promise<SignInOutcome>;
   signOut: () => Promise<void>;
+  /** Requests a password reset email from Supabase Auth. */
+  sendPasswordReset: (emailOrUsername: string) => Promise<SignInOutcome>;
+  /** Updates the user's password after following a reset link. */
+  resetPasswordWithToken: (nextPassword: string) => Promise<SignInOutcome>;
   /** Sets a new password and clears the must change flag. */
   changePassword: (currentPassword: string, nextPassword: string) => Promise<SignInOutcome>;
 }
@@ -164,6 +168,58 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     setStatus("signed-out");
   }, []);
 
+  const sendPasswordReset = React.useCallback(
+    async (emailOrUsername: string): Promise<SignInOutcome> => {
+      if (!supabase) return { ok: false, message: MISSING_CONFIG_MESSAGE };
+
+      const email = resolveAdminEmail(emailOrUsername);
+      if (!email) {
+        // Return success message to avoid email enumeration
+        return {
+          ok: true,
+          message:
+            "If that email belongs to an administrator account, a password reset link has been sent.",
+        };
+      }
+
+      const redirectTo = `${window.location.origin}/admin/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+
+      if (error) {
+        return { ok: false, message: describeAuthError(error.message) };
+      }
+
+      return {
+        ok: true,
+        message: `Password reset link sent to ${email}. Check your inbox.`,
+      };
+    },
+    [],
+  );
+
+  const resetPasswordWithToken = React.useCallback(
+    async (nextPassword: string): Promise<SignInOutcome> => {
+      if (!supabase) return { ok: false, message: MISSING_CONFIG_MESSAGE };
+
+      const { error: updateError } = await supabase.auth.updateUser({ password: nextPassword });
+      if (updateError) return { ok: false, message: describeAuthError(updateError.message) };
+
+      // Also ensure password changed flag is cleared if present
+      await supabase.rpc("portfolio_password_changed");
+
+      const next = await loadIdentity();
+      if (next) {
+        setIdentity(next);
+        setStatus("signed-in");
+      }
+
+      return { ok: true };
+    },
+    [loadIdentity],
+  );
+
   const changePassword = React.useCallback(
     async (currentPassword: string, nextPassword: string): Promise<SignInOutcome> => {
       if (!supabase) return { ok: false, message: MISSING_CONFIG_MESSAGE };
@@ -210,9 +266,11 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       configMessage: isSupabaseConfigured ? null : MISSING_CONFIG_MESSAGE,
       signIn,
       signOut,
+      sendPasswordReset,
+      resetPasswordWithToken,
       changePassword,
     }),
-    [status, identity, signIn, signOut, changePassword],
+    [status, identity, signIn, signOut, sendPasswordReset, resetPasswordWithToken, changePassword],
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;

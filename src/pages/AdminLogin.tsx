@@ -292,10 +292,15 @@ function SignInCard({
 
       <Separator dashed className="my-6" />
 
-      <p className="text-[13px] leading-relaxed text-muted-foreground text-pretty">
-        There is no self service reset on this screen. If the password is lost, it has to be reset
-        from the Supabase dashboard, which is a deliberate limit rather than a missing feature.
-      </p>
+      <div className="flex items-center justify-between text-[13px]">
+        <Link
+          to="/admin/forgot-password"
+          className="text-primary underline decoration-primary/40 underline-offset-4 transition-colors hover:decoration-primary"
+        >
+          Forgot password?
+        </Link>
+        <span className="text-muted-foreground">Self-service email recovery</span>
+      </div>
     </>
   );
 }

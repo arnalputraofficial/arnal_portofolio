@@ -9,12 +9,14 @@ import { useAdminAuth } from "@/admin/AdminAuthProvider";
 import { PasswordForm } from "@/admin/PasswordForm";
 import ContentEditor from "@/admin/ContentEditor";
 import EntriesPanel from "@/admin/EntriesPanel";
+import MessagesPanel from "@/admin/MessagesPanel";
 import HistoryPanel from "@/admin/HistoryPanel";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { id: "content", label: "Content" },
   { id: "entries", label: "Entries" },
+  { id: "messages", label: "Inbox" },
   { id: "history", label: "Revisions" },
   { id: "account", label: "Account" },
 ] as const;
@@ -97,6 +99,8 @@ export default function AdminDashboard() {
         {tab === "content" ? <ContentEditor /> : null}
 
         {tab === "entries" ? <EntriesPanel /> : null}
+
+        {tab === "messages" ? <MessagesPanel /> : null}
 
         {tab === "history" ? <HistoryPanel /> : null}
 

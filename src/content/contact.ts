@@ -58,14 +58,14 @@ export const CONTACT_CONTENT: ContentEntry[] = [
     key: "contact.form.title",
     page: "contact",
     label: "Form section heading",
-    default: "Write your message, then pick how to send it",
+    default: "Write your message and send it straight from this page",
   },
   {
     key: "contact.form.description",
     page: "contact",
     label: "Form section description",
     default:
-      "This form checks your input in the browser, then prepares a message ready to send. I collect no data quietly, because there is no server behind it.",
+      "The message is stored first and emailed second, so a delivery hiccup never loses your words. No account, no tracking pixel, and no third party reading along.",
     multiline: true,
   },
   {

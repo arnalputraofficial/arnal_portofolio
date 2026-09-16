@@ -20,6 +20,8 @@ import Contact from "@/pages/Contact";
 import NotFound from "@/pages/NotFound";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
+import AdminForgotPassword from "@/pages/AdminForgotPassword";
+import AdminResetPassword from "@/pages/AdminResetPassword";
 
 /** Page transition: quick exit, entry with a slight delay. */
 function PageShell({ children }: { children: React.ReactNode }) {
@@ -90,6 +92,8 @@ function AdminRoutes({ location }: { location: ReturnType<typeof useLocation> })
       <PageShell key={location.pathname}>
         <Routes location={location}>
           <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
+          <Route path="/admin/reset-password" element={<AdminResetPassword />} />
           <Route
             path="/admin"
             element={

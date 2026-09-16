@@ -71,9 +71,9 @@ menyalin informasi kontak dengan cepat.
 - Integrasi baca saja dengan registry keahlian terverifikasi.
 - Mode gelap dan terang.
 - Data contoh yang siap ditukar dengan data asli.
+- Pengiriman formulir kontak ke server: pesan disimpan lebih dulu, lalu surel notifikasi dikirim.
 
 **Tidak termasuk (sengaja):**
-- Pengiriman formulir kontak ke server.
 - Blog atau CMS penuh dengan media dan tata letak bebas.
 - Analitik pelacak pihak ketiga.
 - Pendaftaran akun mandiri. Akun admin hanya dibuat melalui SQL di dashboard Supabase.
@@ -81,6 +81,11 @@ menyalin informasi kontak dengan cepat.
 Revisi 2026-09-15: batasan "tanpa backend" dan "tanpa autentikasi" dicabut. Panel admin
 memakai Supabase sebagai penyimpan teks dan Supabase Auth untuk masuk. Keputusan dan
 konsekuensinya dicatat pada changelog di bagian 15.
+
+Revisi 2026-09-16: batasan "tanpa pengiriman formulir kontak ke server" dicabut. Formulir
+kontak mengirim langsung ke titik akhir server yang menyimpan pesan ke basis data, lalu
+mengirim surel notifikasi bertema situs ke pemilik. Tautan surel yang sudah terisi subjek
+dan isi pesan tidak lagi dipakai.
 
 ## 5. Requirement Fungsional
 
@@ -163,9 +168,13 @@ Status per 2026-09-15.
 | FR-34 | Formulir memiliki validasi di sisi klien untuk nama, surel, dan panjang pesan | Selesai |
 | FR-35 | Panjang pesan ditampilkan sebagai indikator kemajuan | Selesai |
 | FR-36 | Pesan yang siap dikirim dapat disalin ke papan klip, dengan konfirmasi visual | Selesai |
-| FR-37 | Tersedia tautan surel yang sudah terisi subjek dan isi pesan | Selesai |
+| FR-37 | Formulir mengirim langsung ke titik akhir server. Pesan disimpan ke basis data lebih dulu, lalu surel notifikasi dikirim, sehingga pengunjung tidak pernah diberi tahu "terkirim" bila satu satunya salinan hilang | Selesai |
 | FR-38 | Tersedia kanal langsung ke profil profesional | Selesai |
-| FR-39 | Halaman menyatakan terbuka bahwa tidak ada server yang menerima pesan | Selesai |
+| FR-39 | Halaman menyatakan terbuka ke mana pesan pergi dan urutan simpan lalu kirim, bukan menjanjikan hal yang tidak dilakukan | Selesai |
+| FR-76 | Surel notifikasi ke pemilik memakai template bertema situs (Rust & Ink): garis aksen, label mono, blok pengirim, blok pesan, dan footer, dengan balasan langsung ke surel pengunjung lewat `reply_to` | Selesai |
+| FR-77 | Titik akhir publik menolak permintaan selain `POST` dan isi yang tidak lolos validasi, serta tidak pernah menulis langsung ke tabel karena penulisan lewat fungsi `security definer` | Selesai |
+| FR-78 | Pengiriman dibatasi kuota di basis data: 5 pesan per jam per surel dan 60 pesan per jam secara keseluruhan | Selesai |
+| FR-79 | Panel admin memiliki tab Inbox untuk membaca, menandai sudah dibaca, dan menghapus pesan yang masuk | Selesai |
 
 ### 5.9 Halaman 404
 
@@ -290,6 +299,8 @@ panel penjelasan agar pengunjung tidak salah paham.
 | `/kontak` | Kontak | Memudahkan menghubungi, tanpa janji palsu soal pengiriman pesan |
 | `*` | 404 | Mengembalikan pengunjung ke jalur yang benar |
 | `/admin/login` | Masuk admin | Satu satunya jalan masuk panel, sekaligus tempat wajib ganti kata sandi pertama kali |
+| `/admin/forgot-password` | Lupa sandi admin | Permintaan link pemulihan sandi via email yang terdaftar di allowlist |
+| `/admin/reset-password` | Reset sandi admin | Mengubah kata sandi setelah membuka token tautan pemulihan dari email |
 | `/admin` | Panel admin | Menyunting, menerbitkan, dan mengembalikan teks situs |
 
 Rute `/admin` dilindungi di sisi klien oleh `RequireAdmin`. Perlindungan yang sebenarnya tetap
@@ -392,8 +403,14 @@ Uji jalur tulis 2026-09-15, dijalankan terhadap project nyata, bukan tiruan:
    peringatan Vite. Penyebab utamanya `three` dan `recharts` yang ikut pada bundle awal padahal
    hanya dipakai sebagian halaman. Perbaikan yang disarankan adalah pemecahan kode dengan
    `React.lazy` dan `manualChunks`. Belum dikerjakan karena belum menjadi prioritas.
-3. **Formulir kontak tidak punya tujuan.** Pesan tidak dikirim ke mana pun. Ini disampaikan
-   secara terbuka di antarmuka, dan bukan cacat yang perlu ditutup.
+3. **Surel notifikasi bergantung dua layanan luar.** Pesan selalu masuk ke tabel
+   `portfolio_messages` lebih dulu, sedangkan surel notifikasi bersifat best effort: ia
+   hanya terkirim bila `RESEND_API_KEY` dan `CONTACT_TO_EMAIL` terisi di sisi server.
+   Selama domain pengirim belum diverifikasi di Resend, pengirim terbatas
+   `onboarding@resend.dev` dan tujuan wajib surel pemilik akun. Bila surel gagal, pesan
+   tetap tersimpan dan terbaca di tab Inbox, dan pengunjung tetap melihat status terkirim
+   karena datanya memang tersimpan. Antarmuka tidak menjanjikan surel, hanya penerimaan
+   pesan.
 4. **Integrasi registry bergantung pihak ketiga.** Bila API berubah bentuk atau ditutup,
    halaman Keahlian akan menampilkan status offline. Tidak ada penjadwalan ulang otomatis
    selain tombol coba lagi.
@@ -562,6 +579,17 @@ Daftar ini menjelaskan hal yang sengaja tidak dikerjakan, agar tidak menimbulkan
   - Aturan yang dipegang: berkas diunggah lebih dulu, barisnya menyusul; bila baris ditolak, objek yang sudah terunggah dihapus kembali supaya tidak ada berkas yatim. Saat menghapus, baris dihapus lebih dulu, objeknya menyusul. Blok unggah hanya muncul pada sertifikat yang sudah tersimpan, karena scan selalu menempel pada baris yang ada. Slideshow tidak dirender sama sekali selama belum ada scan, sehingga halaman Credentials tidak berubah bagi pemilik yang belum mengunggah apa pun. Ikut tersembunyi bila sertifikat induknya disembunyikan, sesuai policy RLS tabel gambar.
   - Status: Selesai. `npx tsc -b` dan `npm run build` keluar 0. Belum diuji dengan berkas gambar sungguhan; butir 9 pada bagian 12 masih terbuka.
 
+- **Alur Pemulihan Password Admin (Forgot & Reset Password)**: admin dapat meminta link pemulihan kata sandi via email (`/admin/forgot-password`) dan menyetel kata sandi baru dari tautan tersebut (`/admin/reset-password`).
+  - Alasan: permintaan pemilik produk untuk menambahkan fitur forgot password dan reset password berbasis email terdaftar Supabase.
+  - Perubahan kode:
+    - `src/lib/adminAccount.ts`: penambahan helper `resolveAdminEmail` untuk memetakan input username/email ke email terdaftar.
+    - `src/admin/AdminAuthProvider.tsx`: penambahan metode `sendPasswordReset` (memanggil `supabase.auth.resetPasswordForEmail`) dan `resetPasswordWithToken` (memanggil `supabase.auth.updateUser`).
+    - `src/pages/AdminForgotPassword.tsx` & `src/pages/AdminResetPassword.tsx`: pembuatan antarmuka halaman baru sesuai skema Rust & Ink.
+    - `src/pages/AdminLogin.tsx`: menyambungkan tautan "Forgot password?".
+    - `src/App.tsx`: mendaftarkan rute `/admin/forgot-password` dan `/admin/reset-password`.
+  - Verifikasi: `npx tsc --noEmit` keluar 0 error, `npm run build` sukses.
+  - Status: Selesai.
+
 - **Foto Profil dan Penyuntingan Teks Seluruh Halaman**: foto profil tampil di samping teks hero Beranda dan dapat diganti dari tab Content, dan seluruh halaman kini membaca kata-katanya dari registry konten, bukan dari teks yang dipatri di komponen.
   - Alasan: permintaan pemilik produk, "Saya juga ada foto profile saya nantinya (yang menyesuaikan dengan tema yang ada pada webapp sekarang) di home. Dan fotonya bisa diganti dan disesuaikan dari Admin Pages. Saya ingin setiap pagesnya itu juga bisa di edit dari kata-katanya juga pada admin."
   - Keputusan yang disetujui pemilik produk: posisi foto **di samping teks hero**, dan penyuntingan teks dibuka untuk **semua halaman sekaligus**.
@@ -689,11 +717,40 @@ Daftar ini menjelaskan hal yang sengaja tidak dikerjakan, agar tidak menimbulkan
   - Verifikasi: diuji di browser headless lewat CDP pada Beranda. Strip Beranda tetap berisi 20 item yang sama dan strip footer tetap 10 item yang sama seperti sebelum perubahan, tanpa galat konsol. Registry di peramban diperiksa langsung: `home.stack.marquee` dan `footer.rollingStrip` terdaftar dengan `multiline: true`, dan nilai bawaan footer berisi 10 baris. `npx tsc --noEmit` keluar 0 dan `npm run build` berhasil. Berkas uji sementara sudah dihapus.
   - Status: Selesai.
 
+- **Peningkatan Template Surel Rust & Ink dan POV Admin Inbox**: memperbarui template HTML surel notifikasi yang dikirim ke pemilik dan meningkatkan antarmuka inbox admin.
+  - Kebutuhan: permintaan pemilik produk untuk memperjelas template surel yang masuk ke inbox pemilik (dengan tema Rust & Ink yang rapi, tanpa auto-reply ke pengunjung untuk mencegah spam), serta memberikan tampilan POV Admin di webapp agar admin dapat meninjau detail pengirim (nama, email, timestamp, topic, isi pesan), memfilter/mencari pesan, menyalin email, dan membalas langsung.
+  - Perubahan kode:
+    - `api/contact.ts`: memperbarui `renderEmail()` dan konstanta warna Rust & Ink (`INK_850`, `INK_400`, `MOSS`). Template surel kini dilengkapi header badge `07 / INCOMING INQUIRY`, box detail pengirim (name, email, timestamp), message content box bergaris putus-putus, dan action callout box.
+    - `src/admin/MessagesPanel.tsx`: menambahkan filter status (`all`, `unread`, `read`), input pencarian (search text sender, topic, message), tombol copy email ke clipboard pada dialog detail, serta meningkatkan layout POV Admin saat membuka dialog pesan.
+  - Verifikasi: `npx esbuild api/contact.ts --outfile=nul` berhasil (8,9 kB output, exit 0), `npx tsc --noEmit` keluar 0, dan `npm run build` berhasil tanpa error.
+  - Status: Selesai.
+
 - **Header Keamanan HTTP Ditambahkan Sebelum Naik ke Vercel**: situs sebelumnya tidak mengirim satu pun header keamanan.
   - Alasan: permintaan pemilik produk, "pastikan sebelum ditaro ke vercel, Leaked Password Protection, Auth dan lain-lain sudah aman dan tidak breached dan leaked dan defensive terhadap attack dan malware." Audit menemukan tidak ada header keamanan sama sekali, karena `vercel.json` belum punya kunci `headers`.
   - Keadaan sebelumnya: satu satunya upaya pertahanan ada di `index.html`, yaitu `<meta http-equiv="X-Content-Type-Options" content="nosniff" />`. Meta itu tidak berefek karena `X-Content-Type-Options` hanya diakui sebagai header jawaban HTTP. Aturan `http-equiv` yang benar benar didukung peramban hanya `Content-Type`, `Refresh`, dan `Content-Security-Policy`.
   - Perubahan kode: `vercel.json` mendapat kunci `headers` dengan `source: "/(.*)"` yang mengirim `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`, `Strict-Transport-Security: max-age=63072000; includeSubDomains`, `Permissions-Policy` yang mematikan kamera, mikrofon, lokasi, pembayaran, dan USB, serta `Content-Security-Policy` dengan `script-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'`, dan `form-action 'self'`. Meta yang tidak berlaku dihapus dari `index.html`; meta `referrer` tetap dipertahankan.
   - Kelonggaran yang disengaja: `img-src` memuat `https:` karena `global.profile.avatar` boleh berisi alamat gambar luar dan `blob:` untuk pratinjau unggahan. `style-src` memuat `'unsafe-inline'` karena Framer Motion dan React menulis gaya saat berjalan. `connect-src` dibatasi ke origin Supabase dan `verified-skill.com` saja, sesuai satu satunya pemanggilan jaringan yang ada di `src/`.
   - Verifikasi: `dist` disajikan ulang oleh peladen sementara dengan header yang dibaca langsung dari `vercel.json`, lalu enam halaman dibuka di Chrome headless lewat CDP. Hasil: 6 dari 6 header terkirim, nol sumber daya yang diblokir kebijakan, halaman tetap terender dengan isi penuh, dan font Bricolage Grotesque serta JetBrains Mono tetap termuat dari Google Fonts. `npx tsc --noEmit` keluar 0 dan `npm run build` berhasil. Berkas uji sementara sudah dihapus.
+  - Status: Selesai.
+
+- **Notifikasi Surel Formulir Kontak Bertema Situs**: pesan yang dikirim pengunjung dari halaman Kontak kini tiba di kotak masuk pemilik sebagai surel bertema Rust & Ink, bukan surel polos.
+  - Kebutuhan: permintaan pemilik produk, "template email yang dari orang yang sudah mengetik di webapp kita saat masuk ke email kita itu ada templatenya juga."
+  - Alur yang dipilih: peramban mengirim empat kolom ke `/api/contact`. Fungsi itu menyimpan pesan lebih dulu lewat RPC `portfolio_send_message` (security definer), baru meminta Resend mengirim salinannya. Urutan simpan lalu kirim dipilih supaya pengunjung tidak pernah diberi tahu "terkirim" bila satu satunya salinan hidup di kotak masuk yang ditelan gangguan penyedia. Balasan pemilik langsung menuju surel pengunjung lewat `reply_to`.
+  - Perubahan kode: `api/contact.ts` baru, berisi validasi (nama 2 sampai 100, surel 5 sampai 200 dengan pola, pesan 20 sampai 5000), `renderEmail()` bertema Rust & Ink (tabel presentasional dengan gaya inline supaya selamat di Gmail dan Outlook), `renderText()` sebagai cadangan teks, dan penanganan yang membedakan galat simpan (502) dari kegagalan surel (tetap 200 dengan `emailed: false`). `src/lib/messages.ts` menambah `sendContactMessage()`. `src/pages/Contact.tsx` beralih dari tautan `mailto` yang sudah terisi subjek dan isi pesan ke pengiriman langsung, dengan blok "message received" dan "not delivered".
+  - Aturan desain yang dipegang: aksen surel memakai `rust` untuk penanda perhatian, bukan `moss` yang khusus status positif dan terverifikasi; subjek surel tidak memakai em-dash.
+  - Konfigurasi: `.env.example` menambah `RESEND_API_KEY`, `CONTACT_FROM_EMAIL`, dan `CONTACT_TO_EMAIL` tanpa awalan `VITE_`, karena awalan itu berarti "kirim ke peramban" dan kunci Resend adalah rahasia yang hanya boleh ada di sisi server.
+  - Verifikasi: `npx tsc --noEmit` keluar 0, `npm run build` berhasil, dan `api/contact.ts` lolos kompilasi esbuild (7,5 kB keluaran, exit 0). Pengiriman surel sungguhan belum diuji karena variabel lingkungan Resend belum terisi di Vercel.
+  - Status: Sebagian, menunggu pengisian variabel lingkungan Resend dan verifikasi domain pengirim lalu uji ujung ke ujung di produksi.
+
+- **Tab Inbox dan Perbaikan Hak Akses Tabel Pesan**: panel admin kini dapat membaca pesan yang masuk, tidak lagi hanya bergantung pada surel.
+  - Kebutuhan: melengkapi pengiriman kontak, sesuai permintaan pemilik produk agar pesan yang masuk juga terbaca di panel.
+  - Perubahan kode: `src/admin/MessagesPanel.tsx` baru (daftar pesan, penanda belum dibaca, dialog detail, balas lewat surel, tandai dibaca, hapus), `src/pages/AdminDashboard.tsx` menambah tab `Inbox` sebagai tab ketiga, dan tiga migrasi `supabase/migrations/20260916000000_portfolio_messages.sql`, `20260916000100_portfolio_message_limits.sql`, serta `20260916000200_portfolio_message_grants.sql`.
+  - Cacat yang ditemukan dan diperbaiki: tabel `portfolio_messages` sudah punya policy RLS, tetapi tidak punya `GRANT` di level tabel. Policy menentukan baris mana yang boleh disentuh, sedangkan tanpa grant peran `authenticated` ditolak sebelum policy pernah dievaluasi, sehingga tab Inbox pasti gagal membaca. Migrasi `20260916000200_portfolio_message_grants.sql` memberi `select, update, delete` kepada `authenticated`; peran `anon` sengaja tidak diberi, karena penulisan publik lewat fungsi security definer yang tidak memerlukan akses tabel.
+  - Verifikasi: hak akses diperiksa langsung lewat SQL, hasilnya `authenticated` boleh `select`, `update`, dan `delete`, sedangkan `anon` tidak boleh ketiganya. Jalur tulis publik diuji sebagai peran `anon` (berhasil, sedangkan surel `ab@cd` ditolak `P0001: Invalid email address`), dan jalur baca admin diuji sebagai peran `authenticated` dengan klaim surel admin pada transaksi yang di-`rollback`, sehingga tabel kembali kosong.
+  - Status: Selesai. Tab Inbox belum diuji dengan klik sungguhan di peramban; butir 9 pada bagian 12 masih terbuka.
+
+- **Batas "Tanpa Pengiriman Kontak ke Server" Dicabut**: bagian ruang lingkup, FR-37, FR-39, dan butir 3 pada bagian 12 disesuaikan dengan kode nyata.
+  - Alasan: PRD masih menyatakan formulir kontak "tidak punya tujuan" dan "tidak ada server yang menerima pesan", padahal sejak perubahan di atas pesan dikirim ke server, disimpan, dan dinotifikasikan. Membiarkannya berarti PRD berbohong tentang isi kode.
+  - Perubahan dokumen: "Pengiriman formulir kontak ke server" dipindah dari daftar "tidak termasuk" ke "termasuk", ditambah catatan revisi bertanggal; FR-37 dan FR-39 diganti bunyinya agar sesuai perilaku baru; empat requirement baru ditambahkan, yaitu FR-76 (template surel bertema), FR-77 (titik akhir publik), FR-78 (kuota pengiriman), dan FR-79 (tab Inbox); butir 3 pada bagian 12 diganti menjadi batasan ketergantungan pada Resend dan status best effort surel.
   - Status: Selesai.
 

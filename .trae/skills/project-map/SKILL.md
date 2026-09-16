@@ -59,6 +59,7 @@ Konsekuensi praktis:
 - Setiap `import` yang tidak terpakai adalah **error build**, bukan sekadar warning.
 - Setiap parameter fungsi yang tidak dipakai juga error. Hapus atau awali `_`.
 - Alias path: `@/*` -> `./src/*` (hanya `baseUrl: "."`, tanpa `rootDir`).
+- `include` hanya `["src", "vite.config.ts"]`, sehingga `api/contact.ts` **tidak** ikut `tsc`. Periksa berkas itu dengan `npx esbuild api/contact.ts --outfile=nul`. Jangan menambahkan `--loader=ts`: opsi itu hanya berlaku saat membaca dari stdin dan gagal dengan pesan `"loader" without extension only applies when reading from stdin`, bukan karena berkasnya salah.
 
 ## 3. Struktur file dan export
 
@@ -70,7 +71,7 @@ Entry React. Merender `<App />` ke `#root`.
 - `TooltipProvider` -> `ContentProvider` -> `EntriesProvider` -> `AdminAuthProvider` -> `SiteHeader` -> `AnimatePresence mode="wait" initial={false}` -> `PageShell` -> `Routes` -> `SiteFooter`.
 - `PageShell` lokal: `motion.main` opacity 0/y 12 -> 1/0, exit y -8, `duration 0.38`, `ease [0.16, 1, 0.3, 1]`, `className="relative z-10"`.
 - Rute publik: `/` Home, `/career` Career, `/projects` Projects, `/credentials` Credentials, `/skills` Skills, `/about` About, `/contact` Contact, `*` NotFound. Semua rute memakai kata Inggris.
-- Rute admin: `/admin/login` AdminLogin, `/admin` dibungkus `RequireAdmin` -> AdminDashboard.
+- Rute admin: `/admin/login` AdminLogin, `/admin/forgot-password` AdminForgotPassword, `/admin/reset-password` AdminResetPassword, dan `/admin` dibungkus `RequireAdmin` -> AdminDashboard.
 - `RequireAdmin` lokal: membaca `useAdminAuth()`. `status === "loading"` -> kartu pemuatan; `"signed-out"` -> `Navigate to="/admin/login" replace`; selain itu merender anak.
 - Provider: keduanya dipasang di dalam `App.tsx`, bersarang `TooltipProvider` > `ContentProvider` > `AdminAuthProvider`.
 - `App` memisahkan tampilan pada `location.pathname.startsWith("/admin")`, sehingga panel tidak pernah muncul di bawah header situs, dan halaman 404 publik tidak menelan alamat admin.
@@ -89,7 +90,9 @@ Entry React. Merender `<App />` ke `#root`.
 | `Contact.tsx` | `/contact` | Formulir tervalidasi, salin pesan, `mailto:` |
 | `NotFound.tsx` | `*` | 7 rute nyata + saran proyek dampak tertinggi |
 | `AdminLogin.tsx` | `/admin/login` | Satu satunya jalan masuk panel. Tiga cabang: memuat, wajib ganti kata sandi, formulir masuk |
-| `AdminDashboard.tsx` | `/admin` | Panel bertab: `Content` (`ContentEditor`), `Entries` (`EntriesPanel`), `Revisions` (`HistoryPanel`), `Account` (`PasswordForm`) |
+| `AdminForgotPassword.tsx` | `/admin/forgot-password` | Form request link pemulihan kata sandi admin via Supabase Auth |
+| `AdminResetPassword.tsx` | `/admin/reset-password` | Form ganti sandi baru setelah membuka token pemulihan dari email |
+| `AdminDashboard.tsx` | `/admin` | Panel bertab: `Content` (`ContentEditor`), `Entries` (`EntriesPanel`), `Inbox` (`MessagesPanel`), `Revisions` (`HistoryPanel`), `Account` (`PasswordForm`) |
 
 Berkas admin yang bukan halaman: `src/admin/RequireAdmin.tsx`, `src/admin/AdminAuthProvider.tsx`,
 `src/admin/PasswordForm.tsx`, `src/admin/ContentEditor.tsx`, `src/admin/EntriesPanel.tsx`,
@@ -214,9 +217,11 @@ tidak melewati alur draf lalu terbit.
 
 ### `src/admin/` (panel admin)
 
-- `AdminAuthProvider.tsx` -> `AdminAuthProvider` dan `useAdminAuth()`, mengembalikan `{ status, identity, signIn, signOut, changePassword }`.
+- `AdminAuthProvider.tsx` -> `AdminAuthProvider` dan `useAdminAuth()`, mengembalikan `{ status, identity, signIn, signOut, sendPasswordReset, resetPasswordWithToken, changePassword }`.
   - `status` = `"loading" | "signed-out" | "signed-in"`; `identity` = `{ email, mustChangePassword } | null`.
   - `signIn(username, password)` memetakan nama pengguna ke surel lewat `src/lib/adminAccount.ts`.
+  - `sendPasswordReset(emailOrUsername)` memetakan input lewat `resolveAdminEmail`, lalu memanggil `supabase.auth.resetPasswordForEmail(email, { redirectTo: ${origin}/admin/reset-password })`. Bila input tidak dikenali, ia tetap mengembalikan `ok: true` dengan pesan netral supaya tidak membocorkan daftar izin.
+  - `resetPasswordWithToken(nextPassword)` memanggil `supabase.auth.updateUser({ password })`, lalu `rpc("portfolio_password_changed")` untuk membersihkan penanda wajib ganti sandi, dan menaikkan status menjadi `signed-in`.
   - `changePassword(current, next)` = `signInWithPassword(current)` -> `updateUser({ password: next })` -> `rpc("portfolio_password_changed")`.
   - Akun yang masuk tetapi tidak ada di daftar izin langsung dipaksa `signOut()`.
 - `PasswordForm.tsx` -> `PasswordForm({ onDone, submitLabel })`. Prop `onDone` **wajib**.
@@ -236,10 +241,15 @@ tidak melewati alur draf lalu terbit.
   - Blok scan hanya dirender bila `entry` ada, karena `portfolio_certification_images.certification_id` adalah kunci asing wajib.
   - Formulir wajib menghormati batas yang dijaga basis data. Lihat bagian 7 untuk daftar batasnya.
 - `HistoryPanel.tsx` -> seksi `revisions` dengan tombol `Restore`, dan seksi `activity`.
+- `MessagesPanel.tsx` -> tab **Inbox**: `export default MessagesPanel()` tanpa prop. `listMessages()` dipanggil sekali saat mount; `unread` dihitung dari `messages.filter(m => !m.read)` dan kartu yang belum dibaca diberi `border-l-2 border-l-primary`. `openMessage()` menandai baris sudah dibaca secara optimistis (menulis dulu, lalu memperbarui state lokal), sedangkan `toggleRead()` dan `remove()` menulis lalu memuat ulang daftar. Balasan memakai `mailto:` dengan subjek `Re: <topic>`. Seluruh jalur melewati RLS, jadi panel ini bergantung pada `GRANT` di level tabel (lihat bagian 7).
 
-### `src/lib/supabase.ts` dan `src/lib/adminAccount.ts`
+### `src/lib/` (selain entry/produk)
+
 - `supabase.ts` -> `supabase` (klien atau `null` bila konfigurasi kosong), `isSupabaseConfigured`, `MISSING_CONFIG_MESSAGE`. Membaca `VITE_SUPABASE_URL` dan `VITE_SUPABASE_PUBLISHABLE_KEY`.
-- `adminAccount.ts` -> `ADMIN_ACCOUNTS` (`{ arnalputra: "arnal@steadbyte.com" }`), `MIN_PASSWORD_LENGTH = 12`, `resolveUsername`, `checkNewPassword`, `PASSWORD_PROBLEM_TEXT`, `describeAuthError`.
+- `adminAccount.ts` -> `ADMIN_ACCOUNTS` (`{ arnalputra: "arnal@steadbyte.com" }`), `MIN_PASSWORD_LENGTH = 12`, `resolveUsername`, `resolveAdminEmail` (menerima nama pengguna atau surel, dipakai jalur lupa sandi), `checkNewPassword`, `PasswordProblem`, `PASSWORD_PROBLEM_TEXT`, `describeAuthError`.
+- `messages.ts` -> `sendContactMessage()`, `listMessages()`, `markMessageRead()`, `deleteMessage()`, plus tipe `Message` (`{ id, name, email, topic, message, read, createdAt }`), `MessageRow` (bentuk snake_case dari Postgres), dan `SendResult` (`{ ok, emailed?, error? }`).
+  - `sendContactMessage()` mem-`POST` ke `/api/contact` dan mengembalikan `{ ok: true, emailed }`; `emailed: false` berarti baris tersimpan tetapi surel notifikasi tidak terkirim, sehingga pengunjung tetap melihat status terkirim.
+  - `listMessages()` membaca 7 kolom dari `portfolio_messages`, urut `created_at desc`, batas 200 baris, lalu memetakan snake_case ke camelCase. Ketiga fungsi panel bergantung pada `GRANT` tabel dan policy RLS.
 
 ## 4. Kelas komponen kustom (`src/index.css`)
 
@@ -318,6 +328,32 @@ Migrasi ada di `supabase/migrations/`:
 - `20260915010000_portfolio_revision_capture.sql`: menggantikan `portfolio_publish` dan `portfolio_revert`.
 - `20260915020000_portfolio_entities.sql`: tabel entri portofolio, gambar sertifikat, dan fungsi CRUD-nya.
 - `20260915021000_portfolio_entry_usage.sql`: tabel penanda `portfolio_entity_usage` + trigger `after insert` pada keempat tabel entri.
+- `20260916000000_portfolio_messages.sql`: tabel `portfolio_messages`, RLS, tiga policy admin, dan fungsi kirim versi awal.
+- `20260916000100_portfolio_message_limits.sql`: menulis ulang `portfolio_send_message` dengan normalisasi surel dan kuota.
+- `20260916000200_portfolio_message_grants.sql`: `grant select, update, delete` pada `portfolio_messages` untuk `authenticated`.
+
+### Endpoint kontak (`api/contact.ts`)
+
+Vercel serverless function, **satu satunya berkas di `api/`**. Tidak memakai `@vercel/node`;
+tipe `RequestLike` dan `ResponseLike` dideklarasikan lokal supaya endpoint tidak punya dependensi.
+
+- Urutan yang dipegang: `405` (bukan `POST`) -> cek `SUPABASE_URL`/`SUPABASE_KEY` -> validasi `400`
+  -> simpan `502` -> kirim surel `200`. Pesan **selalu** disimpan lebih dulu, surel bersifat
+  best effort, sehingga kegagalan surel tetap menjawab `{ ok: true, emailed: false }`.
+- Validasi: nama 2 sampai 100, surel 5 sampai 200 dengan pola, pesan 20 sampai 5000 karakter.
+  `topic` kosong diganti `"General inquiry"`.
+- `storeMessage()` memanggil RPC lewat `fetch` ke `${SUPABASE_URL}/rest/v1/rpc/portfolio_send_message`
+  dengan header `apikey` dan `Authorization: Bearer`. Tidak ada penulisan langsung ke tabel.
+- `sendEmail()` memanggil `https://api.resend.com/emails` dengan `from`, `to`, `reply_to`
+  (surel pengunjung), `subject`, `html`, dan `text`. Template HTML-nya bertema Rust & Ink dan
+  memakai tabel presentasional dengan gaya inline supaya selamat di Gmail dan Outlook.
+- Variabel lingkungan **tanpa awalan `VITE_`**, karena awalan itu berarti "kirim ke peramban":
+  `RESEND_API_KEY`, `CONTACT_FROM_EMAIL` (bawaan `Portfolio <onboarding@resend.dev>`), dan
+  `CONTACT_TO_EMAIL`. Sisi Supabase membaca `VITE_SUPABASE_URL` dan `VITE_SUPABASE_PUBLISHABLE_KEY`.
+- Fungsi ini tetap terpanggil meski `vercel.json` punya rewrite `/(.*)` -> `/index.html`, karena
+  File System Routes dievaluasi sebelum Rewrites. Jangan menambahkan aturan `/api/(.*)` tanpa alasan.
+- Di `npm run dev`, `/api/contact` menjawab 404. Itu normal: Vite tidak menyajikan serverless
+  function Vercel.
 
 Bucket Storage `portfolio-media`: publik, batas **5.184.288 byte** per berkas, MIME hanya
 `image/jpeg`, `image/png`, `image/webp`. Empat policy `storage.objects`: baca publik, sedangkan
@@ -340,6 +376,7 @@ tabelnya benar.
 | `portfolio_skills` | Entri keahlian | idem |
 | `portfolio_certification_images` | Scan sertifikat: `certification_id` (FK), `storage_path`, `caption`, `width`, `height`, `byte_size`, `sort_order` | Baca publik bila sertifikat induknya `visible` |
 | `portfolio_entity_usage` | Penanda `entity` (PK) + `first_write_at`. Menandai daftar yang sudah pernah ditulis | Baca publik |
+| `portfolio_messages` | Pesan formulir kontak: `id`, `name`, `email`, `topic`, `message`, `read`, `created_at` | RLS aktif, **tanpa policy untuk publik** sehingga `anon` tidak dapat membacanya. `select`/`update`/`delete` hanya untuk `authenticated` yang lolos `portfolio_is_admin()`, dan tetap butuh `GRANT` di level tabel |
 
 Batas kolom yang **wajib** dihormati formulir, karena basis data menolak nilai di luarnya:
 - `portfolio_career`: `title`/`company` 1-160, `start_month`/`end_month` pola `yyyy-mm`, `level` salah satu dari `IC`/`Lead`/`SPV`/`Manager`, `headcount` 0-500, `summary` maksimal 2000.
@@ -378,11 +415,16 @@ Batas kolom yang **wajib** dihormati formulir, karena basis data menolak nilai d
 | `portfolio_certification_domains()` | - | `text[]` |
 | `portfolio_skill_categories()` | - | `text[]` |
 | `portfolio_role_levels()` | - | `text[]` |
+| `portfolio_send_message(p_name, p_email, p_topic, p_message)` | empat teks | `uuid` baris baru. **Satu satunya fungsi tulis yang terbuka untuk `anon`**, karena formulir publik memakainya. Menormalkan surel dengan `lower(trim())`, menolak surel tidak valid dengan `P0001`, memotong `topic` ke 120 karakter, dan menegakkan kuota 5 pesan per jam per surel serta 60 pesan per jam secara keseluruhan |
 
 Fungsi tulis `security definer` dengan `set search_path = public, pg_temp`, memeriksa
 `portfolio_is_admin()`, dan melempar `42501` bila pemanggil bukan admin. Hak eksekusinya
 **hanya** `authenticated`. Keempat fungsi daftar nilai bersifat `immutable` dan terbuka untuk
 `anon, authenticated`, sehingga panel dapat mengisinya tanpa berada dalam sesi admin.
+Pengecualian berikutnya adalah `portfolio_send_message`: ia memang harus terbuka untuk `anon`,
+dan sebagai ganti pemeriksaan admin ia menegakkan validasi serta kuota. Membukanya untuk `anon`
+tidak membuka tabel, karena fungsinya berjalan sebagai pemilik dan `anon` tetap tanpa `GRANT`
+apa pun pada `portfolio_messages`.
 
 `portfolio_publish` **selalu** menulis satu baris revisi, dengan nilai `null` bila kunci itu belum
 pernah diterbitkan. `portfolio_revert` memperlakukan nilai `null` sebagai perintah menghapus
@@ -476,6 +518,9 @@ Beri guard pada setiap pembagian dan pencarian nilai ekstrem:
 - **`supabase` bisa `null` di dalam closure efek.** Simpan dulu: `const client = supabase;` baru pakai `client` di dalam efek.
 - **Tabel kosong tidak bisa dibedakan dari tabel yang sengaja dikosongkan** tanpa `portfolio_entity_usage`. Jangan menghapus penanda itu, dan jangan mengisi tabel entri di luar transaksi saat menguji.
 - **`expires_month = null` pada sertifikat berarti "tidak pernah kedaluwarsa"**, bukan "belum diisi". Formulir yang memperlakukannya sebagai "kosong" akan salah menampilkan status.
+- **RLS policy tanpa `GRANT` di level tabel tidak berguna.** Policy menentukan baris mana yang boleh disentuh, sedangkan `GRANT` menentukan apakah peran boleh menyentuh tabel itu sama sekali. Tanpa grant, `authenticated` ditolak sebelum policy pernah dievaluasi, dan gejalanya adalah panel yang selalu gagal membaca. Inilah yang pernah terjadi pada `portfolio_messages`. Bila ada tabel baru, berikan grant yang sesuai dan periksa dengan `has_table_privilege('authenticated', '<tabel>', 'select')`.
+- **`/api/contact` menjawab 404 di `npm run dev`.** Itu normal, karena Vite tidak menjalankan serverless function Vercel. Fungsi itu hanya hidup setelah dideploy atau lewat `vercel dev`.
+- Fungsi di `api/` tetap terpanggil meski `vercel.json` memuat rewrite SPA `/(.*)` -> `/index.html`, karena File System Routes dievaluasi sebelum Rewrites. Tidak perlu menambah aturan `/api/(.*)`.
 - **`portfolio_certification_images` mengikuti visibilitas sertifikat induknya** lewat policy RLS. Scan yang "hilang" dari halaman publik biasanya karena sertifikatnya disembunyikan, bukan karena unggahannya gagal.
 - **Tool `integrated_web-dev` -> `supabase_apply_migration` gagal** dengan "Supabase project id not found". Pakai `mcp_supabase_arnal` -> `apply_migration`.
 - **Subagent tidak dapat memakai tool MCP.** Bila verifikasi perlu MCP, jalankan sendiri; subagent hanya bisa memakai PostgREST dengan kunci publik, yang bersifat baca saja.

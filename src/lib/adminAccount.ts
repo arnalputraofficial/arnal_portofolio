@@ -30,6 +30,20 @@ export function resolveUsername(username: string): string | null {
   return ADMIN_ACCOUNTS[key] ?? null;
 }
 
+/**
+ * Resolves a username or email input to an email address.
+ * If input contains '@', it is treated as a direct email address.
+ * Otherwise it looks up the username mapping.
+ */
+export function resolveAdminEmail(input: string): string | null {
+  const trimmed = input.trim().toLowerCase();
+  if (!trimmed) return null;
+  if (trimmed.includes("@")) {
+    return trimmed;
+  }
+  return ADMIN_ACCOUNTS[trimmed] ?? null;
+}
+
 export type PasswordProblem = "short" | "same" | "mismatch" | null;
 
 /** Checks a proposed password pair and reports the first problem it finds. */

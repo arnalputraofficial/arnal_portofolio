@@ -8,6 +8,7 @@ import {
   Github,
   Inbox,
   Linkedin,
+  Loader2,
   Mail,
   MapPin,
   Send,
@@ -31,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { profile } from "@/data/portfolio";
 import { useSiteText } from "@/content/ContentProvider";
+import { sendContactMessage } from "@/lib/messages";
 import { cn } from "@/lib/utils";
 
 const MIN_MESSAGE = 20;
@@ -76,7 +78,8 @@ export default function Contact() {
   const t = useSiteText();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
-  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
+  const [failure, setFailure] = useState("");
   const [copied, setCopied] = useState(false);
 
   const messageLength = form.message.trim().length;
@@ -94,21 +97,43 @@ export default function Contact() {
     [form],
   );
 
-  const mailtoHref = `mailto:${profile.email}?subject=${encodeURIComponent(
-    `[Portfolio] ${form.topic}`,
-  )}&body=${encodeURIComponent(plainText)}`;
+  const recipientEmail = t("global.profile.email") || profile.email;
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
-    setSubmitted(false);
+    setStatus("idle");
+    setFailure("");
   }
 
-  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     const found = validate(form);
     setErrors(found);
-    setSubmitted(Object.keys(found).length === 0);
+    if (Object.keys(found).length > 0) {
+      setStatus("idle");
+      return;
+    }
+
+    setStatus("sending");
+    setFailure("");
+
+    const result = await sendContactMessage({
+      name: form.name.trim(),
+      email: form.email.trim(),
+      topic: form.topic,
+      message: form.message.trim(),
+    });
+
+    if (!result.ok) {
+      setStatus("failed");
+      setFailure(result.error ?? "The message could not be delivered.");
+      return;
+    }
+
+    setStatus("sent");
+    setForm(EMPTY);
   }
 
   async function copyMessage() {
@@ -290,9 +315,13 @@ export default function Contact() {
               </div>
 
               <div className="mt-7 flex flex-wrap items-center gap-3">
-                <Button type="submit">
-                  <Send aria-hidden />
-                  Compose message
+                <Button type="submit" disabled={status === "sending"}>
+                  {status === "sending" ? (
+                    <Loader2 className="animate-spin" aria-hidden />
+                  ) : (
+                    <Send aria-hidden />
+                  )}
+                  {status === "sending" ? "Sending" : "Send message"}
                 </Button>
                 <Button
                   type="button"
@@ -300,7 +329,8 @@ export default function Contact() {
                   onClick={() => {
                     setForm(EMPTY);
                     setErrors({});
-                    setSubmitted(false);
+                    setStatus("idle");
+                    setFailure("");
                   }}
                 >
                   Clear
@@ -315,39 +345,46 @@ export default function Contact() {
                 )}
               </div>
 
-              {submitted && (
+              {status === "sent" && (
                 <div
                   role="status"
                   className="mt-7 rounded-notch border border-moss-600/40 bg-moss-600/10 p-5"
                 >
                   <p className="eyebrow flex items-center gap-2 text-moss-300">
                     <Check className="size-3.5" aria-hidden />
-                    message ready
+                    message received
                   </p>
                   <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-                    Your input passed the checks. Because this site has no server, the message has
-                    not been sent. Pick one of the ways below to send it to{" "}
-                    <span className="font-mono text-foreground">{profile.email}</span>.
+                    The message reached{" "}
+                    <span className="font-mono text-foreground">{recipientEmail}</span>. Expect an
+                    answer within one business day, usually faster on weekdays.
                   </p>
+                </div>
+              )}
 
+              {status === "failed" && (
+                <div
+                  role="alert"
+                  className="mt-7 rounded-notch border border-destructive/40 bg-destructive/10 p-5"
+                >
+                  <p className="eyebrow flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="size-3.5" aria-hidden />
+                    not delivered
+                  </p>
+                  <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
+                    {failure} Nothing was lost from this page, so you can press send again or copy
+                    the message and use a direct channel.
+                  </p>
                   <div className="mt-4 flex flex-wrap gap-3">
-                    <Button asChild size="sm">
-                      <a href={mailtoHref}>
-                        <Mail className="size-4" aria-hidden />
-                        Open mail app
-                      </a>
-                    </Button>
                     <Button variant="outline" size="sm" onClick={copyMessage}>
-                      {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+                      {copied ? (
+                        <Check className="size-4" aria-hidden />
+                      ) : (
+                        <Copy className="size-4" aria-hidden />
+                      )}
                       {copied ? "Copied" : "Copy message"}
                     </Button>
                   </div>
-
-                  <Separator dashed className="my-5" />
-
-                  <pre className="max-h-52 overflow-auto whitespace-pre-wrap rounded-sm border border-border bg-background/60 p-4 font-mono text-[11px] leading-relaxed text-muted-foreground">
-                    {plainText}
-                  </pre>
                 </div>
               )}
             </form>
@@ -395,9 +432,9 @@ export default function Contact() {
                   technical note
                 </p>
                 <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-                  This form runs entirely in your browser. No network request is sent anywhere when
-                  you press the compose button. If you reload the page, the input is lost, and that
-                  is the behaviour I chose on purpose.
+                  Press send and the message travels to a private inbox. It is stored first, then
+                  emailed, so nothing is lost if the delivery service stumbles. No account, no
+                  tracking pixel, no third party reading along.
                 </p>
               </div>
             </Reveal>
