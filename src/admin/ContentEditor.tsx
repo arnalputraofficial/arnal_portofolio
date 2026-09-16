@@ -1,0 +1,507 @@
+/**
+ * The content editor.
+ *
+ * One page at a time, grouped by the part of the key it belongs to. Typing is
+ * held locally and written to drafts on demand, so a half finished sentence is
+ * never sent to the database on its own.
+ *
+ * The field baseline is the saved draft, falling back to the published value,
+ * falling back to the text compiled into the bundle. Preview does not change
+ * what this screen shows; it changes what the public pages show.
+ */
+import * as React from "react";
+import {
+  ArrowUpRight,
+  Check,
+  CircleAlert,
+  Eye,
+  EyeOff,
+  Image as ImageIcon,
+  Loader2,
+  RotateCcw,
+  Save,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import { useContent } from "@/content/ContentProvider";
+import { CONTENT_DEFAULTS, entriesForPage, PAGE_META } from "@/content/registry";
+import type { ContentEntry, ContentPageId } from "@/content/types";
+import { useAdminAuth } from "@/admin/AdminAuthProvider";
+import { plural, useAdminEditor } from "@/admin/useAdminData";
+import { supabase } from "@/lib/supabase";
+import { publicImageUrl } from "@/entries/types";
+
+const FIELD =
+  "flex w-full rounded-notch border border-input bg-background/60 px-3.5 py-2 " +
+  "font-mono text-[13px] text-foreground placeholder:text-muted-foreground/70 " +
+  "transition-colors duration-200 hover:border-foreground/25 " +
+  "focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35";
+
+type ValueMap = Record<string, string>;
+
+export default function ContentEditor() {
+  const { overrides, drafts, previewing, setPreviewing } = useContent();
+  const { identity } = useAdminAuth();
+  const editor = useAdminEditor();
+
+  const [pageId, setPageId] = React.useState<ContentPageId>(PAGE_META[0]?.id ?? "global");
+  const [local, setLocal] = React.useState<ValueMap>({});
+
+  const entries = React.useMemo(() => entriesForPage(pageId), [pageId]);
+  const sections = React.useMemo(() => groupBySection(entries), [entries]);
+
+  /**
+   * What the database currently holds for a key. The draft wins over the
+   * published value, because the draft is what the next publish would ship.
+   */
+  const disk = React.useMemo(() => {
+    const next: ValueMap = {};
+    for (const entry of entries) {
+      next[entry.key] = drafts[entry.key] ?? overrides[entry.key] ?? CONTENT_DEFAULTS[entry.key] ?? "";
+    }
+    return next;
+  }, [entries, drafts, overrides]);
+
+  /** Keys carrying unsaved text. They survive switching between pages. */
+  const dirtyKeys = React.useMemo(
+    () => Object.keys(local).filter((key) => local[key] !== disk[key]),
+    [local, disk],
+  );
+
+  /** Keys on this page that have a stored draft waiting to be published. */
+  const draftKeys = React.useMemo(
+    () => entries.filter((entry) => drafts[entry.key] !== undefined).map((entry) => entry.key),
+    [entries, drafts],
+  );
+
+  function valueOf(key: string): string {
+    return key in local ? local[key] : (disk[key] ?? "");
+  }
+
+  function setField(key: string, value: string) {
+    setLocal((current) => ({ ...current, [key]: value }));
+  }
+
+  function resetField(key: string) {
+    setLocal((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  }
+
+  async function handleSave() {
+    const payload = dirtyKeys.map((key) => ({ key, value: valueOf(key) }));
+    if (payload.length === 0) return;
+
+    const ok = await editor.saveDrafts(payload);
+    if (!ok) return;
+
+    // The store has been refetched by now, so dropping the local copies is
+    // what makes the fields fall back to the values that were actually saved.
+    setLocal((current) => {
+      const next = { ...current };
+      for (const entry of payload) delete next[entry.key];
+      return next;
+    });
+  }
+
+  async function handleDiscardPage() {
+    const ok = await editor.discardDrafts(draftKeys);
+    if (!ok) return;
+    setLocal((current) => {
+      const next = { ...current };
+      for (const key of draftKeys) delete next[key];
+      return next;
+    });
+  }
+
+  async function handleDiscardEveryPage() {
+    const ok = await editor.discardDrafts(null);
+    if (!ok) return;
+    setLocal({});
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="panel p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Badge variant={editor.busy ? "accent" : "moss"} dot={editor.busy}>
+              {editor.busy ? "writing" : "ready"}
+            </Badge>
+            <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+              {plural(Object.keys(drafts).length, "draft", "drafts")} saved in total
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant={previewing ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPreviewing(!previewing)}
+              aria-pressed={previewing}
+            >
+              {previewing ? "Preview on" : "Preview off"}
+              {previewing ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleDiscardPage()}
+              disabled={editor.busy || draftKeys.length === 0}
+            >
+              Discard page
+              <RotateCcw aria-hidden />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleDiscardEveryPage()}
+              disabled={editor.busy || Object.keys(drafts).length === 0}
+            >
+              Discard all
+              <Trash2 aria-hidden />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void editor.publishDrafts(draftKeys)}
+              disabled={editor.busy || draftKeys.length === 0}
+            >
+              Publish page
+              <Upload aria-hidden />
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => void handleSave()}
+              disabled={editor.busy || dirtyKeys.length === 0}
+            >
+              Save drafts
+              <Save aria-hidden />
+            </Button>
+          </div>
+        </div>
+
+        <Separator dashed className="my-5" />
+
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[11px] text-muted-foreground">
+          <span>
+            unsaved: <span className="text-foreground">{dirtyKeys.length}</span>
+          </span>
+          <span>
+            drafts on this page: <span className="text-foreground">{draftKeys.length}</span>
+          </span>
+          <span>
+            preview:{" "}
+            <span className={previewing ? "text-moss-300" : "text-foreground"}>
+              {previewing ? "public pages read drafts" : "public pages read published values"}
+            </span>
+          </span>
+        </div>
+
+        {editor.feedback ? (
+          <p
+            role="status"
+            aria-live="polite"
+            className={cn(
+              "mt-4 flex items-start gap-2.5 text-[13px] leading-relaxed text-pretty",
+              editor.feedback.tone === "error" ? "text-destructive" : "text-moss-300",
+            )}
+          >
+            {editor.feedback.tone === "error" ? (
+              <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+            ) : (
+              <Check className="mt-0.5 size-4 shrink-0" aria-hidden />
+            )}
+            {editor.feedback.text}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1 border-b border-border pb-px">
+        {PAGE_META.map((page) => {
+          const active = page.id === pageId;
+          const pending = entriesForPage(page.id).filter(
+            (entry) => drafts[entry.key] !== undefined,
+          ).length;
+
+          return (
+            <button
+              key={page.id}
+              type="button"
+              onClick={() => setPageId(page.id)}
+              aria-current={active ? "true" : undefined}
+              className={cn(
+                "relative inline-flex items-center gap-2 border-b-2 px-3.5 py-2.5",
+                "font-mono text-[12px] uppercase tracking-[0.1em]",
+                "transition-all duration-200 ease-out-expo",
+                active
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {page.title}
+              {pending > 0 ? (
+                <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">
+                  {pending}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {pageMeta(pageId) ? (
+        <p className="max-w-2xl text-[14px] leading-relaxed text-muted-foreground text-pretty">
+          {pageMeta(pageId)?.description}{" "}
+          <a
+            href={pageMeta(pageId)?.route}
+            className="inline-flex items-center gap-1 text-primary underline decoration-primary/40 decoration-2 underline-offset-4 hover:decoration-primary"
+          >
+            See the page
+            <ArrowUpRight className="size-3.5" aria-hidden />
+          </a>
+        </p>
+      ) : null}
+
+      {sections.map((section) => (
+        <section key={section.title} className="space-y-4">
+          <div className="flex items-center gap-4">
+            <h3 className="eyebrow">{section.title}</h3>
+            <span className="hairline flex-1" />
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {section.entries.length}
+            </span>
+          </div>
+
+          <div className="grid gap-4">
+            {section.entries.map((entry) => {
+              const stored = drafts[entry.key];
+              const dirty = dirtyKeys.includes(entry.key);
+              const pending =
+                stored !== undefined &&
+                stored !== (overrides[entry.key] ?? CONTENT_DEFAULTS[entry.key] ?? "");
+              const writing = editor.pendingKey === entry.key;
+              const fieldId = `field-${entry.key}`;
+
+              return (
+                <div
+                  key={entry.key}
+                  className={cn(
+                    "panel p-4",
+                    dirty && "border-primary/40",
+                    !dirty && pending && "border-moss-600/40",
+                  )}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label htmlFor={fieldId} className="font-mono text-[12px] text-foreground">
+                      {entry.label}
+                    </label>
+                    <div className="flex items-center gap-3">
+                      {writing ? (
+                        <Loader2 className="size-3.5 animate-spin text-primary" aria-hidden />
+                      ) : null}
+                      {dirty ? (
+                        <Badge variant="accent" size="sm">
+                          edited
+                        </Badge>
+                      ) : pending ? (
+                        <Badge variant="moss" size="sm">
+                          draft only
+                        </Badge>
+                      ) : null}
+                      {dirty ? (
+                        <button
+                          type="button"
+                          onClick={() => resetField(entry.key)}
+                          className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground underline decoration-border decoration-2 underline-offset-4 hover:text-foreground"
+                        >
+                          reset
+                        </button>
+                      ) : pending ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleDiscardPage()}
+                          disabled={editor.busy}
+                          className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground underline decoration-border decoration-2 underline-offset-4 hover:text-foreground disabled:opacity-50"
+                        >
+                          <Trash2 className="size-3" aria-hidden />
+                          discard
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {entry.key === "global.profile.avatar" ? (
+                    <div className="mt-3 space-y-3">
+                      <div className="flex items-center gap-4">
+                        {valueOf(entry.key) ? (
+                          <div className="relative size-16 shrink-0 overflow-hidden rounded-notch border border-border bg-card">
+                            <img
+                              src={
+                                valueOf(entry.key).startsWith("http")
+                                  ? valueOf(entry.key)
+                                  : publicImageUrl(valueOf(entry.key)) ?? undefined
+                              }
+                              alt="Profile preview"
+                              className="size-full object-cover grayscale contrast-125 sepia-[0.25]"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLElement).style.display = "none";
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex size-16 shrink-0 items-center justify-center rounded-notch border border-dashed border-border bg-card/60 font-mono text-[10px] text-muted-foreground">
+                            <ImageIcon className="size-5 opacity-40" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <label className="inline-flex cursor-pointer items-center gap-2 rounded-notch border border-primary/40 bg-primary/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/20">
+                            <Upload className="size-3.5" />
+                            <span>Upload new photo</span>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              className="sr-only"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file || !supabase) return;
+                                try {
+                                  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+                                  const path = `profile/avatar-${Date.now()}.${ext}`;
+                                  const { error: uploadError } = await supabase.storage
+                                    .from("portfolio-media")
+                                    .upload(path, file, {
+                                      upsert: true,
+                                      contentType: file.type,
+                                    });
+                                  if (uploadError) throw uploadError;
+                                  setField(entry.key, path);
+                                } catch (err) {
+                                  console.error("Upload failed", err);
+                                  alert(err instanceof Error ? err.message : "Upload failed");
+                                }
+                              }}
+                            />
+                          </label>
+                          <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                            Direct upload to portfolio-media bucket. JPG, PNG, WebP up to 5MB.
+                          </p>
+                        </div>
+                      </div>
+                      <Input
+                        id={fieldId}
+                        value={valueOf(entry.key)}
+                        onChange={(event) => setField(entry.key, event.target.value)}
+                        placeholder="Or type/paste storage path or full image URL"
+                        className="mt-2"
+                      />
+                      {/* The upload reaches the bucket immediately, but the public
+                          site reads published values only, so a photo that looks
+                          finished here is still invisible until it is published. */}
+                      {dirty || stored !== undefined ? (
+                        <p
+                          role="status"
+                          className="mt-2 flex items-start gap-2 border-l-2 border-primary/60 pl-3 font-mono text-[11px] leading-relaxed text-primary"
+                        >
+                          <CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
+                          <span>
+                            {dirty
+                              ? "The file is in the media bucket, but nothing is saved yet. Press Save drafts, then Publish page."
+                              : "Saved as a draft only. The public site still shows the old photo until you press Publish page."}
+                          </span>
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : entry.multiline ? (
+                    <textarea
+                      id={fieldId}
+                      rows={4}
+                      value={valueOf(entry.key)}
+                      onChange={(event) => setField(entry.key, event.target.value)}
+                      className={cn(FIELD, "mt-2 resize-y")}
+                    />
+                  ) : (
+                    <Input
+                      id={fieldId}
+                      value={valueOf(entry.key)}
+                      onChange={(event) => setField(entry.key, event.target.value)}
+                      className="mt-2"
+                    />
+                  )}
+
+                  {entry.hint ? (
+                    <p className="mt-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                      {entry.hint}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+
+      <div className="panel-flagged p-6">
+        <h3 className="font-display text-lg leading-snug">What this editor does not do</h3>
+        <ul className="mt-4 space-y-3 text-[13px] leading-relaxed text-muted-foreground text-pretty">
+          <li>
+            Only strings listed in the content registry can be edited. Project rows, chart numbers,
+            certifications, and skill levels still come from the bundle, and a key that is not
+            registered cannot be invented here.
+          </li>
+          <li>
+            There is no staging site. Publishing writes to the same table the public site reads, so
+            publishing is the test, which is why every publish lands in the revision list.
+          </li>
+          <li>
+            Preview is local to this browser session. It changes what the public pages show to you,
+            and nothing for anybody else.
+          </li>
+          <li>
+            {identity?.email} is the only address that can write, because the database checks it
+            against the allowlist on every call. This screen cannot add or remove an admin.
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function pageMeta(id: ContentPageId) {
+  return PAGE_META.find((page) => page.id === id);
+}
+
+interface Section {
+  title: string;
+  entries: ContentEntry[];
+}
+
+/**
+ * Groups entries by the middle segment of the key, which is the section naming
+ * scheme the registry already follows. Order of first appearance is kept, so
+ * the panel reads in the same order as the page.
+ */
+function groupBySection(entries: ContentEntry[]): Section[] {
+  const order: string[] = [];
+  const buckets = new Map<string, ContentEntry[]>();
+
+  for (const entry of entries) {
+    const title = entry.key.split(".")[1] ?? entry.key;
+
+    if (!buckets.has(title)) {
+      buckets.set(title, []);
+      order.push(title);
+    }
+
+    buckets.get(title)?.push(entry);
+  }
+
+  return order.map((title) => ({ title, entries: buckets.get(title) ?? [] }));
+}

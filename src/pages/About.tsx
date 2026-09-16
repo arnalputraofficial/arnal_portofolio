@@ -26,15 +26,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { career, certifications, principles, profile, projects, skills } from "@/data/portfolio";
+import { principles, profile } from "@/data/portfolio";
+import { useEntries } from "@/entries/EntriesProvider";
+import { useSiteText } from "@/content/ContentProvider";
 import { humanDuration, monthsBetween } from "@/lib/utils";
-
-const totalMonths = career.reduce((acc, role) => acc + monthsBetween(role.start, role.end), 0);
-const currentRole = career.find((role) => role.end === null) ?? career[career.length - 1];
-const tools = [...new Set(projects.flatMap((p) => p.stack))];
-const staleCount = skills.filter((s) => s.lastUsed < 2025).length;
-const activeCerts = certifications.filter((c) => c.status === "active").length;
-const expiredCerts = certifications.filter((c) => c.status === "expired");
 
 /** Four working habits you can use to judge me, not just slogans. */
 const WORKING_STYLE = [
@@ -100,33 +95,46 @@ const FAQ = [
 ];
 
 export default function About() {
+  const t = useSiteText();
+  const { career, certifications, projects, skills } = useEntries();
+
+  const totalMonths = career.reduce((acc, role) => acc + monthsBetween(role.start, role.end), 0);
+  const currentRole = career.find((role) => role.end === null) ?? career[career.length - 1] ?? null;
+  const tools = [...new Set(projects.flatMap((p) => p.stack))];
+
+  /** A skill is stale when it has not been used in the past year. */
+  const staleFrom = Math.max(0, ...skills.map((s) => s.lastUsed));
+  const staleCount = skills.filter((s) => s.lastUsed < staleFrom).length;
+  const activeCerts = certifications.filter((c) => c.status === "active").length;
+  const expiredCerts = certifications.filter((c) => c.status === "expired");
+
   return (
     <>
       <PageIntro
         index="06"
-        eyebrow="Personal File"
-        title="I am most useful when the systems are not okay"
-        lead={profile.tagline}
+        eyebrow={t("about.eyebrow")}
+        title={t("about.title")}
+        lead={t("about.lead")}
       >
         <StatStrip
           items={[
             {
-              label: "Technical tenure",
+              label: t("about.stat.tenure"),
               value: <Counter value={Math.round(totalMonths / 12)} suffix=" yrs" />,
               hint: `${humanDuration(totalMonths)} since the first role`,
             },
             {
-              label: "People led",
+              label: t("about.stat.people"),
               value: <Counter value={profile.teamLed} suffix=" people" />,
-              hint: currentRole.title,
+              hint: currentRole?.title ?? "No role recorded yet",
             },
             {
-              label: "Sites watched over",
+              label: t("about.stat.sites"),
               value: <Counter value={profile.sitesManaged} />,
               hint: "Stores, warehouses, and branch offices",
             },
             {
-              label: "Tools used along the way",
+              label: t("about.stat.tools"),
               value: <Counter value={tools.length} />,
               hint: "Spread across real projects, not a wish list",
             },
@@ -144,9 +152,9 @@ export default function About() {
       <PageSection>
         <SectionHeading
           index="01"
-          eyebrow="Working style"
-          title="Four things you can use to test me"
-          description="Not scores I pin on myself, but habits you can check with a follow-up question."
+          eyebrow={t("about.working.eyebrow")}
+          title={t("about.working.title")}
+          description={t("about.working.description")}
         />
 
         <RevealGroup className="mt-10 grid gap-px overflow-hidden rounded-notch border border-border bg-border sm:grid-cols-2">
@@ -170,9 +178,9 @@ export default function About() {
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
           index="02"
-          eyebrow="Principles"
-          title="Four sentences I repeat to the team"
-          description="A principle that has never been used to turn down a request is not a principle, it is decoration."
+          eyebrow={t("about.principles.eyebrow")}
+          title={t("about.principles.title")}
+          description={t("about.principles.description")}
         />
 
         <RevealGroup className="mt-10 space-y-px overflow-hidden rounded-notch border border-border bg-border">
@@ -202,9 +210,9 @@ export default function About() {
       <PageSection>
         <SectionHeading
           index="03"
-          eyebrow="Missteps"
-          title="Three decisions I regret, with the price attached"
-          description="This section is usually missing from a portfolio. I include it because how someone handles a mistake says more than their list of wins."
+          eyebrow={t("about.missteps.eyebrow")}
+          title={t("about.mistakes.title")}
+          description={t("about.mistakes.description")}
         />
 
         <div className="mt-10 grid gap-6 lg:grid-cols-12">
@@ -250,8 +258,8 @@ export default function About() {
                 </li>
                 <li className="flex gap-3">
                   <span aria-hidden className="mt-2 size-1 shrink-0 rotate-45 bg-primary" />
-                  Keeping {staleCount} skills alive that were last used last year. {activeCerts}{" "}
-                  active certificates, {expiredCerts.length} already expired.
+                  Keeping {staleCount} skills alive that were last used before {staleFrom}.{" "}
+                  {activeCerts} active certificates, {expiredCerts.length} already expired.
                 </li>
               </ul>
 
@@ -270,8 +278,8 @@ export default function About() {
       <PageSection className="border-t border-border">
         <SectionHeading
           index="04"
-          eyebrow="Questions"
-          title="What usually comes up after reading the whole page"
+          eyebrow={t("about.faq.eyebrow")}
+          title={t("about.faq.title")}
         />
 
         <div className="mt-10 grid gap-6 lg:grid-cols-12">

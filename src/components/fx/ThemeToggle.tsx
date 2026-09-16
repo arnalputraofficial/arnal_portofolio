@@ -30,23 +30,38 @@ export function ThemeToggle({ className }: { className?: string }) {
       aria-label="Switch between light and dark theme"
       onClick={toggle}
       className={cn(
-        "relative inline-flex h-8 w-[62px] shrink-0 items-center rounded-full border border-border",
-        "bg-muted/70 px-1 transition-colors duration-300 hover:border-primary/50",
+        "relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border border-border",
+        "bg-muted/70 p-1 transition-colors duration-300 hover:border-primary/50",
         className,
       )}
     >
+      {/* knob sits behind the icons, so the active one is knocked out of the pill */}
       <span
         aria-hidden
         className={cn(
-          "absolute left-1 grid size-6 place-items-center rounded-full bg-foreground text-background",
-          "transition-transform duration-400 ease-out-expo",
-          mode === "dark" ? "translate-x-0" : "translate-x-[30px]",
+          "absolute left-1 size-6 rounded-full bg-foreground",
+          "transition-transform duration-300 ease-out-expo",
+          mode === "dark" ? "translate-x-[24px]" : "translate-x-0",
         )}
-      >
-        {mode === "dark" ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
-      </span>
-      <span className="ml-auto pr-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-        {mode === "dark" ? "Dark" : "Light"}
+      />
+      {/* one 24px cell per icon so each stays centred under the knob */}
+      <span aria-hidden className="relative z-10 grid w-12 grid-cols-2">
+        <span className="grid place-items-center">
+          <Sun
+            className={cn(
+              "size-3.5 transition-colors duration-300",
+              mode === "light" ? "text-background" : "text-muted-foreground",
+            )}
+          />
+        </span>
+        <span className="grid place-items-center">
+          <Moon
+            className={cn(
+              "size-3.5 transition-colors duration-300",
+              mode === "dark" ? "text-background" : "text-muted-foreground",
+            )}
+          />
+        </span>
       </span>
     </button>
   );

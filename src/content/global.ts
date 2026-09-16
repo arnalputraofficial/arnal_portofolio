@@ -1,0 +1,215 @@
+/**
+ * Copy that appears on every page: navigation, header, footer, and the profile
+ * details that are repeated across the site.
+ *
+ * Defaults are pulled from the data file where one already exists, so there is
+ * still a single source of truth for the initial value.
+ */
+import { profile } from "@/data/portfolio";
+import type { ContentEntry } from "./types";
+
+export const GLOBAL_CONTENT: ContentEntry[] = [
+  // ------------------------------------------------------------- profile
+  {
+    key: "global.profile.avatar",
+    page: "global",
+    label: "Profile photo",
+    default: "",
+    hint: "Storage path or full public image URL. Upload directly in the profile section or paste a URL.",
+  },
+  {
+    key: "global.profile.fullName",
+    page: "global",
+    label: "Full name",
+    default: profile.fullName,
+    hint: "Header, footer, and the opening paragraph on the home page.",
+  },
+  {
+    key: "global.profile.role",
+    page: "global",
+    label: "Role title",
+    default: profile.role,
+    hint: "Shown under the name in the header.",
+  },
+  {
+    key: "global.profile.tagline",
+    page: "global",
+    label: "Tagline",
+    default: profile.tagline,
+    multiline: true,
+    hint: "One sentence describing what you do.",
+  },
+  {
+    key: "global.profile.location",
+    page: "global",
+    label: "Location",
+    default: profile.location,
+    hint: "Used in the header meta line, the home call block, and the footer.",
+  },
+  {
+    key: "global.profile.timezone",
+    page: "global",
+    label: "Timezone",
+    default: profile.timezone,
+    hint: "Used in the header meta line and the footer.",
+  },
+  {
+    key: "global.profile.email",
+    page: "global",
+    label: "Email address",
+    default: profile.email,
+    hint: "Display text only. Change the mailto link in the data file if the address itself changes.",
+  },
+  {
+    key: "global.profile.availability",
+    page: "global",
+    label: "Availability line",
+    default: profile.availability,
+    multiline: true,
+    hint: "Shown in the home call block and the footer.",
+  },
+
+  // ------------------------------------------------------ header and nav
+  {
+    key: "nav.home",
+    page: "global",
+    label: "Navigation: Home",
+    default: "Home",
+  },
+  {
+    key: "nav.career",
+    page: "global",
+    label: "Navigation: Career",
+    default: "Career",
+  },
+  {
+    key: "nav.projects",
+    page: "global",
+    label: "Navigation: Projects",
+    default: "Projects",
+  },
+  {
+    key: "nav.skills",
+    page: "global",
+    label: "Navigation: Skills",
+    default: "Skills",
+  },
+  {
+    key: "nav.credentials",
+    page: "global",
+    label: "Navigation: Credentials",
+    default: "Credentials",
+  },
+  {
+    key: "nav.about",
+    page: "global",
+    label: "Navigation: About",
+    default: "About",
+  },
+  {
+    key: "nav.contact",
+    page: "global",
+    label: "Navigation: Contact",
+    default: "Contact",
+  },
+  {
+    key: "header.monogram",
+    page: "global",
+    label: "Header monogram",
+    default: "AF",
+    hint: "Two letters shown in the square mark next to your name.",
+  },
+  {
+    key: "header.cta",
+    page: "global",
+    label: "Header button",
+    default: "Hire Me",
+    hint: "The button on the right of the desktop header.",
+  },
+  {
+    key: "header.menu.open",
+    page: "global",
+    label: "Menu button, open state",
+    default: "Open menu",
+    hint: "Screen reader label for the mobile menu button.",
+  },
+  {
+    key: "header.menu.close",
+    page: "global",
+    label: "Menu button, close state",
+    default: "Close menu",
+    hint: "Screen reader label while the mobile menu is open.",
+  },
+  {
+    key: "header.aria.home",
+    page: "global",
+    label: "Home link description",
+    default: "Go to home",
+    hint: "Screen reader label for the header mark.",
+  },
+  {
+    key: "header.aria.nav",
+    page: "global",
+    label: "Main navigation description",
+    default: "Main navigation",
+    hint: "Screen reader label for the navigation landmark.",
+  },
+
+  // -------------------------------------------------------------- footer
+  {
+    key: "footer.rollingStrip",
+    page: "global",
+    label: "Footer skill strip",
+    default:
+      "Kubernetes\nTerraform\nPostgreSQL\nObservability\nITIL 4\nBudget Ownership\nTeam Mentoring\nNetwork Security\nArchitecture Design\nGuided On-call",
+    multiline: true,
+    hint: "One item per line. Delete every line to hide the strip.",
+  },
+  {
+    key: "footer.closing.line1",
+    page: "global",
+    label: "Footer statement, first line",
+    default: "Good systems do not feel heroic.",
+  },
+  {
+    key: "footer.closing.line2",
+    page: "global",
+    label: "Footer statement, second line",
+    default: "They just work, every single day.",
+    hint: "Rendered in a dimmer colour beneath the first line.",
+  },
+  {
+    key: "footer.siteMap",
+    page: "global",
+    label: "Footer column heading: navigation",
+    default: "Site Map",
+  },
+  {
+    key: "footer.network",
+    page: "global",
+    label: "Footer column heading: network",
+    default: "Network",
+  },
+  {
+    key: "footer.aria.map",
+    page: "global",
+    label: "Footer navigation description",
+    default: "Site map",
+    hint: "Screen reader label for the footer navigation landmark.",
+  },
+  {
+    key: "footer.copyright",
+    page: "global",
+    label: "Copyright line",
+    default: "Built by hand, run on purpose.",
+    hint: "The year and your name are added automatically before this text.",
+  },
+  {
+    key: "footer.dataNote",
+    page: "global",
+    label: "Footer data note",
+    default: "Project & career data is sample content. Replace it in src/data/portfolio.ts",
+    multiline: true,
+    hint: "An honesty note about the sample data. Remove it once the real history is in place.",
+  },
+];

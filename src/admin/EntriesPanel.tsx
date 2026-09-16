@@ -1,0 +1,1396 @@
+/**
+ * The entries panel.
+ *
+ * Job history, projects, certificates, and skills used to be constants in the
+ * bundle. They are rows in Postgres now, and this is the only screen that
+ * writes them.
+ *
+ * Every call goes through useEntryWriter, which lands on a SECURITY DEFINER
+ * function rather than on a table, so the allowlist is checked inside the
+ * database. After a write the provider refetches, so the row on screen is the
+ * row the database actually holds rather than the one this form hoped for.
+ *
+ * Two empty states are kept apart on purpose. A list with no rows is either
+ * "never written to", in which case the public site is still showing the
+ * bundled sample set, or "written and then emptied", in which case the public
+ * section is genuinely bare. The banner above each list says which one it is,
+ * because those two look identical in the database.
+ *
+ * The dropdown options are read from the database functions that own those
+ * lists, so extending a value list is one migration and no deploy. The copies
+ * in this file are only a fallback for the moment before that call returns.
+ */
+import * as React from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  CircleAlert,
+  Eye,
+  EyeOff,
+  ImagePlus,
+  Loader2,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { useEntries } from "@/entries/EntriesProvider";
+import {
+  useEntryWriter,
+  type CareerInput,
+  type CertificationInput,
+  type EntryWriterValue,
+  type ProjectInput,
+  type SkillInput,
+} from "@/entries/useEntryWriter";
+import type {
+  CareerEntry,
+  CertificationEntry,
+  EntryTable,
+  ProjectEntry,
+  SkillEntry,
+  StoredEntry,
+} from "@/entries/types";
+
+const FIELD =
+  "flex w-full rounded-notch border border-input bg-background/60 px-3.5 py-2 " +
+  "font-mono text-[13px] text-foreground placeholder:text-muted-foreground/70 " +
+  "transition-colors duration-200 hover:border-foreground/25 " +
+  "focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35";
+
+/** Status values are a check constraint, so they are not fetched. */
+const STATUS_OPTIONS = ["live", "active", "completed", "on-hold"] as const;
+const CERT_STATUS_OPTIONS = ["active", "expired", "renewing"] as const;
+
+/** The bucket, its size cap, and its MIME allowlist all live in the database. */
+const MEDIA_BUCKET = "portfolio-media";
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/** The natural size of a file, so a scan can be stored with its real shape. */
+function readImageSize(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+
+    const settle = (width: number, height: number) => {
+      URL.revokeObjectURL(url);
+      resolve({ width, height });
+    };
+
+    image.onload = () => settle(image.naturalWidth, image.naturalHeight);
+    image.onerror = () => settle(0, 0);
+    image.src = url;
+  });
+}
+
+/** The extension alone, stripped down to something safe to put in a path. */
+function safeExtension(name: string): string {
+  const dot = name.lastIndexOf(".");
+  const raw = dot > -1 ? name.slice(dot + 1) : "";
+  return raw.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+}
+
+interface ValueLists {
+  kinds: string[];
+  domains: string[];
+  categories: string[];
+  levels: string[];
+}
+
+const FALLBACK_LISTS: ValueLists = {
+  kinds: [
+    "Infrastructure",
+    "Internal Systems",
+    "Integration",
+    "Security",
+    "Data & Monitoring",
+    "ERP Rollout",
+  ],
+  domains: [
+    "Networking",
+    "Security",
+    "Cloud & Infra",
+    "Service Management",
+    "Data",
+    "Project Management",
+  ],
+  categories: ["Leadership", "Infrastructure", "Engineering", "Security", "Data", "Operations"],
+  levels: ["IC", "Lead", "SPV", "Manager"],
+};
+
+const TABS: Array<{ table: EntryTable; label: string }> = [
+  { table: "career", label: "Job history" },
+  { table: "projects", label: "Projects" },
+  { table: "certifications", label: "Certificates" },
+  { table: "skills", label: "Skills" },
+];
+
+/** The four value lists, read once for the whole panel. */
+function useValueLists(): ValueLists {
+  const [lists, setLists] = React.useState<ValueLists>(FALLBACK_LISTS);
+
+  React.useEffect(() => {
+    const client = supabase;
+    if (!client) return;
+    let active = true;
+
+    void Promise.all([
+      client.rpc("portfolio_project_kinds"),
+      client.rpc("portfolio_certification_domains"),
+      client.rpc("portfolio_skill_categories"),
+      client.rpc("portfolio_role_levels"),
+    ]).then(([kinds, domains, categories, levels]) => {
+      if (!active) return;
+      setLists({
+        kinds: kinds.data ?? FALLBACK_LISTS.kinds,
+        domains: domains.data ?? FALLBACK_LISTS.domains,
+        categories: categories.data ?? FALLBACK_LISTS.categories,
+        levels: levels.data ?? FALLBACK_LISTS.levels,
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return lists;
+}
+
+export default function EntriesPanel() {
+  const { all, isSample } = useEntries();
+  const writer = useEntryWriter();
+  const lists = useValueLists();
+
+  const [table, setTable] = React.useState<EntryTable>("career");
+
+  return (
+    <div className="space-y-8">
+      <div className="panel p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Badge variant={writer.busy ? "accent" : "moss"} dot={writer.busy}>
+              {writer.busy ? "writing" : "ready"}
+            </Badge>
+            <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+              {all.career.length + all.projects.length + all.certifications.length + all.skills.length}{" "}
+              stored rows
+            </span>
+          </div>
+
+          {writer.feedback ? (
+            <button
+              type="button"
+              onClick={writer.clearFeedback}
+              className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground underline decoration-border decoration-2 underline-offset-4 hover:text-foreground"
+            >
+              clear
+            </button>
+          ) : null}
+        </div>
+
+        <Separator dashed className="my-5" />
+
+        <p className="max-w-3xl text-[13px] leading-relaxed text-muted-foreground text-pretty">
+          Each list is written one row at a time and goes live the moment it is saved. There is no
+          draft stage here: hiding a row takes it off the site without deleting it, and the order
+          you set is the order the public pages read.
+        </p>
+
+        {writer.feedback ? (
+          <p
+            role="status"
+            aria-live="polite"
+            className={cn(
+              "mt-4 flex items-start gap-2.5 text-[13px] leading-relaxed text-pretty",
+              writer.feedback.tone === "error" ? "text-destructive" : "text-moss-300",
+            )}
+          >
+            {writer.feedback.tone === "error" ? (
+              <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+            ) : (
+              <Check className="mt-0.5 size-4 shrink-0" aria-hidden />
+            )}
+            {writer.feedback.text}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1 border-b border-border pb-px">
+        {TABS.map((entry) => {
+          const active = entry.table === table;
+          const hidden = all[entry.table].filter((row) => !row.visible).length;
+
+          return (
+            <button
+              key={entry.table}
+              type="button"
+              onClick={() => setTable(entry.table)}
+              aria-current={active ? "true" : undefined}
+              className={cn(
+                "relative inline-flex items-center gap-2 border-b-2 px-3.5 py-2.5",
+                "font-mono text-[12px] uppercase tracking-[0.1em]",
+                "transition-all duration-200 ease-out-expo",
+                active
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {entry.label}
+              <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                {all[entry.table].length}
+              </span>
+              {hidden > 0 ? (
+                <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">
+                  {hidden} hidden
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {table === "career" ? (
+        <EntryList
+          table="career"
+          rows={all.career}
+          writer={writer}
+          isSample={isSample("career")}
+          sampleCount={all.career.length}
+          addLabel="Add a job entry"
+          describe={(row) => ({
+            title: row.title,
+            meta: `${row.company} · ${row.start} to ${row.end ?? "now"} · ${row.level} · ${row.headcount} people`,
+          })}
+          renderForm={({ entry, onClose }) => (
+            <CareerForm writer={writer} lists={lists} entry={entry} onClose={onClose} />
+          )}
+        />
+      ) : null}
+
+      {table === "projects" ? (
+        <EntryList
+          table="projects"
+          rows={all.projects}
+          writer={writer}
+          isSample={isSample("projects")}
+          sampleCount={all.projects.length}
+          addLabel="Add a project"
+          describe={(row) => ({
+            title: row.name,
+            meta: `${row.kind} · ${row.year} · ${row.status} · impact ${row.impact}/100`,
+          })}
+          renderForm={({ entry, onClose }) => (
+            <ProjectForm writer={writer} lists={lists} entry={entry} onClose={onClose} />
+          )}
+        />
+      ) : null}
+
+      {table === "certifications" ? (
+        <EntryList
+          table="certifications"
+          rows={all.certifications}
+          writer={writer}
+          isSample={isSample("certifications")}
+          sampleCount={all.certifications.length}
+          addLabel="Add a certificate"
+          describe={(row) => ({
+            title: row.name,
+            meta: `${row.issuer} · ${row.domain} · ${row.status} · issued ${row.issued}`,
+          })}
+          renderForm={({ entry, onClose }) => (
+            <CertificationForm writer={writer} lists={lists} entry={entry} onClose={onClose} />
+          )}
+        />
+      ) : null}
+
+      {table === "skills" ? (
+        <EntryList
+          table="skills"
+          rows={all.skills}
+          writer={writer}
+          isSample={isSample("skills")}
+          sampleCount={all.skills.length}
+          addLabel="Add a skill"
+          describe={(row) => ({
+            title: row.name,
+            meta: `${row.category} · level ${row.level}/100 · last used ${row.lastUsed}`,
+          })}
+          renderForm={({ entry, onClose }) => (
+            <SkillForm writer={writer} lists={lists} entry={entry} onClose={onClose} />
+          )}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+interface EntryListProps<T extends StoredEntry> {
+  table: EntryTable;
+  rows: T[];
+  writer: EntryWriterValue;
+  /** True while this list has never been written to. */
+  isSample: boolean;
+  sampleCount: number;
+  addLabel: string;
+  describe: (row: T) => { title: string; meta: string };
+  renderForm: (args: { entry: T | null; onClose: () => void }) => React.ReactNode;
+}
+
+/**
+ * One list: the rows in their published order, plus the form behind the edit
+ * and add buttons. Reordering is a swap of two neighbours followed by a write
+ * of the whole order, so a failed write leaves the stored order untouched.
+ */
+function EntryList<T extends StoredEntry>({
+  table,
+  rows,
+  writer,
+  isSample,
+  sampleCount,
+  addLabel,
+  describe,
+  renderForm,
+}: EntryListProps<T>) {
+  const [editing, setEditing] = React.useState<{ entry: T | null } | null>(null);
+
+  async function move(index: number, delta: number) {
+    const target = index + delta;
+    if (target < 0 || target >= rows.length) return;
+
+    const next = [...rows];
+    const held = next[index];
+    next[index] = next[target];
+    next[target] = held;
+
+    await writer.reorderEntries(
+      table,
+      next.map((row) => row.id),
+    );
+  }
+
+  async function remove(row: T) {
+    const label = describe(row).title;
+    const confirmed = window.confirm(
+      `Delete "${label}"? This cannot be undone, and a deleted row does not come back.`,
+    );
+    if (!confirmed) return;
+    await writer.removeEntry(table, row.id);
+  }
+
+  return (
+    <div className="space-y-5">
+      <div
+        className={cn(
+          "p-5 pl-7",
+          isSample ? "panel-flagged" : "panel",
+        )}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="eyebrow flex items-center gap-2">
+            {isSample ? (
+              <CircleAlert className="size-3.5 text-primary" aria-hidden />
+            ) : (
+              <Check className="size-3.5 text-moss-300" aria-hidden />
+            )}
+            {isSample ? "still on the sample set" : "live on the site"}
+          </p>
+          <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+            {rows.length} stored · {rows.filter((row) => !row.visible).length} hidden
+          </span>
+        </div>
+
+        <p className="mt-3 max-w-3xl text-[13px] leading-relaxed text-muted-foreground text-pretty">
+          {isSample
+            ? "Nothing has been saved to this list yet, so the public page is still showing the sample rows that ship with the bundle. The first entry you save here replaces that whole set for this list alone."
+            : "The public page shows exactly these rows, in this order, minus the hidden ones. Deleting every row leaves the section empty on purpose; the sample set does not come back."}
+          {isSample && sampleCount === 0
+            ? " The sample rows are not shown here because they live in the bundle, not in the database."
+            : null}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+          {rows.length === 0 ? "no rows yet" : "published order"}
+        </p>
+        <Button size="sm" onClick={() => setEditing({ entry: null })} disabled={writer.busy}>
+          {addLabel}
+          <Plus aria-hidden />
+        </Button>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="panel p-6">
+          <p className="text-[13px] leading-relaxed text-muted-foreground text-pretty">
+            This list is empty. Adding a row here is what takes the page off the sample set.
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {rows.map((row, index) => (
+            <li
+              key={row.id}
+              className={cn("panel p-4", !row.visible && "opacity-70")}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="font-display text-[15px] font-medium tracking-tight">
+                      {describe(row).title}
+                    </span>
+                    {row.visible ? null : (
+                      <Badge variant="muted" size="sm">
+                        hidden
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                    {describe(row).meta}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void move(index, -1)}
+                    disabled={writer.busy || index === 0}
+                    aria-label={`Move ${describe(row).title} up`}
+                  >
+                    <ArrowUp aria-hidden />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void move(index, 1)}
+                    disabled={writer.busy || index === rows.length - 1}
+                    aria-label={`Move ${describe(row).title} down`}
+                  >
+                    <ArrowDown aria-hidden />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void writer.setVisible(table, row.id, !row.visible)}
+                    disabled={writer.busy}
+                  >
+                    {row.visible ? "Hide" : "Show"}
+                    {row.visible ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditing({ entry: row })}
+                    disabled={writer.busy}
+                  >
+                    Edit
+                    <Pencil aria-hidden />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void remove(row)}
+                    disabled={writer.busy}
+                    aria-label={`Delete ${describe(row).title}`}
+                  >
+                    <Trash2 aria-hidden />
+                  </Button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Dialog
+        open={editing !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditing(null);
+        }}
+      >
+        <DialogContent>
+          <DialogTitle>{editing?.entry ? "Edit the row" : addLabel}</DialogTitle>
+          <DialogDescription>
+            {editing?.entry
+              ? "Saving replaces the stored row. The site reads it on the next load."
+              : "A new row goes live as soon as it is saved, unless you switch it off first."}
+          </DialogDescription>
+
+          <div className="mt-6">
+            {editing ? renderForm({ entry: editing.entry, onClose: () => setEditing(null) }) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+interface EntryFormProps<T> {
+  writer: EntryWriterValue;
+  lists: ValueLists;
+  entry: T | null;
+  onClose: () => void;
+}
+
+function FormGrid({ children }: { children: React.ReactNode }) {
+  return <div className="grid gap-4 sm:grid-cols-2">{children}</div>;
+}
+
+function FormActions({
+  busy,
+  onCancel,
+  label,
+}: {
+  busy: boolean;
+  onCancel: () => void;
+  label: string;
+}) {
+  return (
+    <div className="mt-6 flex flex-wrap items-center justify-end gap-2">
+      <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={busy}>
+        Cancel
+      </Button>
+      <Button type="submit" size="sm" disabled={busy}>
+        {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Save aria-hidden />}
+        {label}
+      </Button>
+    </div>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  hint,
+  wide,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  hint?: string;
+  wide?: boolean;
+}) {
+  return (
+    <label className={cn("block", wide && "sm:col-span-2")}>
+      <FieldLabel>{label}</FieldLabel>
+      <Input
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1.5"
+      />
+      {hint ? <FieldHint>{hint}</FieldHint> : null}
+    </label>
+  );
+}
+
+function TextAreaField({
+  label,
+  value,
+  onChange,
+  hint,
+  rows = 4,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  hint?: string;
+  rows?: number;
+}) {
+  return (
+    <label className="block sm:col-span-2">
+      <FieldLabel>{label}</FieldLabel>
+      <textarea
+        rows={rows}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={cn(FIELD, "mt-1.5 resize-y")}
+      />
+      {hint ? <FieldHint>{hint}</FieldHint> : null}
+    </label>
+  );
+}
+
+/** A yyyy-mm field. An empty value is a real state, not a missing one. */
+function MonthField({
+  label,
+  value,
+  onChange,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  hint?: string;
+}) {
+  return (
+    <label className="block">
+      <FieldLabel>{label}</FieldLabel>
+      <Input
+        value={value}
+        placeholder="2024-06"
+        inputMode="numeric"
+        onChange={(event) => onChange(event.target.value.trim())}
+        className="mt-1.5"
+      />
+      {hint ? <FieldHint>{hint}</FieldHint> : null}
+    </label>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  hint,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  hint?: string;
+}) {
+  return (
+    <label className="block">
+      <FieldLabel>{label}</FieldLabel>
+      <Input
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={String(value)}
+        onChange={(event) => onChange(event.target.value === "" ? 0 : Number(event.target.value))}
+        className="mt-1.5"
+      />
+      {hint ? <FieldHint>{hint}</FieldHint> : null}
+    </label>
+  );
+}
+
+/** One item per line. The raw text is kept so a blank line does not vanish mid typing. */
+function ListField({
+  label,
+  value,
+  onChange,
+  hint,
+}: {
+  label: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+  hint?: string;
+}) {
+  const [text, setText] = React.useState(() => value.join("\n"));
+
+  return (
+    <label className="block sm:col-span-2">
+      <FieldLabel>{label}</FieldLabel>
+      <textarea
+        rows={4}
+        value={text}
+        onChange={(event) => {
+          setText(event.target.value);
+          onChange(
+            event.target.value
+              .split("\n")
+              .map((line) => line.trim())
+              .filter((line) => line.length > 0),
+          );
+        }}
+        className={cn(FIELD, "mt-1.5 resize-y")}
+      />
+      {hint ? <FieldHint>{hint}</FieldHint> : null}
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly string[];
+  hint?: string;
+}) {
+  // A stored value that is no longer in the list still has to be selectable,
+  // otherwise opening the form would silently rewrite it on save.
+  const all = options.includes(value) ? options : [value, ...options];
+
+  return (
+    <label className="block">
+      <FieldLabel>{label}</FieldLabel>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="mt-1.5">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {all.map((option) => (
+            <SelectItem key={option} value={option}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {hint ? <FieldHint>{hint}</FieldHint> : null}
+    </label>
+  );
+}
+
+/** The visible switch. Shown as a button so its state is impossible to miss. */
+function VisibilityField({
+  visible,
+  onChange,
+}: {
+  visible: boolean;
+  onChange: (visible: boolean) => void;
+}) {
+  return (
+    <div className="sm:col-span-2">
+      <FieldLabel>Visibility</FieldLabel>
+      <Button
+        type="button"
+        variant={visible ? "outline" : "solid"}
+        size="sm"
+        onClick={() => onChange(!visible)}
+        aria-pressed={visible}
+        className="mt-1.5"
+      >
+        {visible ? "Shown on the site" : "Hidden from the site"}
+        {visible ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
+      </Button>
+      <FieldHint>
+        Hiding keeps the row and its history. It only stops the public page from reading it.
+      </FieldHint>
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+      {children}
+    </span>
+  );
+}
+
+function FieldHint({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-muted-foreground">{children}</p>
+  );
+}
+
+function CareerForm({ writer, lists, entry, onClose }: EntryFormProps<CareerEntry>) {
+  const [form, setForm] = React.useState<CareerInput>(() => ({
+    id: entry?.id,
+    sortOrder: entry?.sortOrder,
+    title: entry?.title ?? "",
+    company: entry?.company ?? "",
+    sector: entry?.sector ?? "",
+    location: entry?.location ?? "",
+    start: entry?.start ?? "",
+    end: entry?.end ?? null,
+    level: entry?.level ?? "IC",
+    headcount: entry?.headcount ?? 0,
+    summary: entry?.summary ?? "",
+    highlights: entry?.highlights ?? [],
+    stack: entry?.stack ?? [],
+    visible: entry?.visible ?? true,
+  }));
+
+  function set<K extends keyof CareerInput>(key: K, value: CareerInput[K]) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const id = await writer.saveCareer(form);
+    if (id) onClose();
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <FormGrid>
+        <TextField label="Job title" value={form.title} onChange={(v) => set("title", v)} />
+        <TextField label="Company" value={form.company} onChange={(v) => set("company", v)} />
+        <TextField
+          label="Sector"
+          value={form.sector}
+          onChange={(v) => set("sector", v)}
+          placeholder="Multi-site Retail"
+        />
+        <TextField
+          label="Location"
+          value={form.location}
+          onChange={(v) => set("location", v)}
+          placeholder="Jakarta"
+        />
+        <MonthField
+          label="Start month"
+          value={form.start}
+          onChange={(v) => set("start", v)}
+          hint="Required, in yyyy-mm form."
+        />
+        <MonthField
+          label="End month"
+          value={form.end ?? ""}
+          onChange={(v) => set("end", v === "" ? null : v)}
+          hint="Leave empty while the role is still running."
+        />
+        <SelectField
+          label="Level"
+          value={form.level}
+          onChange={(v) => set("level", v as CareerInput["level"])}
+          options={lists.levels}
+        />
+        <NumberField
+          label="People led"
+          value={form.headcount}
+          onChange={(v) => set("headcount", v)}
+          min={0}
+          max={500}
+          hint="Direct reports, not the whole department."
+        />
+        <TextAreaField
+          label="Summary"
+          value={form.summary}
+          onChange={(v) => set("summary", v)}
+        />
+        <ListField
+          label="Highlights"
+          value={form.highlights}
+          onChange={(v) => set("highlights", v)}
+          hint="One per line. Write what changed, not what you were responsible for."
+        />
+        <ListField label="Working stack" value={form.stack} onChange={(v) => set("stack", v)} />
+        <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
+      </FormGrid>
+
+      <FormActions busy={writer.busy} onCancel={onClose} label={entry ? "Save changes" : "Save entry"} />
+    </form>
+  );
+}
+
+function ProjectForm({ writer, lists, entry, onClose }: EntryFormProps<ProjectEntry>) {
+  const [form, setForm] = React.useState<ProjectInput>(() => ({
+    id: entry?.id,
+    sortOrder: entry?.sortOrder,
+    name: entry?.name ?? "",
+    kind: entry?.kind ?? "Internal Systems",
+    status: entry?.status ?? "active",
+    role: entry?.role ?? "",
+    year: entry?.year ?? new Date().getFullYear(),
+    months: entry?.months ?? 0,
+    teamSize: entry?.teamSize ?? 0,
+    budgetM: entry?.budgetM ?? 0,
+    impact: entry?.impact ?? 0,
+    stack: entry?.stack ?? [],
+    summary: entry?.summary ?? "",
+    location: entry?.location ?? "",
+    featured: entry?.featured ?? false,
+    visible: entry?.visible ?? true,
+  }));
+
+  function set<K extends keyof ProjectInput>(key: K, value: ProjectInput[K]) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const id = await writer.saveProject(form);
+    if (id) onClose();
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <FormGrid>
+        <TextField
+          label="Project name"
+          value={form.name}
+          onChange={(v) => set("name", v)}
+          wide
+        />
+        <SelectField
+          label="Kind"
+          value={form.kind}
+          onChange={(v) => set("kind", v as ProjectInput["kind"])}
+          options={lists.kinds}
+        />
+        <SelectField
+          label="Status"
+          value={form.status}
+          onChange={(v) => set("status", v as ProjectInput["status"])}
+          options={STATUS_OPTIONS}
+        />
+        <TextField label="Your role" value={form.role} onChange={(v) => set("role", v)} />
+        <TextField
+          label="Location"
+          value={form.location}
+          onChange={(v) => set("location", v)}
+          placeholder="Jakarta & 34 stores"
+        />
+        <NumberField
+          label="Year"
+          value={form.year}
+          onChange={(v) => set("year", v)}
+          min={1980}
+          max={2100}
+        />
+        <NumberField
+          label="Months"
+          value={form.months}
+          onChange={(v) => set("months", v)}
+          min={0}
+          max={600}
+        />
+        <NumberField
+          label="Team size"
+          value={form.teamSize}
+          onChange={(v) => set("teamSize", v)}
+          min={0}
+          max={500}
+        />
+        <NumberField
+          label="Budget"
+          value={form.budgetM}
+          onChange={(v) => set("budgetM", v)}
+          min={0}
+          step={0.1}
+          hint="In millions of rupiah. Use 0 when there was no budget to own."
+        />
+        <NumberField
+          label="Impact score"
+          value={form.impact}
+          onChange={(v) => set("impact", v)}
+          min={0}
+          max={100}
+          hint="Your own rubric, out of 100. It is presented as a claim, not an audit."
+        />
+        <TextAreaField label="Summary" value={form.summary} onChange={(v) => set("summary", v)} />
+        <ListField label="Working stack" value={form.stack} onChange={(v) => set("stack", v)} />
+        <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
+
+        <div className="sm:col-span-2">
+          <FieldLabel>Featured</FieldLabel>
+          <Button
+            type="button"
+            variant={form.featured ? "outline" : "solid"}
+            size="sm"
+            onClick={() => set("featured", !form.featured)}
+            aria-pressed={form.featured}
+            className="mt-1.5"
+          >
+            {form.featured ? "Featured on the home page" : "Not featured"}
+          </Button>
+          <FieldHint>Featured projects are the ones the home page leads with.</FieldHint>
+        </div>
+      </FormGrid>
+
+      <FormActions busy={writer.busy} onCancel={onClose} label={entry ? "Save changes" : "Save project"} />
+    </form>
+  );
+}
+
+/**
+ * The scans attached to one certificate.
+ *
+ * A scan is two writes: the object goes to the storage bucket first, then the
+ * row that points at it. If the row is refused the object is deleted again, so
+ * a rejected upload does not leave an orphan behind. Removing a scan is the
+ * reverse, and the row is the part that matters: a file that outlives its row
+ * shows nowhere.
+ */
+function CertificateScans({
+  writer,
+  certificationId,
+}: {
+  writer: EntryWriterValue;
+  certificationId: string;
+}) {
+  const { scansFor } = useEntries();
+  const scans = scansFor(certificationId);
+
+  const [uploading, setUploading] = React.useState(false);
+  const [notice, setNotice] = React.useState<string | null>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  async function upload(files: File[]) {
+    const client = supabase;
+    if (!client || files.length === 0) return;
+
+    setUploading(true);
+    setNotice(null);
+
+    const refused: string[] = [];
+
+    for (const file of files) {
+      if (!ACCEPTED_TYPES.includes(file.type)) {
+        refused.push(`${file.name} is not a JPEG, PNG, or WebP.`);
+        continue;
+      }
+      if (file.size > MAX_UPLOAD_BYTES) {
+        refused.push(`${file.name} is larger than 5 MB.`);
+        continue;
+      }
+
+      const path = `certificates/${certificationId}/${crypto.randomUUID()}.${safeExtension(file.name)}`;
+      const { error } = await client.storage
+        .from(MEDIA_BUCKET)
+        .upload(path, file, { contentType: file.type, cacheControl: "31536000" });
+
+      if (error) {
+        refused.push(`${file.name} did not upload: ${error.message}`);
+        continue;
+      }
+
+      const size = await readImageSize(file);
+      const attached = await writer.addImage({
+        certificationId,
+        storagePath: path,
+        caption: "",
+        width: size.width > 0 ? size.width : null,
+        height: size.height > 0 ? size.height : null,
+        byteSize: file.size,
+      });
+
+      if (!attached) {
+        // No row points at the object, so nothing will ever show it.
+        await client.storage.from(MEDIA_BUCKET).remove([path]);
+        refused.push(`${file.name} was stored but not recorded, so it was deleted again.`);
+      }
+    }
+
+    setUploading(false);
+    if (refused.length > 0) setNotice(refused.join(" "));
+  }
+
+  async function move(index: number, delta: number) {
+    const target = index + delta;
+    if (target < 0 || target >= scans.length) return;
+
+    const next = [...scans];
+    const held = next[index];
+    next[index] = next[target];
+    next[target] = held;
+
+    await writer.reorderImages(
+      certificationId,
+      next.map((scan) => scan.id),
+    );
+  }
+
+  async function remove(index: number) {
+    const scan = scans[index];
+    const confirmed = window.confirm(
+      `Remove scan ${index + 1} of ${scans.length}? The file is deleted from storage as well.`,
+    );
+    if (!confirmed) return;
+    await writer.removeImage(scan.id, scan.storagePath);
+  }
+
+  const busy = uploading || writer.busy;
+
+  return (
+    <div className="sm:col-span-2">
+      <FieldLabel>Scans</FieldLabel>
+
+      <div className="mt-1.5 flex flex-wrap items-center gap-3">
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ACCEPTED_TYPES.join(",")}
+          multiple
+          className="sr-only"
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? []);
+            event.target.value = "";
+            void upload(files);
+          }}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+        >
+          {uploading ? <Loader2 className="animate-spin" aria-hidden /> : <ImagePlus aria-hidden />}
+          {uploading ? "Uploading" : "Add scans"}
+        </Button>
+        <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+          {scans.length === 0 ? "no scans yet" : `${scans.length} attached`}
+        </span>
+      </div>
+
+      <FieldHint>
+        JPEG, PNG, or WebP, up to 5 MB each. The credentials page shows them in a slideshow,
+        in this order.
+      </FieldHint>
+
+      {notice ? (
+        <p className="mt-2 font-mono text-[11px] leading-relaxed text-destructive">{notice}</p>
+      ) : null}
+
+      {scans.length > 0 ? (
+        <ul className="mt-3 space-y-2">
+          {scans.map((scan, index) => (
+            <li
+              key={scan.id}
+              className="flex items-center gap-3 rounded-notch border border-border bg-background/40 p-2"
+            >
+              <img
+                src={scan.url}
+                alt=""
+                loading="lazy"
+                className="size-14 shrink-0 rounded-[3px] border border-border object-cover"
+              />
+              <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
+                {String(index + 1).padStart(2, "0")} · {scan.storagePath.split("/").pop()}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void move(index, -1)}
+                disabled={busy || index === 0}
+                aria-label={`Move scan ${index + 1} up`}
+              >
+                <ArrowUp aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void move(index, 1)}
+                disabled={busy || index === scans.length - 1}
+                aria-label={`Move scan ${index + 1} down`}
+              >
+                <ArrowDown aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void remove(index)}
+                disabled={busy}
+                aria-label={`Remove scan ${index + 1}`}
+              >
+                <Trash2 aria-hidden />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function CertificationForm({
+  writer,
+  lists,
+  entry,
+  onClose,
+}: EntryFormProps<CertificationEntry>) {
+  const [form, setForm] = React.useState<CertificationInput>(() => ({
+    id: entry?.id,
+    sortOrder: entry?.sortOrder,
+    name: entry?.name ?? "",
+    issuer: entry?.issuer ?? "",
+    domain: entry?.domain ?? "Cloud & Infra",
+    issued: entry?.issued ?? "",
+    expires: entry?.expires ?? null,
+    credentialId: entry?.credentialId ?? "",
+    credentialUrl: entry?.credentialUrl ?? "",
+    status: entry?.status ?? "active",
+    cost: entry?.cost ?? 0,
+    visible: entry?.visible ?? true,
+  }));
+
+  function set<K extends keyof CertificationInput>(key: K, value: CertificationInput[K]) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const id = await writer.saveCertification(form);
+    if (id) onClose();
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <FormGrid>
+        <TextField
+          label="Certificate name"
+          value={form.name}
+          onChange={(v) => set("name", v)}
+          wide
+        />
+        <TextField label="Issuer" value={form.issuer} onChange={(v) => set("issuer", v)} />
+        <SelectField
+          label="Domain"
+          value={form.domain}
+          onChange={(v) => set("domain", v as CertificationInput["domain"])}
+          options={lists.domains}
+        />
+        <MonthField label="Issued" value={form.issued} onChange={(v) => set("issued", v)} />
+        <MonthField
+          label="Expires"
+          value={form.expires ?? ""}
+          onChange={(v) => set("expires", v === "" ? null : v)}
+          hint="Leave empty only when it genuinely never expires."
+        />
+        <SelectField
+          label="Status"
+          value={form.status}
+          onChange={(v) => set("status", v as CertificationInput["status"])}
+          options={CERT_STATUS_OPTIONS}
+        />
+        <NumberField
+          label="Cost"
+          value={form.cost}
+          onChange={(v) => set("cost", v)}
+          min={0}
+          step={0.1}
+          hint="In millions of rupiah. 0 is a fair answer for a free certificate."
+        />
+        <TextField
+          label="Credential ID"
+          value={form.credentialId}
+          onChange={(v) => set("credentialId", v)}
+        />
+        <TextField
+          label="Credential link"
+          value={form.credentialUrl}
+          onChange={(v) => set("credentialUrl", v)}
+          placeholder="https://"
+          hint="Must start with https:// or the database will refuse it."
+        />
+        <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
+
+        {entry ? (
+          <CertificateScans writer={writer} certificationId={entry.id} />
+        ) : (
+          <div className="sm:col-span-2">
+            <FieldLabel>Scans</FieldLabel>
+            <FieldHint>
+              Save the certificate first. A scan hangs off a stored row, so this form has
+              nothing to attach one to yet. Reopen the row to upload.
+            </FieldHint>
+          </div>
+        )}
+      </FormGrid>
+
+      <FormActions
+        busy={writer.busy}
+        onCancel={onClose}
+        label={entry ? "Save changes" : "Save certificate"}
+      />
+    </form>
+  );
+}
+
+function SkillForm({ writer, lists, entry, onClose }: EntryFormProps<SkillEntry>) {
+  const [form, setForm] = React.useState<SkillInput>(() => ({
+    id: entry?.id,
+    sortOrder: entry?.sortOrder,
+    name: entry?.name ?? "",
+    category: entry?.category ?? "Engineering",
+    level: entry?.level ?? 50,
+    years: entry?.years ?? 0,
+    lastUsed: entry?.lastUsed ?? new Date().getFullYear(),
+    evidence: entry?.evidence ?? [],
+    visible: entry?.visible ?? true,
+  }));
+
+  function set<K extends keyof SkillInput>(key: K, value: SkillInput[K]) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const id = await writer.saveSkill(form);
+    if (id) onClose();
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <FormGrid>
+        <TextField label="Skill" value={form.name} onChange={(v) => set("name", v)} />
+        <SelectField
+          label="Category"
+          value={form.category}
+          onChange={(v) => set("category", v as SkillInput["category"])}
+          options={lists.categories}
+        />
+        <NumberField
+          label="Level"
+          value={form.level}
+          onChange={(v) => set("level", v)}
+          min={0}
+          max={100}
+          hint="Your own rating, out of 100. It is labelled as a self rating on the page."
+        />
+        <NumberField
+          label="Years"
+          value={form.years}
+          onChange={(v) => set("years", v)}
+          min={0}
+          max={60}
+        />
+        <NumberField
+          label="Last used"
+          value={form.lastUsed}
+          onChange={(v) => set("lastUsed", v)}
+          min={1980}
+          max={2100}
+          hint="The year, not the month. The skills page flags anything older than the newest one."
+        />
+        <ListField
+          label="Evidence"
+          value={form.evidence}
+          onChange={(v) => set("evidence", v)}
+          hint="One entry id per line, taken from a project, a certificate, or a role. Leave empty rather than inventing one."
+        />
+        <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
+      </FormGrid>
+
+      <FormActions busy={writer.busy} onCancel={onClose} label={entry ? "Save changes" : "Save skill"} />
+    </form>
+  );
+}

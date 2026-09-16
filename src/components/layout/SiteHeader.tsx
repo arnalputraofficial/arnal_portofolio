@@ -4,19 +4,21 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/fx/ThemeToggle";
+import { useSiteText } from "@/content/ContentProvider";
 import { profile } from "@/data/portfolio";
 
 export const navItems = [
-  { to: "/", label: "Home", index: "01" },
-  { to: "/career", label: "Career", index: "02" },
-  { to: "/projects", label: "Projects", index: "03" },
-  { to: "/skills", label: "Skills", index: "04" },
-  { to: "/credentials", label: "Credentials", index: "05" },
-  { to: "/about", label: "About", index: "06" },
-  { to: "/contact", label: "Contact", index: "07" },
+  { to: "/", label: "Home", key: "nav.home", index: "01" },
+  { to: "/career", label: "Career", key: "nav.career", index: "02" },
+  { to: "/projects", label: "Projects", key: "nav.projects", index: "03" },
+  { to: "/skills", label: "Skills", key: "nav.skills", index: "04" },
+  { to: "/credentials", label: "Credentials", key: "nav.credentials", index: "05" },
+  { to: "/about", label: "About", key: "nav.about", index: "06" },
+  { to: "/contact", label: "Contact", key: "nav.contact", index: "07" },
 ];
 
 export function SiteHeader() {
+  const t = useSiteText();
   const [open, setOpen] = React.useState(false);
   const location = useLocation();
   const [scrolled, setScrolled] = React.useState(false);
@@ -62,7 +64,7 @@ export function SiteHeader() {
                 "transition-all duration-300 group-hover:bg-primary group-hover:text-primary-foreground",
               )}
             >
-              AF
+              {t("header.monogram")}
             </span>
             <span className="hidden leading-none sm:block">
               <span className="block font-display text-[15px] font-semibold tracking-tight">
@@ -94,7 +96,7 @@ export function SiteHeader() {
                     <span className="mr-1.5 align-super text-[8px] text-primary/70">
                       {item.index}
                     </span>
-                    {item.label}
+                    {t(item.key)}
                     {isActive && (
                       <motion.span
                         layoutId="nav-underline"
@@ -118,7 +120,7 @@ export function SiteHeader() {
                 "hover:border-primary hover:bg-primary hover:text-primary-foreground",
               )}
             >
-              Hire Me
+              {t("header.cta")}
               <ArrowUpRight className="size-3.5" />
             </Link>
 
@@ -168,7 +170,7 @@ export function SiteHeader() {
                     }
                   >
                     <span className="font-mono text-[11px] text-muted-foreground">{item.index}</span>
-                    {item.label}
+                    {t(item.key)}
                   </NavLink>
                 </motion.div>
               ))}

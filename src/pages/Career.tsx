@@ -10,42 +10,54 @@ import { Counter } from "@/components/fx/Counter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { career } from "@/data/portfolio";
+import { useEntries } from "@/entries/EntriesProvider";
+import { useSiteText } from "@/content/ContentProvider";
 import { humanDuration, monthsBetween } from "@/lib/utils";
-
-const totalMonths = career.reduce((acc, role) => acc + monthsBetween(role.start, role.end), 0);
-const ledRoles = career.filter((role) => role.level !== "IC");
-const peakTeam = Math.max(...career.map((role) => role.headcount));
-const sectors = [...new Set(career.map((role) => role.sector))];
-const ordered = [...career].reverse();
 
 function levelVariant(level: string) {
   return level === "IC" ? ("muted" as const) : ("accent" as const);
 }
 
 export default function Career() {
+  const t = useSiteText();
+  const { career } = useEntries();
+
+  const totalMonths = career.reduce((acc, role) => acc + monthsBetween(role.start, role.end), 0);
+  const ledRoles = career.filter((role) => role.level !== "IC");
+  const peakTeam = Math.max(0, ...career.map((role) => role.headcount));
+  const sectors = [...new Set(career.map((role) => role.sector))];
+  const ordered = [...career].reverse();
+  const firstYear = career.reduce(
+    (earliest, role) => Math.min(earliest, Number(role.start.slice(0, 4))),
+    new Date().getFullYear(),
+  );
+
   return (
     <>
       <PageIntro
         index="02"
-        eyebrow="Career File"
-        title="Ten years from fixing tickets to owning the budget"
-        lead="I did not move around chasing job titles. Each move added one more kind of responsibility: devices, then networks, then people, then budget and technical direction."
+        eyebrow={t("career.eyebrow")}
+        title={
+          career.length > 0
+            ? `${Math.round(totalMonths / 12)} years from fixing tickets to owning the budget`
+            : t("career.title")
+        }
+        lead={t("career.lead")}
       >
         <StatStrip
           items={[
             {
-              label: "Total tenure",
+              label: t("career.stat.tenure"),
               value: <Counter value={Math.round(totalMonths / 12)} suffix=" yrs" />,
-              hint: `${totalMonths} months since 2015`,
+              hint: `${totalMonths} months since ${firstYear}`,
             },
             {
-              label: "Leadership roles",
+              label: t("career.stat.leadership"),
               value: `${ledRoles.length} of ${career.length}`,
               hint: "SPV, Lead, and senior technical roles",
             },
             {
-              label: "Largest team",
+              label: t("career.stat.peakTeam"),
               value: <Counter value={peakTeam} suffix=" people" />,
               hint: "Direct reports, not the whole division",
             },
@@ -62,16 +74,16 @@ export default function Career() {
       <PageSection>
         <SectionHeading
           index="01"
-          eyebrow="Shape"
-          title="A trajectory, not a list of dates"
-          description="Two different angles: one shows when leadership responsibility started to appear, the other compares time in role against the size of the team held."
+          eyebrow={t("career.shape.eyebrow")}
+          title={t("career.shape.title")}
+          description={t("career.shape.description")}
         />
 
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
           <Reveal>
             <ChartFrame
-              title="Active roles per year"
-              note="Stacked bars separate technical years from leadership years. Watch 2020, the point where I moved into a supervisor role."
+              title={t("career.chart.tenure.title")}
+              note={t("career.chart.tenure.note")}
               legend={[
                 { label: "Individual contributor", color: CHART_COLORS.moss },
                 { label: "Leading a team", color: CHART_COLORS.rust },
@@ -83,8 +95,8 @@ export default function Career() {
 
           <Reveal delay={0.1}>
             <ChartFrame
-              title="Time in role against team size"
-              note="A rust bar means that role led people. A moss bar means it was purely technical."
+              title={t("career.chart.scope.title")}
+              note={t("career.chart.scope.note")}
               legend={[
                 { label: "Leading people", color: CHART_COLORS.rust },
                 { label: "Purely technical", color: CHART_COLORS.moss },
@@ -100,9 +112,9 @@ export default function Career() {
       <PageSection className="pt-0">
         <SectionHeading
           index="02"
-          eyebrow="Timeline"
-          title="What actually changed at each stage"
-          description="Role summaries, numbers I can stand behind, and the tools I genuinely used."
+          eyebrow={t("career.timeline.eyebrow")}
+          title={t("career.timeline.title")}
+          description={t("career.timeline.description")}
         />
 
         <RevealGroup className="mt-10 space-y-4">
@@ -196,9 +208,9 @@ export default function Career() {
       <PageSection className="pt-0">
         <SectionHeading
           index="03"
-          eyebrow="Table"
-          title="Compare it yourself, do not take my summary at face value"
-          description="Filter by job level or sector, then sort by time in role. Everything runs in your browser."
+          eyebrow={t("career.table.eyebrow")}
+          title={t("career.table.title")}
+          description={t("career.table.description")}
         />
         <div className="mt-10">
           <CareerTable />

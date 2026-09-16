@@ -24,38 +24,35 @@ import { CareerTenureChart } from "@/components/charts/CareerCharts";
 import { ProjectMap } from "@/components/charts/ProjectCharts";
 import { ChartFrame, CHART_COLORS } from "@/components/charts/ChartFrame";
 import { ProjectTable } from "@/components/tables/ProjectTable";
-import { career, certifications, principles, profile, projects, skills } from "@/data/portfolio";
+import { useSiteText } from "@/content/ContentProvider";
+import { useEntries } from "@/entries/EntriesProvider";
+import { principles, profile } from "@/data/portfolio";
 import { humanDuration, monthsBetween, nf } from "@/lib/utils";
-
-const rollingStack = [...new Set(career.flatMap((role) => role.stack))].slice(0, 22);
-
-/** Current role: still running, used as the "now" anchor. */
-const currentRole = career.find((role) => role.end === null) ?? career[career.length - 1];
-
-const activeCertifications = certifications.filter((c) => c.status === "active").length;
-const leadSkills = skills.filter((s) => s.category === "Leadership").length;
-const featuredProjects = projects.filter((p) => p.featured);
+import { publicImageUrl } from "@/entries/types";
 
 function HealthCard() {
+  const t = useSiteText();
   return (
     <div className="panel-flagged p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4 pl-2">
         <div>
-          <h3 className="font-display text-base font-semibold tracking-tight">Operational status</h3>
+          <h3 className="font-display text-base font-semibold tracking-tight">
+            {t("home.health.title")}
+          </h3>
           <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-            {profile.sitesManaged} stores &amp; warehouses, 1 head office
+            {t("home.health.meta", { sites: profile.sitesManaged })}
           </p>
         </div>
         <Badge variant="moss" dot>
-          running
+          {t("home.health.badge")}
         </Badge>
       </div>
 
       <dl className="mt-6 space-y-4 pl-2">
         {[
-          { label: "POS availability", value: 99.98, suffix: "%", decimals: 2 },
-          { label: "Open incidents", value: 3, suffix: " tickets", decimals: 0 },
-          { label: "Budget absorbed", value: 98, suffix: "%", decimals: 0 },
+          { label: t("home.health.row.availability"), value: 99.98, suffix: "%", decimals: 2 },
+          { label: t("home.health.row.incidents"), value: 3, suffix: " tickets", decimals: 0 },
+          { label: t("home.health.row.budget"), value: 98, suffix: "%", decimals: 0 },
         ].map((row) => (
           <div key={row.label} className="space-y-2">
             <div className="flex items-baseline justify-between gap-4">
@@ -72,13 +69,32 @@ function HealthCard() {
       </dl>
 
       <p className="mt-6 pl-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
-        The figures above are my own internal rubric, not a third-party audit.
+        {t("home.health.note")}
       </p>
     </div>
   );
 }
 
 export default function Home() {
+  const t = useSiteText();
+  const { career, certifications, projects, skills } = useEntries();
+
+  /** Strip copy: the editable list wins, otherwise it follows the job history. */
+  const stripLines = t("home.stack.marquee")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const rollingStack =
+    stripLines.length > 0
+      ? stripLines
+      : [...new Set(career.flatMap((role) => role.stack))].slice(0, 22);
+
+  /** Current role: still running, used as the "now" anchor. */
+  const currentRole = career.find((role) => role.end === null) ?? career[career.length - 1];
+  const activeCertifications = certifications.filter((c) => c.status === "active").length;
+  const leadSkills = skills.filter((s) => s.category === "Leadership").length;
+  const featuredProjects = projects.filter((p) => p.featured);
+
   return (
     <>
       {/* ---------------------------------------------------------------- hero */}
@@ -93,42 +109,58 @@ export default function Home() {
           <div className="lg:col-span-7">
             <div className="flex flex-wrap items-center gap-3">
               <Badge variant="accent" dot>
-                open to lead roles
+                {t("home.hero.badge")}
               </Badge>
               <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                {profile.location} · {profile.timezone}
+                {t("home.hero.meta", { location: profile.location, timezone: profile.timezone })}
               </span>
             </div>
 
             <h1 className="mt-7 font-display text-[38px] font-semibold leading-[1.02] tracking-tight text-balance sm:text-6xl lg:text-[68px]">
-              <SplitHeading text="An IT Lead who picks" />
+              <SplitHeading text={t("home.hero.title.line1")} />
               <span className="block text-primary">
-                <SplitHeading text="the boring systems" delay={0.12} />
+                <SplitHeading text={t("home.hero.title.line2")} delay={0.12} />
               </span>
               <span className="block">
-                <SplitHeading text="because reliability rarely makes headlines." delay={0.24} />
+                <SplitHeading text={t("home.hero.title.line3")} delay={0.24} />
               </span>
             </h1>
 
             <Reveal delay={0.4}>
-              <p className="mt-7 max-w-xl text-[16px] leading-relaxed text-muted-foreground text-pretty">
-                {profile.fullName}. Ten years running infrastructure, security, and IT teams across
-                distribution, financial services, and multi-site retail. I work with real budgets,
-                real deadlines, and people who still need to get their work done.
-              </p>
+              <div className="mt-7 flex flex-col gap-5 xl:flex-row xl:items-start xl:gap-6">
+                {t("global.profile.avatar") ? (
+                  <div className="relative size-72 shrink-0 overflow-hidden rounded-notch border-2 border-primary/50 bg-card p-1 shadow-lift sm:size-[352px] xl:size-[416px]">
+                    <img
+                      src={
+                        t("global.profile.avatar").startsWith("http")
+                          ? t("global.profile.avatar")
+                          : publicImageUrl(t("global.profile.avatar")) ?? undefined
+                      }
+                      alt={t("global.profile.fullName", { name: profile.fullName })}
+                      className="size-full rounded-sm object-cover grayscale contrast-125 sepia-[0.2]"
+                      onError={(e) => {
+                        (e.currentTarget.parentElement as HTMLElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                ) : null}
+                <p className="max-w-xl text-[16px] leading-relaxed text-muted-foreground text-pretty">
+                  {t("home.hero.lead", { name: t("global.profile.fullName", { name: profile.fullName }) })}
+                </p>
+              </div>
             </Reveal>
 
             <Reveal delay={0.5}>
               <div className="mt-9 flex flex-wrap items-center gap-3">
                 <Button asChild size="lg">
                   <Link to="/career">
-                    See the career trail
+                    {t("home.hero.cta.primary")}
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
                   <a href={profile.socials[2].href}>
-                    Start a conversation
+                    {t("home.hero.cta.secondary")}
                     <ArrowUpRight className="size-4" />
                   </a>
                 </Button>
@@ -141,8 +173,7 @@ export default function Home() {
               <div className="relative">
                 <HeroScene className="h-[340px] rounded-blob border border-border bg-card/60 sm:h-[420px]" />
                 <p className="mt-4 font-mono text-[11px] leading-relaxed text-muted-foreground">
-                  The cluster topology I look after: nodes, paths, and the fragile points. Drag to
-                  rotate.
+                  {t("home.hero.scene.caption")}
                 </p>
               </div>
             </Reveal>
@@ -152,12 +183,24 @@ export default function Home() {
                 {[
                   {
                     icon: Users,
-                    label: "Team led",
-                    value: `${currentRole.headcount} people`,
+                    label: t("home.hero.stat.team"),
+                    value: `${currentRole?.headcount ?? 0} people`,
                   },
-                  { icon: Building2, label: "Operating sites", value: `${profile.sitesManaged}` },
-                  { icon: Clock3, label: "Experience", value: `${profile.yearsExperience} years` },
-                  { icon: Layers, label: "Logged projects", value: `${projects.length}` },
+                  {
+                    icon: Building2,
+                    label: t("home.hero.stat.sites"),
+                    value: `${profile.sitesManaged}`,
+                  },
+                  {
+                    icon: Clock3,
+                    label: t("home.hero.stat.experience"),
+                    value: `${profile.yearsExperience} years`,
+                  },
+                  {
+                    icon: Layers,
+                    label: t("home.hero.stat.projects"),
+                    value: `${projects.length}`,
+                  },
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -178,7 +221,7 @@ export default function Home() {
         </div>
       </section>
 
-      <Marquee items={rollingStack} />
+      {rollingStack.length > 0 ? <Marquee items={rollingStack} /> : null}
 
       {/* ------------------------------------------------------------ summary */}
       <PageSection className="pt-14 sm:pt-16">
@@ -186,24 +229,29 @@ export default function Home() {
           <StatStrip
             items={[
               {
-                label: "Current role",
-                value: currentRole.title,
-                hint: `${currentRole.company} · ${humanDuration(monthsBetween(currentRole.start, null))}`,
+                label: t("home.summary.currentRole"),
+                value: currentRole?.title ?? t("home.summary.currentRole.none"),
+                hint: currentRole
+                  ? t("home.summary.currentRole.hint", {
+                      company: currentRole.company,
+                      tenure: humanDuration(monthsBetween(currentRole.start, null)),
+                    })
+                  : undefined,
               },
               {
-                label: "Active certifications",
+                label: t("home.summary.certifications"),
                 value: `${activeCertifications}/${certifications.length}`,
-                hint: "The rest are renewing or already expired",
+                hint: t("home.summary.certifications.hint"),
               },
               {
-                label: "Leadership skills",
+                label: t("home.summary.leadership"),
                 value: `${leadSkills} areas`,
-                hint: "Self-assessed, flagged honestly on the Skills page",
+                hint: t("home.summary.leadership.hint"),
               },
               {
-                label: "Budget managed",
+                label: t("home.summary.budget"),
                 value: `Rp ${nf(projects.reduce((a, p) => a + p.budgetM, 0))}m`,
-                hint: "Accumulated project budget I have owned",
+                hint: t("home.summary.budget.hint"),
               },
             ]}
           />
@@ -214,13 +262,13 @@ export default function Home() {
       <PageSection className="pt-0">
         <SectionHeading
           index="01"
-          eyebrow="Trail"
-          title="From daily tickets to the decision table"
-          description="Every stage added a new kind of responsibility. The chart alongside separates time as an individual contributor from time leading a team, so the direction is visible at a glance."
+          eyebrow={t("home.trail.eyebrow")}
+          title={t("home.trail.title")}
+          description={t("home.trail.description")}
           action={
             <Button asChild variant="outline" size="sm">
               <Link to="/career">
-                Career detail
+                {t("home.trail.action")}
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
@@ -230,11 +278,11 @@ export default function Home() {
         <div className="mt-10 grid gap-6 lg:grid-cols-12">
           <Reveal className="lg:col-span-7">
             <ChartFrame
-              title="Role composition per year"
-              note="Number of active positions each year, split between individual contributors and team leads."
+              title={t("home.trail.chart.title")}
+              note={t("home.trail.chart.note")}
               legend={[
-                { label: "Individual contributor", color: CHART_COLORS.moss },
-                { label: "Leading a team", color: CHART_COLORS.rust },
+                { label: t("home.trail.chart.legend.ic"), color: CHART_COLORS.moss },
+                { label: t("home.trail.chart.legend.lead"), color: CHART_COLORS.rust },
               ]}
             >
               <CareerTenureChart />
@@ -251,13 +299,13 @@ export default function Home() {
       <PageSection className="pt-0">
         <SectionHeading
           index="02"
-          eyebrow="Projects"
-          title="Small budgets, hard constraints, measurable results"
-          description="This map places every project by year and kind of work. Bubble size follows the impact score from my internal rubric, not a marketing claim."
+          eyebrow={t("home.projects.eyebrow")}
+          title={t("home.projects.title")}
+          description={t("home.projects.description")}
           action={
             <Button asChild variant="outline" size="sm">
               <Link to="/projects">
-                All projects
+                {t("home.projects.action")}
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
@@ -266,14 +314,14 @@ export default function Home() {
 
         <Reveal className="mt-10">
           <ChartFrame
-            title="Project map 2017 to now"
-            note="Horizontal axis = start time. Vertical axis = kind of work. Bubble size = impact score."
+            title={t("home.projects.chart.title")}
+            note={t("home.projects.chart.note")}
             legend={[
-              { label: "Low impact", color: CHART_COLORS.moss },
-              { label: "High impact", color: CHART_COLORS.rust },
+              { label: t("home.projects.chart.legend.low"), color: CHART_COLORS.moss },
+              { label: t("home.projects.chart.legend.high"), color: CHART_COLORS.rust },
             ]}
           >
-            <ProjectMap />
+            <ProjectMap projects={projects} />
           </ChartFrame>
         </Reveal>
 
@@ -300,9 +348,9 @@ export default function Home() {
 
                   <dl className="mt-6 grid grid-cols-3 gap-3 border-t border-border pt-4">
                     {[
-                      { label: "Budget", value: `Rp ${nf(project.budgetM)}m` },
-                      { label: "Team", value: `${project.teamSize}` },
-                      { label: "Impact", value: `${project.impact}` },
+                      { label: t("home.projects.card.budget"), value: `Rp ${nf(project.budgetM)}m` },
+                      { label: t("home.projects.card.team"), value: `${project.teamSize}` },
+                      { label: t("home.projects.card.impact"), value: `${project.impact}` },
                     ].map((stat) => (
                       <div key={stat.label}>
                         <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -325,9 +373,9 @@ export default function Home() {
       <PageSection className="pt-0">
         <SectionHeading
           index="03"
-          eyebrow="Records"
-          title="Every project, filterable on your own terms"
-          description="Not a display card: search by technology, filter by kind or year, then sort by budget or by impact."
+          eyebrow={t("home.records.eyebrow")}
+          title={t("home.records.title")}
+          description={t("home.records.description")}
         />
         <div className="mt-10">
           <ProjectTable />
@@ -338,8 +386,8 @@ export default function Home() {
       <PageSection className="pt-0">
         <SectionHeading
           index="04"
-          eyebrow="Principles"
-          title="How I make technical decisions"
+          eyebrow={t("home.principles.eyebrow")}
+          title={t("home.principles.title")}
         />
 
         <RevealGroup className="mt-10 grid gap-px overflow-hidden border border-border bg-border md:grid-cols-2">
@@ -350,10 +398,10 @@ export default function Home() {
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <h3 className="mt-4 font-display text-lg font-semibold leading-snug tracking-tight">
-                  {principle.title}
+                  {t(`home.principles.${i + 1}.title`)}
                 </h3>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  {principle.body}
+                  {t(`home.principles.${i + 1}.body`)}
                 </p>
               </div>
             </RevealItem>
@@ -374,20 +422,19 @@ export default function Home() {
               <div className="lg:col-span-8">
                 <p className="eyebrow flex items-center gap-2">
                   <Radio className="size-3.5 text-primary" />
-                  availability
+                  {t("home.call.eyebrow")}
                 </p>
                 <p className="mt-4 max-w-2xl font-display text-2xl font-semibold leading-snug tracking-tight text-balance sm:text-3xl lg:text-4xl">
-                  I am not selling a list of technologies. I am offering the habit of keeping systems
-                  alive while letting a team grow.
+                  {t("home.call.statement")}
                 </p>
                 <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                   <span className="flex items-center gap-2">
                     <MapPin className="size-3.5" />
-                    {profile.location}
+                    {t("global.profile.location")}
                   </span>
                   <span className="flex items-center gap-2">
                     <Activity className="size-3.5" />
-                    {profile.availability}
+                    {t("global.profile.availability")}
                   </span>
                 </div>
               </div>
@@ -395,12 +442,12 @@ export default function Home() {
               <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">
                 <Button asChild size="lg">
                   <Link to="/contact">
-                    Start a discussion
+                    {t("home.call.cta.primary")}
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <Link to="/about">Read the working approach</Link>
+                  <Link to="/about">{t("home.call.cta.secondary")}</Link>
                 </Button>
               </div>
             </div>

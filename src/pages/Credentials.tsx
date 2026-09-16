@@ -15,13 +15,16 @@ import { PageIntro, StatStrip } from "@/components/layout/PageIntro";
 import { PageSection, SectionHeading } from "@/components/layout/SectionHeading";
 import { ChartFrame, CHART_COLORS, TooltipShell } from "@/components/charts/ChartFrame";
 import { CertificationTable } from "@/components/tables/CertificationTable";
+import { CertificateSlideshow } from "@/components/CertificateSlideshow";
 import { Reveal, RevealGroup, RevealItem } from "@/components/fx/Reveal";
 import { Counter } from "@/components/fx/Counter";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { certifications, type Certification } from "@/data/portfolio";
+import { useEntries } from "@/entries/EntriesProvider";
+import { useSiteText } from "@/content/ContentProvider";
+import type { Certification } from "@/data/portfolio";
 import { nf } from "@/lib/utils";
 
 const DOMAIN_COLOR: Record<Certification["domain"], string> = {
@@ -33,13 +36,6 @@ const DOMAIN_COLOR: Record<Certification["domain"], string> = {
   "Project Management": "#a9714b",
 };
 
-const activeCerts = certifications.filter((c) => c.status === "active");
-const expiredCerts = certifications.filter((c) => c.status === "expired");
-const renewingCerts = certifications.filter((c) => c.status === "renewing");
-const totalCost = certifications.reduce((acc, c) => acc + c.cost, 0);
-const permanentCerts = certifications.filter((c) => c.expires === null);
-const domains = [...new Set(certifications.map((c) => c.domain))];
-
 /** Months until expiry. Negative means it has already passed. */
 function monthsTo(iso: string | null) {
   if (!iso) return null;
@@ -47,47 +43,6 @@ function monthsTo(iso: string | null) {
   const now = new Date();
   return (y - now.getFullYear()) * 12 + (m - (now.getMonth() + 1));
 }
-
-const timeline = [...certifications]
-  .map((cert) => {
-    const left = monthsTo(cert.expires);
-    return {
-      ...cert,
-      left,
-      // certificates without an expiry are drawn as a full bar
-      bar: left === null ? 120 : Math.max(left, -12),
-      color: DOMAIN_COLOR[cert.domain],
-    };
-  })
-  .sort((a, b) => (b.bar ?? 0) - (a.bar ?? 0));
-
-const expiringSoon = certifications
-  .filter((c) => {
-    const left = monthsTo(c.expires);
-    return left !== null && left > 0 && left <= 12;
-  })
-  .sort((a, b) => (monthsTo(a.expires) ?? 0) - (monthsTo(b.expires) ?? 0));
-
-const domainStats = domains
-  .map((domain) => {
-    const items = certifications.filter((c) => c.domain === domain);
-    return {
-      domain,
-      count: items.length,
-      cost: items.reduce((acc, c) => acc + c.cost, 0),
-      color: DOMAIN_COLOR[domain],
-    };
-  })
-  .sort((a, b) => b.count - a.count || b.cost - a.cost);
-
-const maxDomainCount = Math.max(...domainStats.map((d) => d.count));
-
-const issuance = [...new Set(certifications.map((c) => c.issued.slice(0, 4)))]
-  .sort()
-  .map((year) => ({
-    year,
-    count: certifications.filter((c) => c.issued.startsWith(year)).length,
-  }));
 
 function statusVariant(status: Certification["status"]): BadgeProps["variant"] {
   switch (status) {
@@ -133,18 +88,69 @@ function RenewalRow({ cert }: { cert: Certification }) {
 }
 
 export default function Credentials() {
+  const t = useSiteText();
+  const { certifications } = useEntries();
+
+  const activeCerts = certifications.filter((c) => c.status === "active");
+  const expiredCerts = certifications.filter((c) => c.status === "expired");
+  const renewingCerts = certifications.filter((c) => c.status === "renewing");
+  const totalCost = certifications.reduce((acc, c) => acc + c.cost, 0);
+  const permanentCerts = certifications.filter((c) => c.expires === null);
+  const domains = [...new Set(certifications.map((c) => c.domain))];
+
+  const timeline = [...certifications]
+    .map((cert) => {
+      const left = monthsTo(cert.expires);
+      return {
+        ...cert,
+        left,
+        // certificates without an expiry are drawn as a full bar
+        bar: left === null ? 120 : Math.max(left, -12),
+        color: DOMAIN_COLOR[cert.domain],
+      };
+    })
+    .sort((a, b) => (b.bar ?? 0) - (a.bar ?? 0));
+
+  const expiringSoon = certifications
+    .filter((c) => {
+      const left = monthsTo(c.expires);
+      return left !== null && left > 0 && left <= 12;
+    })
+    .sort((a, b) => (monthsTo(a.expires) ?? 0) - (monthsTo(b.expires) ?? 0));
+
+  const domainStats = domains
+    .map((domain) => {
+      const items = certifications.filter((c) => c.domain === domain);
+      return {
+        domain,
+        count: items.length,
+        cost: items.reduce((acc, c) => acc + c.cost, 0),
+        color: DOMAIN_COLOR[domain],
+      };
+    })
+    .sort((a, b) => b.count - a.count || b.cost - a.cost);
+
+  const maxDomainCount = Math.max(1, ...domainStats.map((d) => d.count));
+
+  const issuance = [...new Set(certifications.map((c) => c.issued.slice(0, 4)))]
+    .sort()
+    .map((year) => ({
+      year,
+      count: certifications.filter((c) => c.issued.startsWith(year)).length,
+    }));
+
   return (
     <>
       <PageIntro
         index="05"
-        eyebrow="Credentials File"
-        title="Ten certificates, two of which are no longer valid"
-        lead="A certificate is not proof of skill, only proof that I passed a specific exam once. That is why I show the expired ones and the ones being renewed, not just the active ones."
+        eyebrow={t("credentials.eyebrow")}
+        title={t("credentials.title")}
+        lead={t("credentials.lead")}
       >
         <StatStrip
           items={[
             {
-              label: "Active certificates",
+              label: t("credentials.stat.active"),
               value: (
                 <span>
                   {activeCerts.length}
@@ -154,17 +160,17 @@ export default function Credentials() {
               hint: `${permanentCerts.length} of them have no expiry`,
             },
             {
-              label: "Needs renewal",
+              label: t("credentials.stat.renewal"),
               value: <Counter value={renewingCerts.length + expiringSoon.length} suffix=" items" />,
               hint: `${expiredCerts.length} already past their expiry`,
             },
             {
-              label: "Domains covered",
+              label: t("credentials.stat.domains"),
               value: `${domains.length}`,
               hint: domains.join(" · "),
             },
             {
-              label: "Exam cost",
+              label: t("credentials.stat.investment"),
               value: <Counter value={totalCost} decimals={1} prefix="Rp " suffix="m" />,
               hint: "Out of my own pocket since 2018",
             },
@@ -176,8 +182,8 @@ export default function Credentials() {
       <PageSection>
         <SectionHeading
           index="01"
-          eyebrow="Validity"
-          title="How much longer each credential holds up"
+          eyebrow={t("credentials.validity.eyebrow")}
+          title={t("credentials.validity.title")}
           description="This chart answers the question that comes up most in interviews: which ones are still valid, which ones need handling, and which ones have already lapsed."
         />
 
@@ -337,8 +343,8 @@ export default function Credentials() {
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
           index="02"
-          eyebrow="Composition"
-          title="The domains I went after, and what they mean for a lead role"
+          eyebrow={t("credentials.composition.eyebrow")}
+          title={t("credentials.composition.title")}
           description="This spread is deliberately uneven. Security and infrastructure dominate because those two are the most common source of operational failure everywhere I have worked."
         />
 
@@ -414,9 +420,9 @@ export default function Credentials() {
       <PageSection>
         <SectionHeading
           index="03"
-          eyebrow="Full file"
-          title="Every credential, filterable and checkable"
-          description="Use the search to find a specific issuer, or filter by domain and status. The credential ID column can be copied for verification."
+          eyebrow={t("credentials.table.eyebrow")}
+          title={t("credentials.table.title")}
+          description={t("credentials.table.description")}
           action={
             <Button asChild variant="outline" size="sm">
               <Link to="/skills">
@@ -430,6 +436,9 @@ export default function Credentials() {
           <CertificationTable />
         </Reveal>
       </PageSection>
+
+      {/* 04 - the scans themselves, absent until the owner uploads one */}
+      <CertificateSlideshow />
 
       {/* CTA */}
       <PageSection className="pt-0">
@@ -446,7 +455,8 @@ export default function Credentials() {
               </p>
               <p className="mt-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                 <Wallet className="size-3.5" />
-                Rp {nf(totalCost, 1)}m invested in ten credentials
+                Rp {nf(totalCost, 1)}m invested in {certifications.length}{" "}
+                {certifications.length === 1 ? "credential" : "credentials"}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">

@@ -95,6 +95,22 @@
     @apply bg-primary/25 text-foreground;
   }
 
+  /* Custom reticle cursor. The native pointer is hidden only on the wide screens
+     where the reticle is actually drawn, and text fields keep their caret so
+     editing stays usable. `!important` is needed because Tailwind utilities sit
+     in a later cascade layer, and layer order outranks specificity. */
+  @media (min-width: 1024px) {
+    html.cursor-reticle,
+    html.cursor-reticle * {
+      cursor: none !important;
+    }
+    html.cursor-reticle input,
+    html.cursor-reticle textarea,
+    html.cursor-reticle [contenteditable="true"] {
+      cursor: text !important;
+    }
+  }
+
   ::-webkit-scrollbar {
     width: 11px;
     height: 11px;

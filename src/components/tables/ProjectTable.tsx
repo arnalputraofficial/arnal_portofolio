@@ -4,11 +4,8 @@ import { Progress } from "@/components/ui/progress";
 import { DataTable } from "@/components/tables/DataTable";
 import { KIND_COLOR } from "@/components/charts/ProjectCharts";
 import { nf } from "@/lib/utils";
-import { projects, type Project } from "@/data/portfolio";
-
-const KIND_OPTIONS = [...new Set(projects.map((p) => p.kind))];
-const STATUS_OPTIONS = [...new Set(projects.map((p) => p.status))];
-const YEAR_OPTIONS = [...new Set(projects.map((p) => String(p.year)))].sort((a, b) => Number(b) - Number(a));
+import { useEntries } from "@/entries/EntriesProvider";
+import type { Project } from "@/data/portfolio";
 
 /** Badge colour per status, distinct from the kind colours so they never get confused. */
 function statusVariant(status: Project["status"]) {
@@ -131,6 +128,15 @@ const columns: ColumnDef<Project, unknown>[] = [
 
 /** Carbon emissions are not measured here, so there is no invented column. */
 export function ProjectTable() {
+  const { projects } = useEntries();
+
+  // Kind, status, and year are stored per row, so the filters follow the data.
+  const kinds = [...new Set(projects.map((p) => p.kind))];
+  const statuses = [...new Set(projects.map((p) => p.status))];
+  const years = [...new Set(projects.map((p) => String(p.year)))].sort(
+    (a, b) => Number(b) - Number(a),
+  );
+
   return (
     <DataTable
       data={projects}
@@ -139,9 +145,9 @@ export function ProjectTable() {
       pageSize={7}
       footnote="All filters run client side"
       facets={[
-        { columnId: "kind", label: "Kind", options: KIND_OPTIONS },
-        { columnId: "status", label: "Status", options: STATUS_OPTIONS },
-        { columnId: "year", label: "Year", options: YEAR_OPTIONS },
+        { columnId: "kind", label: "Kind", options: kinds },
+        { columnId: "status", label: "Status", options: statuses },
+        { columnId: "year", label: "Year", options: years },
       ]}
     />
   );

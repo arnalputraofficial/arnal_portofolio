@@ -10,7 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { CHART_COLORS, TooltipShell, AxisTick } from "@/components/charts/ChartFrame";
-import { career } from "@/data/portfolio";
+import { useEntries } from "@/entries/EntriesProvider";
 import { humanDuration, monthsBetween } from "@/lib/utils";
 
 /**
@@ -19,6 +19,8 @@ import { humanDuration, monthsBetween } from "@/lib/utils";
  * The point is to show trajectory, not just a list of dates.
  */
 export function CareerTenureChart() {
+  const { career } = useEntries();
+
   const data = React.useMemo(() => {
     const years = new Map<number, { year: number; ic: number; lead: number; roles: string[] }>();
 
@@ -37,7 +39,7 @@ export function CareerTenureChart() {
     });
 
     return [...years.values()].sort((a, b) => a.year - b.year);
-  }, []);
+  }, [career]);
 
   return (
     <ResponsiveContainer width="100%" height={280}>
@@ -88,6 +90,8 @@ export function CareerTenureChart() {
  * The X axis is deliberately tenure, not the year, so the comparison is fair.
  */
 export function RoleScopeScatter() {
+  const { career } = useEntries();
+
   const data = career.map((role) => ({
     name: role.title,
     company: role.company,

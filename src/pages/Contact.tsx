@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { profile } from "@/data/portfolio";
+import { useSiteText } from "@/content/ContentProvider";
 import { cn } from "@/lib/utils";
 
 const MIN_MESSAGE = 20;
@@ -72,6 +73,7 @@ function validate(form: FormState): Errors {
 const SOCIAL_ICON = { GitHub: Github, LinkedIn: Linkedin, Email: Mail } as const;
 
 export default function Contact() {
+  const t = useSiteText();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
   const [submitted, setSubmitted] = useState(false);
@@ -125,29 +127,29 @@ export default function Contact() {
     <>
       <PageIntro
         index="07"
-        eyebrow="Contact File"
-        title="Send a specific question, and I will answer specifically"
-        lead="I prefer questions that name the real situation, the number of people, and the budget constraint. Questions like that I can answer from experience, not from generic theory."
+        eyebrow={t("contact.eyebrow")}
+        title={t("contact.title")}
+        lead={t("contact.lead")}
       >
         <StatStrip
           items={[
             {
-              label: "Response time",
+              label: t("contact.stat.response"),
               value: "1 business day",
               hint: "Usually faster on weekdays",
             },
             {
-              label: "Time zone",
+              label: t("contact.stat.timezone"),
               value: profile.timezone,
               hint: `I work from ${profile.location}`,
             },
             {
-              label: "Direct channels",
+              label: t("contact.stat.channels"),
               value: `${profile.socials.length}`,
               hint: profile.socials.map((s) => s.label).join(" · "),
             },
             {
-              label: "Status",
+              label: t("contact.stat.status"),
               value: "Open",
               hint: profile.availability,
             },
@@ -159,9 +161,9 @@ export default function Contact() {
       <PageSection>
         <SectionHeading
           index="01"
-          eyebrow="Form"
-          title="Write your message, then pick how to send it"
-          description="This form checks your input in the browser, then prepares a message ready to send. I collect no data quietly, because there is no server behind it."
+          eyebrow={t("contact.form.eyebrow")}
+          title={t("contact.form.title")}
+          description={t("contact.form.description")}
         />
 
         <div className="mt-10 grid gap-6 lg:grid-cols-12">
@@ -402,7 +404,7 @@ export default function Contact() {
 
             <Reveal delay={0.24}>
               <div className="panel p-6 sm:p-8">
-                <p className="eyebrow">direct channels</p>
+                <p className="eyebrow">{t("contact.channels.title")}</p>
                 <RevealGroup className="mt-5 space-y-px overflow-hidden rounded-notch border border-border bg-border">
                   {profile.socials.map((social) => {
                     const Icon = SOCIAL_ICON[social.label as keyof typeof SOCIAL_ICON] ?? Mail;
@@ -460,10 +462,9 @@ export default function Contact() {
             <div aria-hidden className="pointer-events-none absolute inset-0 grid-lines opacity-35" />
             <div className="relative grid gap-8 lg:grid-cols-12 lg:items-center">
               <div className="lg:col-span-8">
-                <p className="eyebrow">before you write</p>
+                <p className="eyebrow">{t("contact.cta.eyebrow")}</p>
                 <p className="mt-3 max-w-2xl font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-                  If you have just opened this site, start with the project file. That is where the
-                  way I work shows up, not only the end result.
+                  {t("contact.cta.body")}
                 </p>
               </div>
               <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">

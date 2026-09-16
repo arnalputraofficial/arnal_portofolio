@@ -14,7 +14,8 @@ import {
   Line,
 } from "recharts";
 import { CHART_COLORS, TooltipShell } from "@/components/charts/ChartFrame";
-import { projects, type ProjectKind } from "@/data/portfolio";
+import { useEntries } from "@/entries/EntriesProvider";
+import type { Project, ProjectKind } from "@/data/portfolio";
 import { nf } from "@/lib/utils";
 
 const KINDS: ProjectKind[] = [
@@ -40,7 +41,7 @@ const KIND_COLOR: Record<ProjectKind, string> = {
  * Bubble size is the impact score, so the highest-leverage projects
  * stand out immediately without reading the table.
  */
-export function ProjectMap() {
+export function ProjectMap({ projects }: { projects: Project[] }) {
   const data = React.useMemo(
     () =>
       projects.map((p) => ({
@@ -49,7 +50,7 @@ export function ProjectMap() {
         z: p.impact,
         ...p,
       })),
-    [],
+    [projects],
   );
 
   return (
@@ -120,6 +121,8 @@ export function ProjectMap() {
  * Shows whether a rise in spending actually produced results.
  */
 export function BudgetImpactChart() {
+  const { projects } = useEntries();
+
   const data = React.useMemo(() => {
     const map = new Map<number, { year: number; budget: number; impact: number[]; count: number }>();
     projects.forEach((p) => {
@@ -137,7 +140,7 @@ export function BudgetImpactChart() {
         avgImpact: Math.round(d.impact.reduce((a, b) => a + b, 0) / d.impact.length),
         count: d.count,
       }));
-  }, []);
+  }, [projects]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -205,6 +208,8 @@ export function BudgetImpactChart() {
 
 /** Budget against impact spread, bubbles sized by team. */
 export function BudgetImpactScatter() {
+  const { projects } = useEntries();
+
   const data = React.useMemo(
     () =>
       projects
@@ -215,7 +220,7 @@ export function BudgetImpactScatter() {
           z: p.teamSize,
           ...p,
         })),
-    [],
+    [projects],
   );
 
   return (

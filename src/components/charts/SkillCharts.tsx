@@ -15,7 +15,8 @@ import {
   YAxis,
 } from "recharts";
 import { CHART_COLORS, TooltipShell } from "@/components/charts/ChartFrame";
-import { projects, skills, type Skill } from "@/data/portfolio";
+import { useEntries } from "@/entries/EntriesProvider";
+import type { Skill } from "@/data/portfolio";
 
 /**
  * Competency balance radar.
@@ -155,6 +156,8 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
  * Helps show where a technology is genuinely used, not just mentioned.
  */
 export function StackUsageChart() {
+  const { projects } = useEntries();
+
   const data = React.useMemo(() => {
     const counts = new Map<string, { stack: string; count: number; newness: number }>();
     projects.forEach((p) => {
@@ -168,7 +171,7 @@ export function StackUsageChart() {
       .filter((d) => d.count >= 2)
       .sort((a, b) => b.count - a.count)
       .slice(0, 12);
-  }, []);
+  }, [projects]);
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -218,6 +221,8 @@ export function StackUsageChart() {
 
 /** Distribution of years of experience per skill category. */
 export function ExperienceSpreadChart() {
+  const { skills } = useEntries();
+
   const data = React.useMemo(() => {
     const map = new Map<string, { category: string; years: number; count: number }>();
     skills.forEach((s) => {
@@ -227,7 +232,7 @@ export function ExperienceSpreadChart() {
       map.set(s.category, cur);
     });
     return [...map.values()].sort((a, b) => b.years - a.years);
-  }, []);
+  }, [skills]);
 
   return (
     <ResponsiveContainer width="100%" height={260}>

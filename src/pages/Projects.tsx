@@ -28,35 +28,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { projects, type Project } from "@/data/portfolio";
+import { useEntries } from "@/entries/EntriesProvider";
+import { useSiteText } from "@/content/ContentProvider";
+import type { Project } from "@/data/portfolio";
 import { nf } from "@/lib/utils";
-
-const totalBudget = projects.reduce((acc, p) => acc + p.budgetM, 0);
-const totalMonths = projects.reduce((acc, p) => acc + p.months, 0);
-const activeProjects = projects.filter((p) => p.status === "active" || p.status === "live").length;
-const heldProjects = projects.filter((p) => p.status === "on-hold");
-const avgImpact = Math.round(projects.reduce((acc, p) => acc + p.impact, 0) / projects.length);
-const peakImpact = [...projects].sort((a, b) => b.impact - a.impact)[0];
-const crossSite = projects.filter((p) => /stores|branches|Sumatra|sites/i.test(p.location)).length;
-const featured = projects.filter((p) => p.featured);
-
-const KIND_COUNT = [...new Set(projects.map((p) => p.kind))]
-  .map((kind) => ({
-    kind,
-    count: projects.filter((p) => p.kind === kind).length,
-    budget: projects.filter((p) => p.kind === kind).reduce((acc, p) => acc + p.budgetM, 0),
-  }))
-  .sort((a, b) => b.count - a.count);
-
-const YEAR_COUNT = [...new Set(projects.map((p) => p.year))]
-  .sort((a, b) => b - a)
-  .map((year) => ({
-    year,
-    count: projects.filter((p) => p.year === year).length,
-    budget: projects.filter((p) => p.year === year).reduce((acc, p) => acc + p.budgetM, 0),
-  }));
-
-const maxYearCount = Math.max(...YEAR_COUNT.map((y) => y.count));
 
 function statusVariant(status: Project["status"]): BadgeProps["variant"] {
   switch (status) {
@@ -212,35 +187,68 @@ function FeaturedCard({ project }: { project: Project }) {
 }
 
 export default function Projects() {
+  const t = useSiteText();
+  const { projects } = useEntries();
+
+  const totalBudget = projects.reduce((acc, p) => acc + p.budgetM, 0);
+  const totalMonths = projects.reduce((acc, p) => acc + p.months, 0);
+  const activeProjects = projects.filter((p) => p.status === "active" || p.status === "live").length;
+  const heldProjects = projects.filter((p) => p.status === "on-hold");
+  const avgImpact =
+    projects.length > 0
+      ? Math.round(projects.reduce((acc, p) => acc + p.impact, 0) / projects.length)
+      : 0;
+  const peakImpact = [...projects].sort((a, b) => b.impact - a.impact)[0] ?? null;
+  const crossSite = projects.filter((p) => /stores|branches|Sumatra|sites/i.test(p.location)).length;
+  const featured = projects.filter((p) => p.featured);
+
+  const kindCount = [...new Set(projects.map((p) => p.kind))]
+    .map((kind) => ({
+      kind,
+      count: projects.filter((p) => p.kind === kind).length,
+      budget: projects.filter((p) => p.kind === kind).reduce((acc, p) => acc + p.budgetM, 0),
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const yearCount = [...new Set(projects.map((p) => p.year))]
+    .sort((a, b) => b - a)
+    .map((year) => ({
+      year,
+      count: projects.filter((p) => p.year === year).length,
+      budget: projects.filter((p) => p.year === year).reduce((acc, p) => acc + p.budgetM, 0),
+    }));
+
+  const maxYearCount = Math.max(1, ...yearCount.map((y) => y.count));
+
   return (
     <>
       <PageIntro
         index="03"
-        eyebrow="Project File"
-        title="Twelve traceable pieces of work, not just a list of tools"
-        lead="Every project below has a budget, a duration, a team size, and an impact score. I kept the small numbers in too, because they show the pattern: valuable work usually runs long."
+        eyebrow={t("projects.eyebrow")}
+        title={t("projects.title")}
+        lead={t("projects.lead")}
       >
         <StatStrip
           items={[
             {
-              label: "Budget managed",
+              label: t("projects.stat.budget"),
               value: <Counter value={Math.round(totalBudget / 1000)} prefix="Rp " suffix="B" />,
               hint: `${totalMonths} months of project work since 2018`,
             },
             {
-              label: "Projects running",
+              label: t("projects.stat.running"),
               value: `${activeProjects} of ${projects.length}`,
               hint: `${heldProjects.length} on hold waiting on business priorities`,
             },
             {
-              label: "Reaching many sites",
+              label: t("projects.stat.sites"),
               value: `${crossSite}`,
               hint: "Projects across stores, warehouses, or cities",
             },
             {
-              label: "Average impact",
+              label: t("projects.stat.impact"),
               value: `${avgImpact}/100`,
-              hint: `Highest: ${peakImpact.impact} (${peakImpact.name})`,
+              hint: peakImpact ? `Highest: ${peakImpact.impact} (${peakImpact.name})` : "No projects recorded yet",
             },
           ]}
         />
@@ -250,9 +258,9 @@ export default function Projects() {
       <PageSection>
         <SectionHeading
           index="01"
-          eyebrow="Quick read"
-          title="How projects spread across kind, time, and budget size"
-          description="The bubble map shows when the work happened and how much impact it had. Bubble size is the impact score, colour is the kind of work."
+          eyebrow={t("projects.quickread.eyebrow")}
+          title={t("projects.quickread.title")}
+          description={t("projects.quickread.description")}
         />
 
         <div className="mt-10 space-y-6">
@@ -265,7 +273,7 @@ export default function Projects() {
                 color: KIND_COLOR[kind],
               }))}
             >
-              <ProjectMap />
+              <ProjectMap projects={projects} />
             </ChartFrame>
           </Reveal>
 
@@ -289,7 +297,7 @@ export default function Projects() {
                 note="A compact bar: number of projects per year along with their budgets."
               >
                 <ul className="space-y-3.5">
-                  {YEAR_COUNT.map((row) => (
+                  {yearCount.map((row) => (
                     <li key={row.year}>
                       <div className="flex items-baseline justify-between gap-4">
                         <span className="font-mono text-[12px] tabular-nums text-foreground">
@@ -318,9 +326,9 @@ export default function Projects() {
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
           index="02"
-          eyebrow="Featured"
-          title="Four projects that explain how I work"
-          description="Chosen not because they had the biggest budgets, but because they represent the thinking I repeat across many other pieces of work."
+          eyebrow={t("projects.featured.eyebrow")}
+          title={t("projects.featured.title")}
+          description={t("projects.featured.description")}
           action={
             <Button asChild variant="outline" size="sm">
               <Link to="/skills">
@@ -344,8 +352,8 @@ export default function Projects() {
       <PageSection>
         <SectionHeading
           index="03"
-          eyebrow="Composition"
-          title="Where the budget and the attention actually went"
+          eyebrow={t("projects.composition.eyebrow")}
+          title={t("projects.composition.title")}
           description="The two charts below use the same data from different angles, so the claims about where I focus can be checked."
         />
 
@@ -368,7 +376,7 @@ export default function Projects() {
                 Number of projects and total budget per kind
               </p>
               <ul className="mt-5 space-y-4 pl-2">
-                {KIND_COUNT.map((row) => (
+                {kindCount.map((row) => (
                   <li key={row.kind} className="flex items-start gap-3">
                     <span
                       aria-hidden
@@ -417,9 +425,9 @@ export default function Projects() {
       <PageSection className="border-t border-border bg-card/25">
         <SectionHeading
           index="04"
-          eyebrow="Full file"
-          title="Every project in one filterable table"
-          description="Search, sort by column, or filter by kind, status, and year. Everything runs in your browser."
+          eyebrow={t("projects.table.eyebrow")}
+          title={t("projects.table.title")}
+          description={t("projects.table.description")}
         />
         <Reveal className="mt-10">
           <ProjectTable />

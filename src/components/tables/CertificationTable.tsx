@@ -3,11 +3,8 @@ import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/tables/DataTable";
 import { nf } from "@/lib/utils";
-import { certifications, type Certification } from "@/data/portfolio";
-
-const DOMAIN_OPTIONS = [...new Set(certifications.map((c) => c.domain))];
-const STATUS_OPTIONS = [...new Set(certifications.map((c) => c.status))];
-const ISSUER_OPTIONS = [...new Set(certifications.map((c) => c.issuer))].sort();
+import { useEntries } from "@/entries/EntriesProvider";
+import type { Certification } from "@/data/portfolio";
 
 function formatMonth(iso: string | null) {
   if (!iso) return "no expiry";
@@ -130,6 +127,13 @@ const columns: ColumnDef<Certification, unknown>[] = [
  * as context for the learning investment, not to show off numbers.
  */
 export function CertificationTable() {
+  const { certifications } = useEntries();
+
+  // Domains and issuers are free text, so the filters follow the stored rows.
+  const domains = [...new Set(certifications.map((c) => c.domain))];
+  const statuses = [...new Set(certifications.map((c) => c.status))];
+  const issuers = [...new Set(certifications.map((c) => c.issuer))].sort();
+
   return (
     <DataTable
       data={certifications}
@@ -138,9 +142,9 @@ export function CertificationTable() {
       pageSize={8}
       footnote="Credential IDs can be copied for verification"
       facets={[
-        { columnId: "domain", label: "Domain", options: DOMAIN_OPTIONS },
-        { columnId: "status", label: "Status", options: STATUS_OPTIONS },
-        { columnId: "issuer", label: "Issuer", options: ISSUER_OPTIONS },
+        { columnId: "domain", label: "Domain", options: domains },
+        { columnId: "status", label: "Status", options: statuses },
+        { columnId: "issuer", label: "Issuer", options: issuers },
       ]}
     />
   );

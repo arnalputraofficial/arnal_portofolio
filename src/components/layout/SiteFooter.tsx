@@ -4,33 +4,29 @@ import { profile } from "@/data/portfolio";
 import { navItems } from "@/components/layout/SiteHeader";
 import { Marquee } from "@/components/fx/Marquee";
 import { Separator } from "@/components/ui/separator";
-
-const rollingItems = [
-  "Kubernetes",
-  "Terraform",
-  "PostgreSQL",
-  "Observability",
-  "ITIL 4",
-  "Budget Ownership",
-  "Team Mentoring",
-  "Network Security",
-  "Architecture Design",
-  "Guided On-call",
-];
+import { useSiteText } from "@/content/ContentProvider";
 
 export function SiteFooter() {
+  const t = useSiteText();
   const year = new Date().getFullYear();
+
+  const rollingItems = t("footer.rollingStrip")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   return (
     <footer className="relative z-10 mt-24 border-t border-border bg-ink-950 text-ink-100 dark:bg-ink-950">
-      <Marquee items={rollingItems} className="border-b border-ink-800 text-ink-300" />
+      {rollingItems.length > 0 ? (
+        <Marquee items={rollingItems} className="border-b border-ink-800 text-ink-300" />
+      ) : null}
 
       <div className="container grid gap-12 py-14 md:grid-cols-12">
         {/* Wide column: closing statement */}
         <div className="md:col-span-5">
           <p className="font-display text-2xl font-semibold leading-snug tracking-tight text-ink-50 text-balance sm:text-3xl">
-            Good systems do not feel heroic.
-            <span className="block text-ink-400">They just work, every single day.</span>
+            {t("footer.closing.line1")}
+            <span className="block text-ink-400">{t("footer.closing.line2")}</span>
           </p>
 
           <div className="mt-7 space-y-2.5">
@@ -44,18 +40,18 @@ export function SiteFooter() {
             </a>
             <p className="flex items-center gap-2 font-mono text-xs text-ink-400">
               <MapPin className="size-3.5" />
-              {profile.location}
+              {t("global.profile.location")}
             </p>
             <p className="flex items-center gap-2 font-mono text-xs text-ink-400">
               <Clock className="size-3.5" />
-              {profile.timezone}
+              {t("global.profile.timezone")}
             </p>
           </div>
         </div>
 
         {/* Navigation links */}
-        <nav className="md:col-span-3" aria-label="Site map">
-          <p className="eyebrow text-ink-500">Site Map</p>
+        <nav className="md:col-span-3" aria-label={t("footer.aria.map")}>
+          <p className="eyebrow text-ink-500">{t("footer.siteMap")}</p>
           <ul className="mt-5 space-y-2.5">
             {navItems.map((item) => (
               <li key={item.to}>
@@ -65,7 +61,7 @@ export function SiteFooter() {
                 >
                   <span className="font-mono text-[10px] text-ink-600">{item.index}</span>
                   <span className="border-b border-transparent transition-colors group-hover:border-rust-500">
-                    {item.label}
+                    {t(item.key)}
                   </span>
                 </Link>
               </li>
@@ -102,11 +98,9 @@ export function SiteFooter() {
 
       <div className="container flex flex-col gap-3 py-6 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-500 sm:flex-row sm:items-center sm:justify-between">
         <p>
-          &copy; {year} {profile.fullName}. Built by hand, run on purpose.
+          &copy; {year} {t("global.profile.fullName")}. {t("footer.copyright")}
         </p>
-        <p className="text-ink-600">
-          Project &amp; career data is sample content. Replace it in src/data/portfolio.ts
-        </p>
+        <p className="text-ink-600">{t("footer.dataNote")}</p>
       </div>
     </footer>
   );

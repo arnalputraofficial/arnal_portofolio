@@ -31,40 +31,12 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useVerifiedSkills } from "@/hooks/useVerifiedSkills";
 import { competencyMap, summarize, type VerifiedSkill } from "@/lib/tasteskill";
-import { career, certifications, projects, skills, type Skill } from "@/data/portfolio";
+import { useEntries } from "@/entries/EntriesProvider";
+import { useSiteText } from "@/content/ContentProvider";
+import type { Skill } from "@/data/portfolio";
 import { nf } from "@/lib/utils";
 
 const ALL = "__all__";
-
-const CATEGORIES = [...new Set(skills.map((s) => s.category))] as Skill["category"][];
-const totalSkills = skills.length;
-const avgLevel = Math.round(skills.reduce((acc, s) => acc + s.level, 0) / skills.length);
-const totalEvidence = skills.reduce((acc, s) => acc + s.evidence.length, 0);
-const latestYear = Math.max(...skills.map((s) => s.lastUsed));
-const deepest = [...skills].sort((a, b) => b.years - a.years)[0];
-
-/** Skills I have not touched in a while. Shown, not hidden. */
-const staleSkills = skills.filter((s) => s.lastUsed < latestYear);
-/** High claims with thin evidence: one link or fewer. */
-const thinClaims = skills.filter((s) => s.level >= 80 && s.evidence.length <= 1);
-
-/** Evidence can point to a project, a certification, or a role. */
-const EVIDENCE_LABEL = new Map<string, string>([
-  ...projects.map((p) => [p.id, p.name] as [string, string]),
-  ...certifications.map((c) => [c.id, c.name] as [string, string]),
-  ...career.map((r) => [r.id, r.title] as [string, string]),
-]);
-
-const CATEGORY_STATS = CATEGORIES.map((category) => {
-  const rows = skills.filter((s) => s.category === category);
-  return {
-    category,
-    count: rows.length,
-    avg: Math.round(rows.reduce((acc, s) => acc + s.level, 0) / rows.length),
-    maxYears: Math.max(...rows.map((s) => s.years)),
-    evidence: rows.reduce((acc, s) => acc + s.evidence.length, 0),
-  };
-}).sort((a, b) => b.avg - a.avg);
 
 /** Registry read time, formatted by hand so it does not depend on the newest Intl options. */
 function stamp(iso: string) {
@@ -81,7 +53,7 @@ function tierVariant(tier: string): BadgeProps["variant"] {
   return "muted";
 }
 
-function SkillCard({ skill }: { skill: Skill }) {
+function SkillCard({ skill, labels }: { skill: Skill; labels: Map<string, string> }) {
   return (
     <article className="panel flex h-full flex-col p-5">
       <div className="flex items-start justify-between gap-3">
@@ -113,7 +85,7 @@ function SkillCard({ skill }: { skill: Skill }) {
         <div className="mt-2 flex flex-wrap gap-1.5">
           {skill.evidence.map((id) => (
             <Badge key={id} variant="outline" size="sm">
-              {EVIDENCE_LABEL.get(id) ?? id}
+              {labels.get(id) ?? id}
             </Badge>
           ))}
         </div>
@@ -122,12 +94,12 @@ function SkillCard({ skill }: { skill: Skill }) {
   );
 }
 
-function SkillGrid({ rows }: { rows: Skill[] }) {
+function SkillGrid({ rows, labels }: { rows: Skill[]; labels: Map<string, string> }) {
   return (
     <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" stagger={0.04}>
       {rows.map((skill) => (
         <RevealItem key={skill.id} className="h-full">
-          <SkillCard skill={skill} />
+          <SkillCard skill={skill} labels={labels} />
         </RevealItem>
       ))}
     </RevealGroup>
@@ -299,36 +271,75 @@ function RegistryPanel() {
 }
 
 export default function Skills() {
+  const t = useSiteText();
   const [tab, setTab] = useState<string>(ALL);
+  const { career, certifications, projects, skills } = useEntries();
+
+  const categories = [...new Set(skills.map((s) => s.category))] as Skill["category"][];
+  const totalSkills = skills.length;
+  const avgLevel =
+    totalSkills > 0 ? Math.round(skills.reduce((acc, s) => acc + s.level, 0) / totalSkills) : 0;
+  const totalEvidence = skills.reduce((acc, s) => acc + s.evidence.length, 0);
+  const latestYear = skills.length > 0 ? Math.max(...skills.map((s) => s.lastUsed)) : 0;
+  const deepest = [...skills].sort((a, b) => b.years - a.years)[0] ?? null;
+
+  /** Skills I have not touched in a while. Shown, not hidden. */
+  const staleSkills = skills.filter((s) => s.lastUsed < latestYear);
+  /** Oldest year among the stale skills, for the honesty note below. */
+  const staleFrom =
+    staleSkills.length > 0 ? Math.min(...staleSkills.map((s) => s.lastUsed)) : latestYear;
+  /** High claims with thin evidence: one link or fewer. */
+  const thinClaims = skills.filter((s) => s.level >= 80 && s.evidence.length <= 1);
+
+  /** Evidence can point to a project, a certification, or a role. */
+  const evidenceLabel = new Map<string, string>([
+    ...projects.map((p) => [p.id, p.name] as [string, string]),
+    ...certifications.map((c) => [c.id, c.name] as [string, string]),
+    ...career.map((r) => [r.id, r.title] as [string, string]),
+  ]);
+
+  const categoryStats = categories
+    .map((category) => {
+      const rows = skills.filter((s) => s.category === category);
+      return {
+        category,
+        count: rows.length,
+        avg: Math.round(rows.reduce((acc, s) => acc + s.level, 0) / rows.length),
+        maxYears: Math.max(...rows.map((s) => s.years)),
+        evidence: rows.reduce((acc, s) => acc + s.evidence.length, 0),
+      };
+    })
+    .sort((a, b) => b.avg - a.avg);
+
   const visible = tab === ALL ? skills : skills.filter((s) => s.category === tab);
 
   return (
     <>
       <PageIntro
         index="04"
-        eyebrow="Skills File"
-        title={`${totalSkills} skills, ${staleSkills.length} of which I flag as rarely used`}
-        lead="Not every row on this page stands as tall as the others, and that is deliberate. The rating numbers here come from me. Data that comes from a third-party registry is kept separate at the bottom so the two never blend."
+        eyebrow={t("skills.eyebrow")}
+        title={t("skills.title")}
+        lead={t("skills.lead")}
       >
         <StatStrip
           items={[
             {
-              label: "Skills tracked",
+              label: t("skills.stat.tracked"),
               value: <Counter value={totalSkills} />,
-              hint: `${CATEGORIES.length} categories, from leadership to operations`,
+              hint: `${categories.length} categories, from leadership to operations`,
             },
             {
-              label: "Average rating",
+              label: t("skills.stat.rating"),
               value: `${avgLevel}/100`,
               hint: "Self-rated, not the result of third-party testing",
             },
             {
-              label: "Longest track record",
-              value: <Counter value={deepest.years} suffix=" yrs" />,
-              hint: `${deepest.name}, last used ${deepest.lastUsed}`,
+              label: t("skills.stat.longest"),
+              value: <Counter value={deepest?.years ?? 0} suffix=" yrs" />,
+              hint: deepest ? `${deepest.name}, last used ${deepest.lastUsed}` : undefined,
             },
             {
-              label: "Evidence links",
+              label: t("skills.stat.evidence"),
               value: <Counter value={totalEvidence} suffix=" links" />,
               hint: "Pointing to projects, certificates, or roles",
             },
@@ -340,8 +351,8 @@ export default function Skills() {
       <PageSection>
         <SectionHeading
           index="01"
-          eyebrow="Spread"
-          title="Where my claims are strong, and where the evidence is still thin"
+          eyebrow={t("skills.spread.eyebrow")}
+          title={t("skills.spread.title")}
           description="The first chart compares the self rating against the amount of evidence in each category. If those two lines sit far apart, it means I rate myself higher than the amount of work I can actually show."
         />
 
@@ -399,16 +410,16 @@ export default function Skills() {
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
           index="02"
-          eyebrow="Self rating"
-          title="Thirty skills, filtered by the kind of work"
-          description="Each card shows the level, years of experience, last year used, and evidence links. Pick a category to narrow the view."
+          eyebrow={t("skills.selfrating.eyebrow")}
+          title={t("skills.selfrating.title", { count: String(totalSkills) })}
+          description={t("skills.selfrating.description")}
         />
 
         <Reveal className="mt-10">
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
               <TabsTrigger value={ALL}>All ({totalSkills})</TabsTrigger>
-              {CATEGORIES.map((category) => (
+              {categories.map((category) => (
                 <TabsTrigger key={category} value={category}>
                   {category} ({skills.filter((s) => s.category === category).length})
                 </TabsTrigger>
@@ -416,7 +427,7 @@ export default function Skills() {
             </TabsList>
 
             <TabsContent value={tab}>
-              <SkillGrid rows={visible} />
+              <SkillGrid rows={visible} labels={evidenceLabel} />
             </TabsContent>
           </Tabs>
         </Reveal>
@@ -435,7 +446,7 @@ export default function Skills() {
               <div>
                 <span className="eyebrow">rarely used</span>
                 <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-                  {staleSkills.length} skills were last used in {latestYear - 1}. I still consider
+                  {staleSkills.length} skills were last used in {staleFrom}. I still consider
                   all of them alive, but calling them "currently active" would be a stretch.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
@@ -477,9 +488,9 @@ export default function Skills() {
       <PageSection>
         <SectionHeading
           index="03"
-          eyebrow="Third-party registry"
-          title="Verified skills, shown as they are"
-          description="This section pulls data from a public skill registry, not from my own rating. If the registry cannot be reached, the panel will say so plainly."
+          eyebrow={t("skills.registry.eyebrow")}
+          title={t("skills.registry.title")}
+          description={t("skills.registry.description")}
         />
 
         <Reveal className="mt-10">
@@ -552,7 +563,7 @@ export default function Skills() {
                 Sorted by highest average rating
               </p>
               <ul className="mt-5 space-y-4">
-                {CATEGORY_STATS.map((row) => (
+                {categoryStats.map((row) => (
                   <li key={row.category}>
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="font-display text-[14px] font-medium tracking-tight">

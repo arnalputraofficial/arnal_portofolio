@@ -2,10 +2,10 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/tables/DataTable";
 import { humanDuration, monthsBetween } from "@/lib/utils";
-import { career, type Role } from "@/data/portfolio";
+import { useEntries } from "@/entries/EntriesProvider";
+import type { Role } from "@/data/portfolio";
 
-const LEVEL_OPTIONS = [...new Set(career.map((r) => r.level))];
-const SECTOR_OPTIONS = [...new Set(career.map((r) => r.sector))];
+const LEVEL_OPTIONS = ["IC", "Lead", "SPV", "Manager"];
 
 const columns: ColumnDef<Role, unknown>[] = [
   {
@@ -100,6 +100,11 @@ const columns: ColumnDef<Role, unknown>[] = [
 
 /** Job history as a sortable, filterable table. */
 export function CareerTable() {
+  const { career } = useEntries();
+
+  // Sectors are free text, so the filter list follows whatever is on screen.
+  const sectors = [...new Set(career.map((role) => role.sector))].sort();
+
   return (
     <DataTable
       data={career}
@@ -109,7 +114,7 @@ export function CareerTable() {
       emptyMessage="No role history matches this filter."
       facets={[
         { columnId: "level", label: "Level", options: LEVEL_OPTIONS },
-        { columnId: "sector", label: "Sector", options: SECTOR_OPTIONS },
+        { columnId: "sector", label: "Sector", options: sectors },
       ]}
     />
   );

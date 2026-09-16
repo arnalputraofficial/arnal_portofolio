@@ -6,7 +6,8 @@ import { SplitHeading } from "@/components/fx/Reveal";
 import { SpotlightCard } from "@/components/fx/SpotlightCard";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { projects } from "@/data/portfolio";
+import { useEntries } from "@/entries/EntriesProvider";
+import { useSiteText } from "@/content/ContentProvider";
 
 /** Seven routes that genuinely exist, not an invented list. */
 const ROUTES = [
@@ -19,12 +20,12 @@ const ROUTES = [
   { to: "/contact", index: "07", label: "Contact", hint: "Email, GitHub, and LinkedIn" },
 ];
 
-const SUGGESTIONS = [...projects]
-  .sort((a, b) => b.impact - a.impact)
-  .slice(0, 3);
-
 export default function NotFound() {
+  const t = useSiteText();
   const { pathname } = useLocation();
+  const { projects } = useEntries();
+
+  const suggestions = [...projects].sort((a, b) => b.impact - a.impact).slice(0, 3);
 
   return (
     <>
@@ -41,7 +42,7 @@ export default function NotFound() {
               <div className="flex items-center gap-4">
                 <span className="font-mono text-[12px] font-bold text-primary">404</span>
                 <span className="hairline flex-1" />
-                <span className="eyebrow">page not found</span>
+                <span className="eyebrow">{t("notfound.eyebrow")}</span>
               </div>
 
               <p
@@ -52,12 +53,11 @@ export default function NotFound() {
               </p>
 
               <h1 className="mt-4 max-w-2xl font-display text-3xl font-semibold leading-[1.06] tracking-tight text-balance sm:text-4xl lg:text-5xl">
-                <SplitHeading text="The address you are after is not in this file" />
+                <SplitHeading text={t("notfound.title")} />
               </h1>
 
               <p className="mt-6 max-w-xl text-[16px] leading-relaxed text-muted-foreground text-pretty">
-                There is no page at that address. Instead of an empty apology, I am showing you the
-                seven routes you can actually open.
+                {t("notfound.lead")}
               </p>
 
               <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -67,7 +67,7 @@ export default function NotFound() {
                 <Button asChild size="sm">
                   <Link to="/">
                     <ArrowLeft className="size-4" aria-hidden />
-                    Back to home
+                    {t("notfound.cta")}
                   </Link>
                 </Button>
               </div>
@@ -94,7 +94,7 @@ export default function NotFound() {
                   shortcuts
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {SUGGESTIONS.map((project) => (
+                  {suggestions.map((project) => (
                     <Link
                       key={project.id}
                       to="/projects"
@@ -114,7 +114,7 @@ export default function NotFound() {
         <div className="flex items-center gap-4">
           <Compass className="size-4 text-primary" aria-hidden />
           <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">
-            Every page that is available
+            {t("notfound.available.title")}
           </h2>
           <span aria-hidden className="hairline flex-1" />
         </div>
@@ -151,11 +151,10 @@ export default function NotFound() {
             <div className="flex h-full flex-col gap-3 bg-card p-6">
               <FileQuestion className="size-4 text-muted-foreground" aria-hidden />
               <span className="font-display text-lg font-semibold tracking-tight text-muted-foreground">
-                beyond these
+                {t("notfound.beyond.title")}
               </span>
               <span className="mt-auto text-[13px] leading-relaxed text-muted-foreground">
-                There is no other page. This site is deliberately capped at seven routes so that
-                nothing dangles without an end.
+                {t("notfound.beyond.body")}
               </span>
             </div>
           </RevealItem>
@@ -164,8 +163,7 @@ export default function NotFound() {
         <Reveal className="mt-10">
           <div className="panel flex flex-col gap-6 p-8 sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-xl text-[15px] leading-relaxed text-muted-foreground text-pretty">
-              If you ended up here through a link from somewhere else, I want to know. Send me the
-              origin address so I can fix it.
+              {t("notfound.report.body")}
             </p>
             <Button asChild variant="outline">
               <Link to="/contact">
