@@ -68,10 +68,10 @@ export function SiteHeader() {
             </span>
             <span className="hidden leading-none sm:block">
               <span className="block font-display text-[15px] font-semibold tracking-tight">
-                {profile.fullName}
+                {t("global.profile.fullName", { name: profile.fullName })}
               </span>
               <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                {profile.role}
+                {t("global.profile.role")}
               </span>
             </span>
           </Link>
@@ -180,7 +180,7 @@ export function SiteHeader() {
                   href={profile.socials[2].href}
                   className="font-mono text-[12px] uppercase tracking-[0.12em] text-primary"
                 >
-                  {profile.email}
+                  {t("global.profile.email")}
                 </a>
               </div>
             </nav>

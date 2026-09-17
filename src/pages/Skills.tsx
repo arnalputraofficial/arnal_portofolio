@@ -38,6 +38,9 @@ import { nf } from "@/lib/utils";
 
 const ALL = "__all__";
 
+/** Host name of the third-party registry, used inside the editable copy. */
+const REGISTRY_SITE = "verified-skill.com";
+
 /** Registry read time, formatted by hand so it does not depend on the newest Intl options. */
 function stamp(iso: string) {
   const d = new Date(iso);
@@ -54,6 +57,7 @@ function tierVariant(tier: string): BadgeProps["variant"] {
 }
 
 function SkillCard({ skill, labels }: { skill: Skill; labels: Map<string, string> }) {
+  const t = useSiteText();
   return (
     <article className="panel flex h-full flex-col p-5">
       <div className="flex items-start justify-between gap-3">
@@ -69,19 +73,22 @@ function SkillCard({ skill, labels }: { skill: Skill; labels: Map<string, string
         value={skill.level}
         className="mt-3 h-1.5"
         indicatorClassName={skill.level >= 85 ? "bg-primary" : "bg-foreground/45"}
-        aria-label={`Self rating for ${skill.name}: ${skill.level} out of 100`}
+        aria-label={t("skills.card.rating.label", {
+          name: skill.name,
+          value: skill.level,
+        })}
       />
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <Clock className="size-3.5" aria-hidden />
-          {skill.years} yrs
+          {t("skills.card.years", { count: skill.years })}
         </span>
-        <span>last used {skill.lastUsed}</span>
+        <span>{t("skills.card.lastUsed", { year: skill.lastUsed })}</span>
       </div>
 
       <div className="mt-auto pt-4">
-        <span className="eyebrow">evidence</span>
+        <span className="eyebrow">{t("skills.card.evidence")}</span>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {skill.evidence.map((id) => (
             <Badge key={id} variant="outline" size="sm">
@@ -107,6 +114,7 @@ function SkillGrid({ rows, labels }: { rows: Skill[]; labels: Map<string, string
 }
 
 function RegistrySkillRow({ skill }: { skill: VerifiedSkill }) {
+  const t = useSiteText();
   return (
     <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div className="min-w-0">
@@ -120,7 +128,7 @@ function RegistrySkillRow({ skill }: { skill: VerifiedSkill }) {
           </Badge>
           {skill.tainted && (
             <Badge variant="danger" size="sm">
-              flagged
+              {t("skills.entry.flagged")}
             </Badge>
           )}
         </div>
@@ -130,15 +138,15 @@ function RegistrySkillRow({ skill }: { skill: VerifiedSkill }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-5 font-mono text-[11px] tabular-nums text-muted-foreground">
-        <span className="flex items-center gap-1.5" title="Certification score">
+        <span className="flex items-center gap-1.5" title={t("skills.entry.score.title")}>
           <Gauge className="size-3.5" aria-hidden />
           {skill.certScore}
         </span>
-        <span className="flex items-center gap-1.5" title="Repository stars">
+        <span className="flex items-center gap-1.5" title={t("skills.entry.stars.title")}>
           <Star className="size-3.5" aria-hidden />
           {nf(skill.stars)}
         </span>
-        <span className="flex items-center gap-1.5" title="Repository forks">
+        <span className="flex items-center gap-1.5" title={t("skills.entry.forks.title")}>
           <GitFork className="size-3.5" aria-hidden />
           {nf(skill.forks)}
         </span>
@@ -152,6 +160,7 @@ function RegistrySkillRow({ skill }: { skill: VerifiedSkill }) {
  * state is never replaced with made-up numbers.
  */
 function RegistryPanel() {
+  const t = useSiteText();
   const { state, refresh, refreshing } = useVerifiedSkills();
 
   if (state.status === "idle" || state.status === "loading") {
@@ -159,11 +168,10 @@ function RegistryPanel() {
       <div className="panel-flagged p-6 pl-8 sm:p-8">
         <p className="eyebrow flex items-center gap-2">
           <RefreshCw className="size-3.5 animate-spin text-primary" aria-hidden />
-          contacting registry
+          {t("skills.registry.loading.title")}
         </p>
         <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
-          Fetching the verified skill list from verified-skill.com. This page shows no
-          numbers at all until the answer actually arrives.
+          {t("skills.registry.loading.body", { site: REGISTRY_SITE })}
         </p>
       </div>
     );
@@ -174,14 +182,16 @@ function RegistryPanel() {
       <div className="panel-flagged p-6 pl-8 sm:p-8">
         <p className="eyebrow flex items-center gap-2">
           <WifiOff className="size-3.5 text-primary" aria-hidden />
-          registry unreachable
+          {t("skills.registry.offline.title")}
         </p>
         <p className="mt-3 max-w-2xl font-display text-lg font-semibold leading-snug tracking-tight sm:text-xl">
-          Third-party data failed to load, so I left this section empty.
+          {t("skills.registry.offline.lead")}
         </p>
         <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
-          Cause: {state.reason}. Last attempt {stamp(state.fetchedAt)}. I would rather show
-          an empty panel than fill in verification numbers I never received.
+          {t("skills.registry.offline.body", {
+            reason: state.reason,
+            stamp: stamp(state.fetchedAt),
+          })}
         </p>
         <Button
           variant="outline"
@@ -191,7 +201,9 @@ function RegistryPanel() {
           disabled={refreshing}
         >
           <RefreshCw className={refreshing ? "animate-spin" : undefined} aria-hidden />
-          {refreshing ? "Contacting" : "Try again"}
+          {refreshing
+            ? t("skills.registry.offline.trying")
+            : t("skills.registry.offline.tryAgain")}
         </Button>
       </div>
     );
@@ -206,26 +218,31 @@ function RegistryPanel() {
           <div>
             <p className="eyebrow flex items-center gap-2">
               <ShieldCheck className="size-3.5 text-primary" aria-hidden />
-              registry reachable
+              {t("skills.registry.ok.title")}
             </p>
             <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
-              The numbers below are read straight from the verified-skill.com API response on{" "}
-              {stamp(state.fetchedAt)}, with no edits from me. Largest category right now:{" "}
-              {s.topCategory}.
+              {t("skills.registry.source", {
+                site: REGISTRY_SITE,
+                stamp: stamp(state.fetchedAt),
+                category: s.topCategory,
+              })}
             </p>
           </div>
           <Button variant="ghost" size="sm" onClick={refresh} disabled={refreshing}>
             <RefreshCw className={refreshing ? "animate-spin" : undefined} aria-hidden />
-            Refresh
+            {t("skills.registry.refresh")}
           </Button>
         </div>
 
         <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-notch border border-border bg-border lg:grid-cols-4">
           {[
-            { label: "Entries read", value: nf(s.total) },
-            { label: "Certified ratio", value: `${Math.round(s.verifiedRatio * 100)}%` },
-            { label: "Average score", value: nf(s.avgScore, 1) },
-            { label: "Average trust", value: nf(s.avgTrust, 1) },
+            { label: t("skills.registry.stat.entries"), value: nf(s.total) },
+            {
+              label: t("skills.registry.stat.ratio"),
+              value: `${Math.round(s.verifiedRatio * 100)}%`,
+            },
+            { label: t("skills.registry.stat.score"), value: nf(s.avgScore, 1) },
+            { label: t("skills.registry.stat.trust"), value: nf(s.avgTrust, 1) },
           ].map((item) => (
             <div key={item.label} className="bg-card px-4 py-3.5">
               <dt className="eyebrow">{item.label}</dt>
@@ -239,8 +256,7 @@ function RegistryPanel() {
         {s.tainted > 0 && (
           <p className="mt-4 flex items-start gap-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
             <AlertTriangle className="mt-px size-3.5 shrink-0 text-primary" aria-hidden />
-            {s.tainted} entries were flagged as problematic by the automated scanner. I do not filter
-            them out, so you can see them as they are.
+            {t("skills.registry.tainted", { count: s.tainted })}
           </p>
         )}
       </div>
@@ -248,10 +264,10 @@ function RegistryPanel() {
       <div className="panel">
         <div className="flex items-baseline justify-between gap-4 border-b border-border px-6 py-4">
           <h3 className="font-display text-base font-semibold tracking-tight">
-            List of entries read
+            {t("skills.entries.title")}
           </h3>
           <span className="font-mono text-[11px] text-muted-foreground">
-            {nf(state.skills.length)} entries
+            {t("skills.registry.entries.value", { count: nf(state.skills.length) })}
           </span>
         </div>
         <ul className="divide-y divide-border px-6">
@@ -261,8 +277,7 @@ function RegistryPanel() {
         </ul>
         {state.skills.length > 12 && (
           <p className="border-t border-border px-6 py-4 font-mono text-[11px] leading-relaxed text-muted-foreground">
-            Showing the first 12 entries, sorted by certification score. The rest follow the same
-            pattern.
+            {t("skills.entries.footnote")}
           </p>
         )}
       </div>
@@ -316,7 +331,7 @@ export default function Skills() {
   return (
     <>
       <PageIntro
-        index="04"
+        index={t("skills.intro.index")}
         eyebrow={t("skills.eyebrow")}
         title={t("skills.title")}
         lead={t("skills.lead")}
@@ -326,22 +341,27 @@ export default function Skills() {
             {
               label: t("skills.stat.tracked"),
               value: <Counter value={totalSkills} />,
-              hint: `${categories.length} categories, from leadership to operations`,
+              hint: t("skills.stat.tracked.hint", { count: categories.length }),
             },
             {
               label: t("skills.stat.rating"),
               value: `${avgLevel}/100`,
-              hint: "Self-rated, not the result of third-party testing",
+              hint: t("skills.stat.hint.rating"),
             },
             {
               label: t("skills.stat.longest"),
               value: <Counter value={deepest?.years ?? 0} suffix=" yrs" />,
-              hint: deepest ? `${deepest.name}, last used ${deepest.lastUsed}` : undefined,
+              hint: deepest
+                ? t("skills.stat.longest.hint", {
+                    name: deepest.name,
+                    year: deepest.lastUsed,
+                  })
+                : undefined,
             },
             {
               label: t("skills.stat.evidence"),
               value: <Counter value={totalEvidence} suffix=" links" />,
-              hint: "Pointing to projects, certificates, or roles",
+              hint: t("skills.stat.hint.evidence"),
             },
           ]}
         />
@@ -350,20 +370,20 @@ export default function Skills() {
       {/* 01 - spread */}
       <PageSection>
         <SectionHeading
-          index="01"
+          index={t("skills.section.spread.index")}
           eyebrow={t("skills.spread.eyebrow")}
           title={t("skills.spread.title")}
-          description="The first chart compares the self rating against the amount of evidence in each category. If those two lines sit far apart, it means I rate myself higher than the amount of work I can actually show."
+          description={t("skills.selfrating.note")}
         />
 
         <div className="mt-10 space-y-6">
           <Reveal>
             <ChartFrame
-              title="Balance of claim and evidence per category"
-              note="The rust line is the self rating, the dashed moss line is evidence strength normalized to the same scale."
+              title={t("skills.chart.radar.title")}
+              note={t("skills.chart.radar.note")}
               legend={[
-                { label: "Self rating", color: CHART_COLORS.rust },
-                { label: "Evidence strength", color: CHART_COLORS.moss },
+                { label: t("skills.chart.radar.series.rating"), color: CHART_COLORS.rust },
+                { label: t("skills.chart.radar.series.evidence"), color: CHART_COLORS.moss },
               ]}
             >
               <SkillBalanceRadar data={skills} />
@@ -373,12 +393,12 @@ export default function Skills() {
           <div className="grid gap-6 lg:grid-cols-12">
             <Reveal className="lg:col-span-7">
               <ChartFrame
-                title="Ten highest ratings"
-                note="Bar colour marks the band: deep rust above 85, rust above 75, moss for the rest."
+                title={t("skills.chart.top.title")}
+                note={t("skills.chart.top.note")}
                 legend={[
-                  { label: "85 and above", color: CHART_COLORS.rustDeep },
-                  { label: "75 to 84", color: CHART_COLORS.rust },
-                  { label: "below 75", color: CHART_COLORS.moss },
+                  { label: t("skills.chart.top.legend.high"), color: CHART_COLORS.rustDeep },
+                  { label: t("skills.chart.top.legend.mid"), color: CHART_COLORS.rust },
+                  { label: t("skills.chart.top.legend.low"), color: CHART_COLORS.moss },
                 ]}
               >
                 <TopSkillsBar data={skills} limit={10} />
@@ -387,8 +407,8 @@ export default function Skills() {
 
             <Reveal className="lg:col-span-5" delay={0.1}>
               <ChartFrame
-                title="Track record per category"
-                note="The highest figure in each category, not the average. One person who has spent nine years in a single area still shows up."
+                title={t("skills.chart.spread.title")}
+                note={t("skills.chart.spread.note")}
               >
                 <ExperienceSpreadChart />
               </ChartFrame>
@@ -397,8 +417,8 @@ export default function Skills() {
 
           <Reveal>
             <ChartFrame
-              title="Tools actually used in projects"
-              note="Only tools that appear in at least two projects. One-off tools are left out, so this chart does not turn into a wish list."
+              title={t("skills.chart.stack.title")}
+              note={t("skills.chart.stack.note")}
             >
               <StackUsageChart />
             </ChartFrame>
@@ -409,7 +429,7 @@ export default function Skills() {
       {/* 02 - self rating */}
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
-          index="02"
+          index={t("skills.section.selfrating.index")}
           eyebrow={t("skills.selfrating.eyebrow")}
           title={t("skills.selfrating.title", { count: String(totalSkills) })}
           description={t("skills.selfrating.description")}
@@ -418,7 +438,9 @@ export default function Skills() {
         <Reveal className="mt-10">
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
-              <TabsTrigger value={ALL}>All ({totalSkills})</TabsTrigger>
+              <TabsTrigger value={ALL}>
+                {t("skills.toggle.all", { count: String(totalSkills) })}
+              </TabsTrigger>
               {categories.map((category) => (
                 <TabsTrigger key={category} value={category}>
                   {category} ({skills.filter((s) => s.category === category).length})
@@ -436,18 +458,20 @@ export default function Skills() {
           <div className="panel-flagged p-6 pl-8 sm:p-8">
             <p className="eyebrow flex items-center gap-2">
               <AlertTriangle className="size-3.5 text-primary" aria-hidden />
-              honesty note
+              {t("skills.honesty.eyebrow")}
             </p>
             <p className="mt-3 max-w-3xl font-display text-lg font-semibold leading-snug tracking-tight sm:text-xl">
-              Two things on this page stop me from claiming I have mastered all of it.
+              {t("skills.honesty.title")}
             </p>
 
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
               <div>
-                <span className="eyebrow">rarely used</span>
+                <span className="eyebrow">{t("skills.honesty.stale.title")}</span>
                 <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-                  {staleSkills.length} skills were last used in {staleFrom}. I still consider
-                  all of them alive, but calling them "currently active" would be a stretch.
+                  {t("skills.honesty.stale.body", {
+                    count: staleSkills.length,
+                    year: staleFrom,
+                  })}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {staleSkills.map((skill) => (
@@ -459,10 +483,9 @@ export default function Skills() {
               </div>
 
               <div>
-                <span className="eyebrow">thin evidence</span>
+                <span className="eyebrow">{t("skills.honesty.thin.title")}</span>
                 <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-                  {thinClaims.length} skills I rate 80 or above, yet they only have one evidence
-                  link. High claim, short trail, and I show that as it is.
+                  {t("skills.honesty.thin.body", { count: thinClaims.length })}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {thinClaims.map((skill) => (
@@ -477,8 +500,7 @@ export default function Skills() {
             <Separator dashed className="my-6" />
 
             <p className="max-w-3xl font-mono text-[11px] leading-relaxed text-muted-foreground">
-              I deliberately did not inflate the ratings for skills with thin evidence. A portfolio
-              where every bar is full gives you no information at all.
+              {t("skills.honesty.footnote")}
             </p>
           </div>
         </Reveal>
@@ -487,7 +509,7 @@ export default function Skills() {
       {/* 03 - registry */}
       <PageSection>
         <SectionHeading
-          index="03"
+          index={t("skills.section.registry.index")}
           eyebrow={t("skills.registry.eyebrow")}
           title={t("skills.registry.title")}
           description={t("skills.registry.description")}
@@ -497,10 +519,7 @@ export default function Skills() {
           <div className="panel mb-6 flex items-start gap-3 p-5">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
             <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
-              One clarification so nobody misreads this: tasteskill.dev is not a skill data API
-              provider. The one with a real public API is the verified-skill.com registry, and that
-              is what I call. If you go looking for a person profile on tasteskill.dev, you will not
-              find one.
+              {t("skills.clarify.body")}
             </p>
           </div>
         </Reveal>
@@ -514,14 +533,13 @@ export default function Skills() {
             <div className="panel-flagged p-6 pl-8 sm:p-8">
               <p className="eyebrow flex items-center gap-2">
                 <BadgeCheck className="size-3.5 text-primary" aria-hidden />
-                translation
+                {t("skills.map.eyebrow")}
               </p>
               <p className="mt-3 max-w-2xl font-display text-lg font-semibold leading-snug tracking-tight sm:text-xl">
-                Four areas of work I connect to the registry results
+                {t("skills.map.title")}
               </p>
               <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
-                I wrote this mapping myself. The registry does not know what I do day to day, so the
-                links below are my own translation, not an automatic claim from any system.
+                {t("skills.map.body")}
               </p>
 
               <ul className="mt-6 space-y-5">
@@ -557,10 +575,10 @@ export default function Skills() {
           <Reveal className="lg:col-span-4" delay={0.1}>
             <div className="panel h-full p-5 sm:p-6">
               <h3 className="font-display text-base font-semibold tracking-tight">
-                Summary per category
+                {t("skills.summary.title")}
               </h3>
               <p className="mt-1 font-mono text-[11px] leading-relaxed text-muted-foreground">
-                Sorted by highest average rating
+                {t("skills.summary.note")}
               </p>
               <ul className="mt-5 space-y-4">
                 {categoryStats.map((row) => (
@@ -577,10 +595,17 @@ export default function Skills() {
                       value={row.avg}
                       className="mt-2 h-1.5"
                       indicatorClassName="bg-foreground/70"
-                      aria-label={`Average ${row.category}: ${row.avg} out of 100`}
+                      aria-label={t("skills.summary.row.aria", {
+                        category: row.category,
+                        value: row.avg,
+                      })}
                     />
                     <p className="mt-1.5 font-mono text-[11px] tabular-nums text-muted-foreground">
-                      {row.count} skills · {row.evidence} evidence links · longest {row.maxYears} yrs
+                      {t("skills.summary.row", {
+                        count: row.count,
+                        evidence: row.evidence,
+                        years: row.maxYears,
+                      })}
                     </p>
                   </li>
                 ))}
@@ -599,32 +624,31 @@ export default function Skills() {
               <div className="lg:col-span-8">
                 <p className="eyebrow flex items-center gap-2">
                   <Layers className="size-3.5 text-primary" aria-hidden />
-                  continued
+                  {t("skills.cta.eyebrow")}
                 </p>
                 <p className="mt-3 max-w-2xl font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-                  A skill without context is just a list of words. How I make decisions lives on
-                  the about page.
+                  {t("skills.cta.body")}
                 </p>
                 <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                   <li className="flex items-center gap-2">
                     <BadgeCheck className="size-3.5 text-moss-400" aria-hidden />
-                    Self ratings and registry numbers kept apart
+                    {t("skills.cta.point.apart")}
                   </li>
                   <li className="flex items-center gap-2">
                     <WifiOff className="size-3.5 text-primary" aria-hidden />
-                    Registry failure means an empty panel
+                    {t("skills.cta.point.offline")}
                   </li>
                 </ul>
               </div>
               <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">
                 <Button asChild>
                   <Link to="/about">
-                    Read the working principles
+                    {t("skills.cta.button.about")}
                     <ArrowRight className="size-4" aria-hidden />
                   </Link>
                 </Button>
                 <Button asChild variant="outline">
-                  <Link to="/contact">Get in touch</Link>
+                  <Link to="/contact">{t("skills.cta.button")}</Link>
                 </Button>
               </div>
             </div>

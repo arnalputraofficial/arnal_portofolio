@@ -142,7 +142,7 @@ export default function Credentials() {
   return (
     <>
       <PageIntro
-        index="05"
+        index={t("credentials.intro.index")}
         eyebrow={t("credentials.eyebrow")}
         title={t("credentials.title")}
         lead={t("credentials.lead")}
@@ -157,12 +157,17 @@ export default function Credentials() {
                   <span className="text-muted-foreground/60">/{certifications.length}</span>
                 </span>
               ),
-              hint: `${permanentCerts.length} of them have no expiry`,
+              hint: t("credentials.stat.active.hint", { count: permanentCerts.length }),
             },
             {
               label: t("credentials.stat.renewal"),
-              value: <Counter value={renewingCerts.length + expiringSoon.length} suffix=" items" />,
-              hint: `${expiredCerts.length} already past their expiry`,
+              value: (
+                <Counter
+                  value={renewingCerts.length + expiringSoon.length}
+                  suffix={t("credentials.stat.renewal.suffix")}
+                />
+              ),
+              hint: t("credentials.stat.renewal.hint", { count: expiredCerts.length }),
             },
             {
               label: t("credentials.stat.domains"),
@@ -171,8 +176,15 @@ export default function Credentials() {
             },
             {
               label: t("credentials.stat.investment"),
-              value: <Counter value={totalCost} decimals={1} prefix="Rp " suffix="m" />,
-              hint: "Out of my own pocket since 2018",
+              value: (
+                <Counter
+                  value={totalCost}
+                  decimals={1}
+                  prefix={t("credentials.stat.investment.prefix")}
+                  suffix={t("credentials.stat.investment.suffix")}
+                />
+              ),
+              hint: t("credentials.stat.investment.hint"),
             },
           ]}
         />
@@ -181,17 +193,17 @@ export default function Credentials() {
       {/* 01 - validity window */}
       <PageSection>
         <SectionHeading
-          index="01"
+          index={t("credentials.validity.index")}
           eyebrow={t("credentials.validity.eyebrow")}
           title={t("credentials.validity.title")}
-          description="This chart answers the question that comes up most in interviews: which ones are still valid, which ones need handling, and which ones have already lapsed."
+          description={t("credentials.validity.description")}
         />
 
         <div className="mt-10 grid gap-6 lg:grid-cols-12">
           <Reveal className="lg:col-span-8">
             <ChartFrame
-              title="Remaining validity per certificate"
-              note="Measured in months. A negative value means it has expired. Certificates with no expiry are drawn as a full bar."
+              title={t("credentials.validity.chart.title")}
+              note={t("credentials.validity.chart.note")}
               legend={domains.map((domain) => ({ label: domain, color: DOMAIN_COLOR[domain] }))}
             >
               <ResponsiveContainer width="100%" height={430}>
@@ -228,20 +240,28 @@ export default function Credentials() {
                         <TooltipShell
                           title={row.name}
                           rows={[
-                            { label: "Issuer", value: row.issuer },
-                            { label: "Domain", value: row.domain, color: row.color },
+                            { label: t("credentials.validity.tip.issuer"), value: row.issuer },
                             {
-                              label: "Valid until",
-                              value: row.expires ? row.expires.replace("-", "/") : "no expiry",
+                              label: t("credentials.validity.tip.domain"),
+                              value: row.domain,
+                              color: row.color,
                             },
                             {
-                              label: "Status",
+                              label: t("credentials.validity.tip.validUntil"),
+                              value: row.expires
+                                ? row.expires.replace("-", "/")
+                                : t("credentials.validity.tip.noExpiry"),
+                            },
+                            {
+                              label: t("credentials.validity.tip.status"),
                               value:
                                 row.left === null
-                                  ? "permanent"
+                                  ? t("credentials.validity.tip.permanent")
                                   : row.left > 0
-                                    ? `${row.left} months left`
-                                    : `${Math.abs(row.left)} months overdue`,
+                                    ? t("credentials.validity.tip.monthsLeft", { count: row.left })
+                                    : t("credentials.validity.tip.monthsOverdue", {
+                                        count: Math.abs(row.left),
+                                      }),
                               color: row.left !== null && row.left <= 0 ? CHART_COLORS.rustDeep : undefined,
                             },
                           ]}
@@ -272,10 +292,10 @@ export default function Credentials() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-display text-base font-semibold tracking-tight">
-                      Renewal agenda
+                      {t("credentials.validity.agenda.title")}
                     </h3>
                     <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                      next 12 months
+                      {t("credentials.validity.agenda.note")}
                     </p>
                   </div>
                   <CalendarClock className="size-4 shrink-0 text-primary" />
@@ -289,14 +309,16 @@ export default function Credentials() {
                   </ul>
                 ) : (
                   <p className="mt-4 text-[14px] leading-relaxed text-muted-foreground">
-                    No certificate comes due within the next twelve months.
+                    {t("credentials.validity.agenda.empty")}
                   </p>
                 )}
 
                 <Separator dashed className="mt-4" />
                 <p className="mt-4 font-mono text-[11px] leading-relaxed text-muted-foreground">
-                  {renewingCerts.length} certificates are mid-renewal:{" "}
-                  {renewingCerts.map((c) => c.name).join(", ")}.
+                  {t("credentials.validity.agenda.midRenewal", {
+                    count: renewingCerts.length,
+                    names: renewingCerts.map((c) => c.name).join(", "),
+                  })}
                 </p>
               </div>
             </Reveal>
@@ -304,10 +326,10 @@ export default function Credentials() {
             <Reveal delay={0.15}>
               <div className="panel p-5 sm:p-6">
                 <h3 className="font-display text-base font-semibold tracking-tight">
-                  Issuance rhythm
+                  {t("credentials.validity.rhythm.title")}
                 </h3>
                 <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                  Certificates per year of issue
+                  {t("credentials.validity.rhythm.note")}
                 </p>
                 <ul className="mt-5 space-y-3">
                   {issuance.map((row) => (
@@ -342,10 +364,10 @@ export default function Credentials() {
       {/* 02 - domain composition */}
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
-          index="02"
+          index={t("credentials.composition.index")}
           eyebrow={t("credentials.composition.eyebrow")}
           title={t("credentials.composition.title")}
-          description="This spread is deliberately uneven. Security and infrastructure dominate because those two are the most common source of operational failure everywhere I have worked."
+          description={t("credentials.composition.description")}
         />
 
         <div className="mt-10 grid gap-6 lg:grid-cols-12">
@@ -365,7 +387,10 @@ export default function Credentials() {
                       </h3>
                     </div>
                     <span className="font-mono text-[12px] tabular-nums text-muted-foreground">
-                      {row.count} of {certifications.length}
+                      {t("credentials.composition.share", {
+                        count: row.count,
+                        total: certifications.length,
+                      })}
                     </span>
                   </div>
 
@@ -373,11 +398,14 @@ export default function Credentials() {
                     value={(row.count / maxDomainCount) * 100}
                     className="mt-4 h-1.5"
                     indicatorClassName="bg-foreground/70"
-                    aria-label={`${row.count} certificates in ${row.domain}`}
+                    aria-label={t("credentials.composition.share.aria", {
+                      count: row.count,
+                      domain: row.domain,
+                    })}
                   />
 
                   <p className="mt-3 font-mono text-[11px] tabular-nums text-muted-foreground">
-                    Rp {nf(row.cost, 1)}m in exam fees
+                    {t("credentials.composition.cost", { amount: nf(row.cost, 1) })}
                   </p>
                 </div>
               </RevealItem>
@@ -388,22 +416,20 @@ export default function Credentials() {
             <div className="panel-flagged h-full p-5 pl-7 sm:p-6">
               <p className="eyebrow flex items-center gap-2">
                 <AlertTriangle className="size-3.5 text-primary" />
-                what is missing here
+                {t("credentials.composition.gap.eyebrow")}
               </p>
               <h3 className="mt-3 font-display text-lg font-semibold leading-snug tracking-tight">
-                No AI governance or advanced cloud architecture certificates
+                {t("credentials.composition.gap.title")}
               </h3>
               <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-                I have not taken either, and I would rather say so than pad the list
-                with short courses. What I have is experience running production
-                systems across branches, not a collection of badges.
+                {t("credentials.composition.gap.body")}
               </p>
               <Separator dashed className="my-5" />
               <ul className="space-y-2.5">
                 {[
-                  `${activeCerts.length} certificates still valid`,
-                  `${expiredCerts.length} expired and still shown here`,
-                  "Every credential ID can be checked independently",
+                  t("credentials.composition.gap.item.1", { count: activeCerts.length }),
+                  t("credentials.composition.gap.item.2", { count: expiredCerts.length }),
+                  t("credentials.composition.gap.item.3"),
                 ].map((line) => (
                   <li key={line} className="flex gap-2.5">
                     <BadgeCheck className="mt-0.5 size-4 shrink-0 text-moss-400" aria-hidden />
@@ -419,14 +445,14 @@ export default function Credentials() {
       {/* 03 - table */}
       <PageSection>
         <SectionHeading
-          index="03"
+          index={t("credentials.table.index")}
           eyebrow={t("credentials.table.eyebrow")}
           title={t("credentials.table.title")}
           description={t("credentials.table.description")}
           action={
             <Button asChild variant="outline" size="sm">
               <Link to="/skills">
-                Related skills
+                {t("credentials.related.button")}
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
@@ -447,27 +473,32 @@ export default function Credentials() {
             <div>
               <p className="eyebrow flex items-center gap-2">
                 <GraduationCap className="size-3.5 text-primary" />
-                continued
+                {t("credentials.cta.eyebrow")}
               </p>
               <p className="mt-3 max-w-xl font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-                A certificate is only the entry ticket. What carries the daily work lives
-                on the skills page, complete with the level of evidence behind it.
+                {t("credentials.cta.body")}
               </p>
               <p className="mt-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                 <Wallet className="size-3.5" />
-                Rp {nf(totalCost, 1)}m invested in {certifications.length}{" "}
-                {certifications.length === 1 ? "credential" : "credentials"}
+                {t("credentials.cta.invested", {
+                  amount: nf(totalCost, 1),
+                  count: certifications.length,
+                  noun:
+                    certifications.length === 1
+                      ? t("credentials.cta.noun.one")
+                      : t("credentials.cta.noun.many"),
+                })}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button asChild>
                 <Link to="/skills">
-                  Check the skills
+                  {t("credentials.cta.button.skills")}
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link to="/contact">Ask about credentials</Link>
+                <Link to="/contact">{t("credentials.cta.button.contact")}</Link>
               </Button>
             </div>
           </div>

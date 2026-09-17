@@ -35,11 +35,11 @@ export default function Career() {
   return (
     <>
       <PageIntro
-        index="02"
+        index={t("career.intro.index")}
         eyebrow={t("career.eyebrow")}
         title={
           career.length > 0
-            ? `${Math.round(totalMonths / 12)} years from fixing tickets to owning the budget`
+            ? t("career.title.withData", { years: Math.round(totalMonths / 12) })
             : t("career.title")
         }
         lead={t("career.lead")}
@@ -48,21 +48,29 @@ export default function Career() {
           items={[
             {
               label: t("career.stat.tenure"),
-              value: <Counter value={Math.round(totalMonths / 12)} suffix=" yrs" />,
-              hint: `${totalMonths} months since ${firstYear}`,
+              value: (
+                <Counter
+                  value={Math.round(totalMonths / 12)}
+                  suffix={t("career.stat.tenure.suffix")}
+                />
+              ),
+              hint: t("career.stat.tenure.hint", { months: totalMonths, year: firstYear }),
             },
             {
               label: t("career.stat.leadership"),
-              value: `${ledRoles.length} of ${career.length}`,
-              hint: "SPV, Lead, and senior technical roles",
+              value: t("career.stat.leadership.value", {
+                led: ledRoles.length,
+                total: career.length,
+              }),
+              hint: t("career.stat.leadership.hint"),
             },
             {
               label: t("career.stat.peakTeam"),
-              value: <Counter value={peakTeam} suffix=" people" />,
-              hint: "Direct reports, not the whole division",
+              value: <Counter value={peakTeam} suffix={t("career.stat.peakTeam.suffix")} />,
+              hint: t("career.stat.peakTeam.hint"),
             },
             {
-              label: "Sectors covered",
+              label: t("career.stat.sectors"),
               value: `${sectors.length}`,
               hint: sectors.join(" · "),
             },
@@ -73,7 +81,7 @@ export default function Career() {
       {/* ------------------------------------------------------------- charts */}
       <PageSection>
         <SectionHeading
-          index="01"
+          index={t("career.section.shape.index")}
           eyebrow={t("career.shape.eyebrow")}
           title={t("career.shape.title")}
           description={t("career.shape.description")}
@@ -85,8 +93,8 @@ export default function Career() {
               title={t("career.chart.tenure.title")}
               note={t("career.chart.tenure.note")}
               legend={[
-                { label: "Individual contributor", color: CHART_COLORS.moss },
-                { label: "Leading a team", color: CHART_COLORS.rust },
+                { label: t("career.chart.tenure.legend.ic"), color: CHART_COLORS.moss },
+                { label: t("career.chart.tenure.legend.lead"), color: CHART_COLORS.rust },
               ]}
             >
               <CareerTenureChart />
@@ -98,8 +106,8 @@ export default function Career() {
               title={t("career.chart.scope.title")}
               note={t("career.chart.scope.note")}
               legend={[
-                { label: "Leading people", color: CHART_COLORS.rust },
-                { label: "Purely technical", color: CHART_COLORS.moss },
+                { label: t("career.chart.scope.legend.people"), color: CHART_COLORS.rust },
+                { label: t("career.chart.scope.legend.technical"), color: CHART_COLORS.moss },
               ]}
             >
               <RoleScopeScatter />
@@ -111,7 +119,7 @@ export default function Career() {
       {/* ------------------------------------------------------------ timeline */}
       <PageSection className="pt-0">
         <SectionHeading
-          index="02"
+          index={t("career.section.timeline.index")}
           eyebrow={t("career.timeline.eyebrow")}
           title={t("career.timeline.title")}
           description={t("career.timeline.description")}
@@ -134,7 +142,7 @@ export default function Career() {
                         </span>
                         <span aria-hidden className="hairline flex-1" />
                         <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                          {role.end ? role.end.replace("-", "/") : "now"}
+                          {role.end ? role.end.replace("-", "/") : t("career.timeline.period.now")}
                         </span>
                       </div>
 
@@ -146,10 +154,12 @@ export default function Career() {
                         <Badge variant={levelVariant(role.level)}>{role.level}</Badge>
                         {isCurrent && (
                           <Badge variant="moss" dot>
-                            running
+                            {t("career.timeline.badge.current")}
                           </Badge>
                         )}
-                        {index === 0 && <Badge variant="solid">latest</Badge>}
+                        {index === 0 && (
+                          <Badge variant="solid">{t("career.timeline.badge.latest")}</Badge>
+                        )}
                       </div>
                     </div>
 
@@ -207,7 +217,7 @@ export default function Career() {
       {/* --------------------------------------------------------------- table */}
       <PageSection className="pt-0">
         <SectionHeading
-          index="03"
+          index={t("career.table.index")}
           eyebrow={t("career.table.eyebrow")}
           title={t("career.table.title")}
           description={t("career.table.description")}
@@ -224,22 +234,21 @@ export default function Career() {
             <div>
               <p className="eyebrow flex items-center gap-2">
                 <TrendingUp className="size-3.5 text-primary" />
-                continued
+                {t("career.cta.eyebrow")}
               </p>
               <p className="mt-3 max-w-xl font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-                This history is only the frame. The evidence of the work lives on the projects and
-                skills pages.
+                {t("career.cta.body")}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button asChild>
                 <Link to="/projects">
-                  View projects
+                  {t("career.cta.button.projects")}
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link to="/skills">Check the skills</Link>
+                <Link to="/skills">{t("career.cta.button.skills")}</Link>
               </Button>
             </div>
           </div>

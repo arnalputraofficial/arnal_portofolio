@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useSiteText } from "@/content/ContentProvider";
 
 /** Sentinel value for the "all" option in a filter. */
 const ALL = "__all__";
@@ -68,12 +69,13 @@ interface DataTableProps<TData> {
 export function DataTable<TData>({
   columns,
   data,
-  searchHint = "Search across all columns",
+  searchHint,
   facets = [],
   pageSize = 8,
-  emptyMessage = "No rows match this filter.",
+  emptyMessage,
   footnote,
 }: DataTableProps<TData>) {
+  const t = useSiteText();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
@@ -103,6 +105,9 @@ export function DataTable<TData>({
   const rows = table.getRowModel().rows;
   const total = table.getFilteredRowModel().rows.length;
   const activeFilters = columnFilters.length + (globalFilter ? 1 : 0);
+  /** Falls back to the shared copy so a table only overrides it when needed. */
+  const resolvedSearchHint = searchHint ?? t("global.table.search");
+  const resolvedEmptyMessage = emptyMessage ?? t("global.table.empty");
 
   const resetAll = () => {
     setGlobalFilter("");
@@ -122,15 +127,15 @@ export function DataTable<TData>({
           <Input
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            placeholder={searchHint}
-            aria-label={searchHint}
+            placeholder={resolvedSearchHint}
+            aria-label={resolvedSearchHint}
             className="pl-10 pr-10"
           />
           {globalFilter && (
             <button
               type="button"
               onClick={() => setGlobalFilter("")}
-              aria-label="Clear search"
+              aria-label={t("global.table.clearSearch")}
               className="absolute right-2.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <X className="size-3.5" />
@@ -149,11 +154,16 @@ export function DataTable<TData>({
                   value={value}
                   onValueChange={(v) => column?.setFilterValue(v === ALL ? undefined : v)}
                 >
-                  <SelectTrigger className="h-10 w-[168px]" aria-label={`Filter by ${facet.label}`}>
+                  <SelectTrigger
+                    className="h-10 w-[168px]"
+                    aria-label={t("global.table.filterBy", { label: facet.label })}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ALL}>All {facet.label.toLowerCase()}</SelectItem>
+                    <SelectItem value={ALL}>
+                      {t("global.table.all", { label: facet.label.toLowerCase() })}
+                    </SelectItem>
                     {facet.options.map((opt) => (
                       <SelectItem key={opt} value={opt}>
                         {opt}
@@ -173,7 +183,7 @@ export function DataTable<TData>({
             className="gap-2"
           >
             <RotateCcw className="size-3.5" />
-            Reset
+            {t("global.table.reset")}
           </Button>
         </div>
       </div>
@@ -229,9 +239,9 @@ export function DataTable<TData>({
           {rows.length === 0 ? (
             <TableRow className="hover:bg-transparent">
               <TableCell colSpan={columns.length} className="py-14 text-center">
-                <p className="font-display text-base font-medium">{emptyMessage}</p>
+                <p className="font-display text-base font-medium">{resolvedEmptyMessage}</p>
                 <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                  Try loosening the filters or the keyword
+                  {t("global.table.emptyHint")}
                 </p>
               </TableCell>
             </TableRow>
@@ -252,8 +262,8 @@ export function DataTable<TData>({
       {/* ---- footer: count, page, navigation ---- */}
       <div className="flex flex-col gap-3 border-t border-border p-4 pl-6 sm:flex-row sm:items-center sm:justify-between">
         <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-          Showing {rows.length} of {total} rows
-          {activeFilters > 0 && `, ${activeFilters} active filters`}
+          {t("global.table.showing", { shown: rows.length, total })}
+          {activeFilters > 0 && t("global.table.activeFilters", { count: activeFilters })}
         </p>
 
         <div className="flex items-center gap-3">
@@ -263,7 +273,10 @@ export function DataTable<TData>({
             </span>
           )}
           <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-            Page {pagination.pageIndex + 1} / {Math.max(1, table.getPageCount())}
+            {t("global.table.page", {
+              page: pagination.pageIndex + 1,
+              pages: Math.max(1, table.getPageCount()),
+            })}
           </span>
           <div className="flex items-center gap-1.5">
             <Button
@@ -272,7 +285,7 @@ export function DataTable<TData>({
               className="size-9"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              aria-label="Previous page"
+              aria-label={t("global.table.previous")}
             >
               <ChevronLeft className="size-4" />
             </Button>
@@ -282,7 +295,7 @@ export function DataTable<TData>({
               className="size-9"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              aria-label="Next page"
+              aria-label={t("global.table.next")}
             >
               <ChevronRight className="size-4" />
             </Button>

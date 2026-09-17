@@ -1,8 +1,10 @@
 import type { ColumnDef } from "@tanstack/react-table";
+import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { DataTable } from "@/components/tables/DataTable";
 import { KIND_COLOR } from "@/components/charts/ProjectCharts";
+import { useSiteText } from "@/content/ContentProvider";
 import { nf } from "@/lib/utils";
 import { useEntries } from "@/entries/EntriesProvider";
 import type { Project } from "@/data/portfolio";
@@ -22,10 +24,11 @@ function statusVariant(status: Project["status"]) {
   }
 }
 
-const columns: ColumnDef<Project, unknown>[] = [
+function makeColumns(t: ReturnType<typeof useSiteText>): ColumnDef<Project, unknown>[] {
+  return [
   {
     accessorKey: "name",
-    header: "Project",
+    header: t("projects.table.col.name"),
     meta: { cellClassName: "min-w-[240px]" },
     cell: ({ row }) => (
       <div className="flex items-start gap-2.5">
@@ -40,7 +43,7 @@ const columns: ColumnDef<Project, unknown>[] = [
           </p>
           {row.original.featured && (
             <span className="mt-1 inline-block font-mono text-[10px] uppercase tracking-[0.14em] text-primary">
-              featured
+              {t("projects.table.featured")}
             </span>
           )}
         </div>
@@ -49,7 +52,7 @@ const columns: ColumnDef<Project, unknown>[] = [
   },
   {
     accessorKey: "kind",
-    header: "Kind",
+    header: t("projects.table.col.kind"),
     meta: { cellClassName: "whitespace-nowrap" },
     cell: ({ getValue }) => (
       <span className="font-mono text-[12px] text-muted-foreground">{getValue() as string}</span>
@@ -57,7 +60,7 @@ const columns: ColumnDef<Project, unknown>[] = [
   },
   {
     accessorKey: "status",
-    header: "Status",
+    header: t("projects.table.col.status"),
     filterFn: "equalsString",
     meta: { cellClassName: "whitespace-nowrap" },
     cell: ({ getValue }) => {
@@ -77,19 +80,25 @@ const columns: ColumnDef<Project, unknown>[] = [
   },
   {
     accessorKey: "role",
-    header: "Role",
+    header: t("projects.table.col.role"),
     meta: { cellClassName: "whitespace-nowrap font-mono text-[12px] text-muted-foreground" },
   },
   {
     accessorKey: "budgetM",
-    header: "Budget",
+    header: t("projects.table.col.budget"),
     sortingFn: "basic",
     meta: { headClassName: "text-right", cellClassName: "text-right font-mono text-[12px] tabular-nums" },
-    cell: ({ row }) => <span title={`Rp ${nf(row.original.budgetM)} million`}>Rp {nf(row.original.budgetM)}m</span>,
+    cell: ({ row }) => (
+      <span
+        title={t("projects.table.budgetTitle", { amount: nf(row.original.budgetM) })}
+      >
+        {t("projects.table.budgetValue", { amount: nf(row.original.budgetM) })}
+      </span>
+    ),
   },
   {
     accessorKey: "impact",
-    header: "Impact",
+    header: t("projects.table.col.impact"),
     meta: { cellClassName: "w-[132px]" },
     cell: ({ row }) => (
       <div className="flex items-center gap-2.5">
@@ -106,7 +115,7 @@ const columns: ColumnDef<Project, unknown>[] = [
   },
   {
     id: "stack",
-    header: "Technology",
+    header: t("projects.table.col.stack"),
     enableSorting: false,
     accessorFn: (row) => row.stack.join(" "),
     cell: ({ row }) => (
@@ -124,11 +133,14 @@ const columns: ColumnDef<Project, unknown>[] = [
       </div>
     ),
   },
-];
+  ];
+}
 
 /** Carbon emissions are not measured here, so there is no invented column. */
 export function ProjectTable() {
+  const t = useSiteText();
   const { projects } = useEntries();
+  const columns = React.useMemo(() => makeColumns(t), [t]);
 
   // Kind, status, and year are stored per row, so the filters follow the data.
   const kinds = [...new Set(projects.map((p) => p.kind))];
@@ -141,13 +153,13 @@ export function ProjectTable() {
     <DataTable
       data={projects}
       columns={columns}
-      searchHint="Search project, role, or technology"
+      searchHint={t("projects.table.searchHint")}
       pageSize={7}
-      footnote="All filters run client side"
+      footnote={t("projects.table.footnote")}
       facets={[
-        { columnId: "kind", label: "Kind", options: kinds },
-        { columnId: "status", label: "Status", options: statuses },
-        { columnId: "year", label: "Year", options: years },
+        { columnId: "kind", label: t("projects.table.facet.kind"), options: kinds },
+        { columnId: "status", label: t("projects.table.facet.status"), options: statuses },
+        { columnId: "year", label: t("projects.table.facet.year"), options: years },
       ]}
     />
   );

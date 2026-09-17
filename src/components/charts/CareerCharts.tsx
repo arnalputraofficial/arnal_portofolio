@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { CHART_COLORS, TooltipShell, AxisTick } from "@/components/charts/ChartFrame";
+import { useSiteText } from "@/content/ContentProvider";
 import { useEntries } from "@/entries/EntriesProvider";
 import { humanDuration, monthsBetween } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ import { humanDuration, monthsBetween } from "@/lib/utils";
  * The point is to show trajectory, not just a list of dates.
  */
 export function CareerTenureChart() {
+  const t = useSiteText();
   const { career } = useEntries();
 
   const data = React.useMemo(() => {
@@ -64,18 +66,38 @@ export function CareerTenureChart() {
             const row = payload[0].payload as (typeof data)[number];
             return (
               <TooltipShell
-                title={`Year ${label}`}
+                title={t("career.chart.tenure.yearTitle", { year: String(label) })}
                 rows={[
-                  { label: "Technical roles", value: `${row.ic} roles`, color: CHART_COLORS.dim },
-                  { label: "Leadership roles", value: `${row.lead} roles`, color: CHART_COLORS.rust },
-                  { label: "Positions", value: row.roles.join(", ") },
+                  {
+                    label: t("career.chart.tenure.row.ic"),
+                    value: t("career.chart.value.roles", { count: row.ic }),
+                    color: CHART_COLORS.dim,
+                  },
+                  {
+                    label: t("career.chart.tenure.row.lead"),
+                    value: t("career.chart.value.roles", { count: row.lead }),
+                    color: CHART_COLORS.rust,
+                  },
+                  { label: t("career.chart.tenure.row.positions"), value: row.roles.join(", ") },
                 ]}
               />
             );
           }}
         />
-        <Bar dataKey="ic" stackId="a" fill={CHART_COLORS.dim} radius={[3, 3, 0, 0]} name="Technical roles" />
-        <Bar dataKey="lead" stackId="a" fill={CHART_COLORS.rust} radius={[3, 3, 0, 0]} name="Leadership roles">
+        <Bar
+          dataKey="ic"
+          stackId="a"
+          fill={CHART_COLORS.dim}
+          radius={[3, 3, 0, 0]}
+          name={t("career.chart.series.ic")}
+        />
+        <Bar
+          dataKey="lead"
+          stackId="a"
+          fill={CHART_COLORS.rust}
+          radius={[3, 3, 0, 0]}
+          name={t("career.chart.series.lead")}
+        >
           {data.map((d) => (
             <Cell key={d.year} fillOpacity={d.lead > 0 ? 1 : 0.2} />
           ))}
@@ -90,6 +112,7 @@ export function CareerTenureChart() {
  * The X axis is deliberately tenure, not the year, so the comparison is fair.
  */
 export function RoleScopeScatter() {
+  const t = useSiteText();
   const { career } = useEntries();
 
   const data = career.map((role) => ({
@@ -115,7 +138,7 @@ export function RoleScopeScatter() {
           axisLine={{ stroke: CHART_COLORS.grid }}
           tick={{ fill: CHART_COLORS.axis, fontSize: 10.5, fontFamily: "JetBrains Mono" }}
           label={{
-            value: "months in role",
+            value: t("career.chart.scope.axis.months"),
             position: "insideBottomRight",
             offset: -2,
             fill: CHART_COLORS.axis,
@@ -140,11 +163,14 @@ export function RoleScopeScatter() {
               <TooltipShell
                 title={row.name}
                 rows={[
-                  { label: "Company", value: row.company },
-                  { label: "Duration", value: row.durationLabel },
+                  { label: t("career.chart.scope.row.company"), value: row.company },
+                  { label: t("career.chart.scope.row.duration"), value: row.durationLabel },
                   {
-                    label: "Team",
-                    value: row.headcount > 0 ? `${row.headcount} people` : "no direct reports",
+                    label: t("career.chart.scope.row.team"),
+                    value:
+                      row.headcount > 0
+                        ? t("career.chart.value.people", { count: row.headcount })
+                        : t("career.chart.value.noReports"),
                     color: CHART_COLORS.moss,
                   },
                 ]}

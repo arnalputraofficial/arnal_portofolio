@@ -51,7 +51,7 @@ function HealthCard() {
       <dl className="mt-6 space-y-4 pl-2">
         {[
           { label: t("home.health.row.availability"), value: 99.98, suffix: "%", decimals: 2 },
-          { label: t("home.health.row.incidents"), value: 3, suffix: " tickets", decimals: 0 },
+          { label: t("home.health.row.incidents"), value: 3, suffix: t("home.health.row.incidents.unit") ? ` ${t("home.health.row.incidents.unit")}` : "", decimals: 0 },
           { label: t("home.health.row.budget"), value: 98, suffix: "%", decimals: 0 },
         ].map((row) => (
           <div key={row.label} className="space-y-2">
@@ -63,7 +63,7 @@ function HealthCard() {
                 <Counter value={row.value} decimals={row.decimals} suffix={row.suffix} />
               </dd>
             </div>
-            <Progress value={row.decimals === 0 ? row.value : row.value} indicatorClassName="bg-accent" />
+            <Progress value={row.value} indicatorClassName="bg-accent" />
           </div>
         ))}
       </dl>
@@ -184,7 +184,7 @@ export default function Home() {
                   {
                     icon: Users,
                     label: t("home.hero.stat.team"),
-                    value: `${currentRole?.headcount ?? 0} people`,
+                    value: t("home.hero.stat.team.value", { count: currentRole?.headcount ?? 0 }),
                   },
                   {
                     icon: Building2,
@@ -194,7 +194,7 @@ export default function Home() {
                   {
                     icon: Clock3,
                     label: t("home.hero.stat.experience"),
-                    value: `${profile.yearsExperience} years`,
+                    value: t("home.hero.stat.experience.value", { count: profile.yearsExperience }),
                   },
                   {
                     icon: Layers,
@@ -298,7 +298,7 @@ export default function Home() {
       {/* ------------------------------------------------------------ projects */}
       <PageSection className="pt-0">
         <SectionHeading
-          index="02"
+          index={t("home.projects.index")}
           eyebrow={t("home.projects.eyebrow")}
           title={t("home.projects.title")}
           description={t("home.projects.description")}
@@ -348,7 +348,10 @@ export default function Home() {
 
                   <dl className="mt-6 grid grid-cols-3 gap-3 border-t border-border pt-4">
                     {[
-                      { label: t("home.projects.card.budget"), value: `Rp ${nf(project.budgetM)}m` },
+                      {
+                        label: t("home.projects.card.budget"),
+                        value: t("home.projects.card.budget.value", { amount: nf(project.budgetM) }),
+                      },
                       { label: t("home.projects.card.team"), value: `${project.teamSize}` },
                       { label: t("home.projects.card.impact"), value: `${project.impact}` },
                     ].map((stat) => (
@@ -372,7 +375,7 @@ export default function Home() {
       {/* -------------------------------------------------------- full table */}
       <PageSection className="pt-0">
         <SectionHeading
-          index="03"
+          index={t("home.records.index")}
           eyebrow={t("home.records.eyebrow")}
           title={t("home.records.title")}
           description={t("home.records.description")}
@@ -385,7 +388,7 @@ export default function Home() {
       {/* ---------------------------------------------------------- principles */}
       <PageSection className="pt-0">
         <SectionHeading
-          index="04"
+          index={t("home.section.principles.index")}
           eyebrow={t("home.principles.eyebrow")}
           title={t("home.principles.title")}
         />

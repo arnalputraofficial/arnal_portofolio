@@ -89,7 +89,7 @@ export function SiteFooter() {
           </ul>
 
           <p className="mt-8 rounded-notch border border-ink-800 bg-ink-900/60 p-3.5 font-mono text-[11px] leading-relaxed text-ink-400">
-            {profile.availability}
+            {t("global.profile.availability")}
           </p>
         </div>
       </div>

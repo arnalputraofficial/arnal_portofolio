@@ -57,6 +57,7 @@ function StatusBadge({ project }: { project: Project }) {
 
 /** Detail for a single project. Rendered in a dialog so the list stays compact. */
 function ProjectDetail({ project }: { project: Project }) {
+  const t = useSiteText();
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -69,7 +70,7 @@ function ProjectDetail({ project }: { project: Project }) {
         <StatusBadge project={project} />
         {project.featured && (
           <Badge variant="solid" size="sm">
-            featured
+            {t("projects.card.featured")}
           </Badge>
         )}
       </div>
@@ -79,12 +80,20 @@ function ProjectDetail({ project }: { project: Project }) {
 
       <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-notch border border-border bg-border sm:grid-cols-4">
         {[
-          { label: "Role", value: project.role },
-          { label: "Duration", value: `${project.months} months` },
-          { label: "Team size", value: `${project.teamSize} people` },
+          { label: t("projects.detail.role"), value: project.role },
           {
-            label: "Budget",
-            value: project.budgetM ? `Rp ${nf(project.budgetM)}m` : "internal",
+            label: t("projects.detail.duration"),
+            value: t("projects.detail.value.months", { count: project.months }),
+          },
+          {
+            label: t("projects.detail.teamSize"),
+            value: t("projects.detail.value.people", { count: project.teamSize }),
+          },
+          {
+            label: t("projects.detail.budget"),
+            value: project.budgetM
+              ? t("projects.detail.value.budget", { amount: nf(project.budgetM) })
+              : t("projects.detail.value.internal"),
           },
         ].map((item) => (
           <div key={item.label} className="bg-card px-3.5 py-3">
@@ -98,7 +107,7 @@ function ProjectDetail({ project }: { project: Project }) {
 
       <div className="mt-6">
         <div className="flex items-baseline justify-between gap-4">
-          <span className="eyebrow">Impact score</span>
+          <span className="eyebrow">{t("projects.detail.impact")}</span>
           <span className="font-mono text-[12px] tabular-nums text-muted-foreground">
             {project.impact} / 100
           </span>
@@ -109,7 +118,7 @@ function ProjectDetail({ project }: { project: Project }) {
           indicatorClassName={project.status === "on-hold" ? "bg-muted-foreground" : undefined}
         />
         <p className="mt-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
-          This number comes from my own internal scoring rubric, not a third-party audit.
+          {t("projects.detail.impact.note")}
         </p>
       </div>
 
@@ -122,7 +131,7 @@ function ProjectDetail({ project }: { project: Project }) {
         </span>
         <span className="flex items-center gap-2">
           <Users className="size-3.5" />
-          {project.teamSize} people involved
+          {t("projects.detail.team", { count: project.teamSize })}
         </span>
       </div>
 
@@ -139,6 +148,7 @@ function ProjectDetail({ project }: { project: Project }) {
 
 /** Featured project card: brief on the outside, detailed inside the dialog. */
 function FeaturedCard({ project }: { project: Project }) {
+  const t = useSiteText();
   return (
     <SpotlightCard className="flex h-full flex-col p-0">
       <div
@@ -167,14 +177,14 @@ function FeaturedCard({ project }: { project: Project }) {
           <StatusBadge project={project} />
           <span className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
             <Activity className="size-3.5 text-primary" />
-            impact {project.impact}
+            {t("projects.card.impact", { value: project.impact })}
           </span>
         </div>
 
         <Dialog>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm" className="mt-5 w-full">
-              Open details
+              {t("projects.card.open")}
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -223,7 +233,7 @@ export default function Projects() {
   return (
     <>
       <PageIntro
-        index="03"
+        index={t("projects.intro.index")}
         eyebrow={t("projects.eyebrow")}
         title={t("projects.title")}
         lead={t("projects.lead")}
@@ -233,22 +243,27 @@ export default function Projects() {
             {
               label: t("projects.stat.budget"),
               value: <Counter value={Math.round(totalBudget / 1000)} prefix="Rp " suffix="B" />,
-              hint: `${totalMonths} months of project work since 2018`,
+              hint: t("projects.stat.hint.months", { count: totalMonths }),
             },
             {
               label: t("projects.stat.running"),
               value: `${activeProjects} of ${projects.length}`,
-              hint: `${heldProjects.length} on hold waiting on business priorities`,
+              hint: t("projects.stat.hint.onHold", { count: heldProjects.length }),
             },
             {
               label: t("projects.stat.sites"),
               value: `${crossSite}`,
-              hint: "Projects across stores, warehouses, or cities",
+              hint: t("projects.stat.hint.sites"),
             },
             {
               label: t("projects.stat.impact"),
               value: `${avgImpact}/100`,
-              hint: peakImpact ? `Highest: ${peakImpact.impact} (${peakImpact.name})` : "No projects recorded yet",
+              hint: peakImpact
+                ? t("projects.stat.hint.peakImpact", {
+                    value: peakImpact.impact,
+                    name: peakImpact.name,
+                  })
+                : t("projects.stat.hint.noImpact"),
             },
           ]}
         />
@@ -257,7 +272,7 @@ export default function Projects() {
       {/* 01 - quick read */}
       <PageSection>
         <SectionHeading
-          index="01"
+          index={t("projects.section.map.index")}
           eyebrow={t("projects.quickread.eyebrow")}
           title={t("projects.quickread.title")}
           description={t("projects.quickread.description")}
@@ -266,8 +281,8 @@ export default function Projects() {
         <div className="mt-10 space-y-6">
           <Reveal>
             <ChartFrame
-              title="Project map 2018 to 2025"
-              note="The horizontal axis is time, the vertical axis is the kind of work."
+              title={t("projects.chart.map.title")}
+              note={t("projects.chart.map.note")}
               legend={[...new Set(projects.map((p) => p.kind))].map((kind) => ({
                 label: kind,
                 color: KIND_COLOR[kind],
@@ -280,11 +295,11 @@ export default function Projects() {
           <div className="grid gap-6 lg:grid-cols-12">
             <Reveal className="lg:col-span-7">
               <ChartFrame
-                title="Budget and impact per year"
-                note="Bars are total budget in millions of rupiah, the dashed line is the average impact score for that same year."
+                title={t("projects.chart.budget.title")}
+                note={t("projects.chart.budget.note")}
                 legend={[
-                  { label: "Budget", color: CHART_COLORS.dim },
-                  { label: "Average impact", color: CHART_COLORS.rust },
+                  { label: t("projects.chart.budget.legend.budget"), color: CHART_COLORS.dim },
+                  { label: t("projects.chart.budget.legend.impact"), color: CHART_COLORS.rust },
                 ]}
               >
                 <BudgetImpactChart />
@@ -293,8 +308,8 @@ export default function Projects() {
 
             <Reveal className="lg:col-span-5" delay={0.1}>
               <ChartFrame
-                title="Spread across years"
-                note="A compact bar: number of projects per year along with their budgets."
+                title={t("projects.chart.spread.title")}
+                note={t("projects.chart.spread.note")}
               >
                 <ul className="space-y-3.5">
                   {yearCount.map((row) => (
@@ -304,14 +319,20 @@ export default function Projects() {
                           {row.year}
                         </span>
                         <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                          {row.count} projects · Rp {nf(row.budget)}m
+                          {t("projects.chart.spread.value", {
+                            count: row.count,
+                            amount: nf(row.budget),
+                          })}
                         </span>
                       </div>
                       <Progress
                         value={(row.count / maxYearCount) * 100}
                         className="mt-2 h-1.5"
                         indicatorClassName="bg-foreground/70"
-                        aria-label={`${row.count} projects in ${row.year}`}
+                        aria-label={t("projects.chart.spread.aria", {
+                          count: row.count,
+                          year: row.year,
+                        })}
                       />
                     </li>
                   ))}
@@ -325,14 +346,14 @@ export default function Projects() {
       {/* 02 - featured */}
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
-          index="02"
+          index={t("projects.section.featured.index")}
           eyebrow={t("projects.featured.eyebrow")}
           title={t("projects.featured.title")}
           description={t("projects.featured.description")}
           action={
             <Button asChild variant="outline" size="sm">
               <Link to="/skills">
-                The skills behind them
+                {t("projects.featured.skills.title")}
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
@@ -351,17 +372,17 @@ export default function Projects() {
       {/* 03 - composition */}
       <PageSection>
         <SectionHeading
-          index="03"
+          index={t("projects.section.composition.index")}
           eyebrow={t("projects.composition.eyebrow")}
           title={t("projects.composition.title")}
-          description="The two charts below use the same data from different angles, so the claims about where I focus can be checked."
+          description={t("projects.composition.note")}
         />
 
         <div className="mt-10 grid gap-6 lg:grid-cols-12">
           <Reveal className="lg:col-span-7">
             <ChartFrame
-              title="Budget against impact, per project"
-              note="Bubble size is the number of people involved. Projects with no direct budget (zero) are not drawn here, so no point is misleading."
+              title={t("projects.chart.scatter.title")}
+              note={t("projects.chart.scatter.note")}
             >
               <BudgetImpactScatter />
             </ChartFrame>
@@ -370,10 +391,10 @@ export default function Projects() {
           <Reveal className="lg:col-span-5" delay={0.1}>
             <div className="panel-flagged p-5 sm:p-6">
               <h3 className="pl-2 font-display text-base font-semibold tracking-tight">
-                Spread across kinds of work
+                {t("projects.composition.kinds.title")}
               </h3>
               <p className="mt-1 pl-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
-                Number of projects and total budget per kind
+                {t("projects.composition.kinds.subtitle")}
               </p>
               <ul className="mt-5 space-y-4 pl-2">
                 {kindCount.map((row) => (
@@ -389,11 +410,11 @@ export default function Projects() {
                           {row.kind}
                         </span>
                         <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
-                          {row.count} projects
+                          {t("projects.composition.kinds.count", { count: row.count })}
                         </span>
                       </div>
                       <p className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">
-                        Rp {nf(row.budget)}m
+                        {t("projects.composition.kinds.budget", { amount: nf(row.budget) })}
                       </p>
                     </div>
                   </li>
@@ -407,15 +428,15 @@ export default function Projects() {
           <div className="panel-flagged p-6 pl-8 sm:p-8">
             <p className="eyebrow flex items-center gap-2">
               <AlertTriangle className="size-3.5 text-primary" />
-              honesty note
+              {t("projects.hold.eyebrow")}
             </p>
             <p className="mt-3 max-w-3xl font-display text-lg font-semibold leading-snug tracking-tight sm:text-xl">
-              One project on this page is on hold, and I show that as it is.
+              {t("projects.hold.title")}
             </p>
             <p className="mt-3 max-w-3xl text-[14px] leading-relaxed text-muted-foreground">
-              {heldProjects.map((p) => p.name).join(", ")} stopped not because it failed technically,
-              but because business priorities shifted. A portfolio that only shows wins actually hides
-              the ability a lead uses most often: deciding what not to build.
+              {t("projects.hold.body", {
+                names: heldProjects.map((p) => p.name).join(", "),
+              })}
             </p>
           </div>
         </Reveal>
@@ -424,7 +445,7 @@ export default function Projects() {
       {/* 04 - table */}
       <PageSection className="border-t border-border bg-card/25">
         <SectionHeading
-          index="04"
+          index={t("projects.section.table.index")}
           eyebrow={t("projects.table.eyebrow")}
           title={t("projects.table.title")}
           description={t("projects.table.description")}
@@ -446,32 +467,31 @@ export default function Projects() {
               <div className="lg:col-span-8">
                 <p className="eyebrow flex items-center gap-2">
                   <Coins className="size-3.5 text-primary" />
-                  continued
+                  {t("projects.cta.eyebrow")}
                 </p>
                 <p className="mt-3 max-w-2xl font-display text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-                  A budget only makes sense when the evidence follows. The next section shows the
-                  certifications and skills that support the decisions above.
+                  {t("projects.cta.title")}
                 </p>
                 <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="size-3.5 text-moss-400" />
-                    All project numbers come from sample data
+                    {t("projects.cta.point.data")}
                   </li>
                   <li className="flex items-center gap-2">
                     <PauseCircle className="size-3.5 text-primary" />
-                    No project is hidden
+                    {t("projects.cta.point.noHidden")}
                   </li>
                 </ul>
               </div>
               <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">
                 <Button asChild>
                   <Link to="/credentials">
-                    View credentials
+                    {t("projects.cta.button.credentials")}
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
                 <Button asChild variant="outline">
-                  <Link to="/contact">Ask a question</Link>
+                  <Link to="/contact">{t("projects.cta.button.contact")}</Link>
                 </Button>
               </div>
             </div>

@@ -1,13 +1,15 @@
+import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/tables/DataTable";
+import { useSiteText } from "@/content/ContentProvider";
 import { nf } from "@/lib/utils";
 import { useEntries } from "@/entries/EntriesProvider";
 import type { Certification } from "@/data/portfolio";
 
-function formatMonth(iso: string | null) {
-  if (!iso) return "no expiry";
+function formatMonth(iso: string | null, noExpiry: string) {
+  if (!iso) return noExpiry;
   return new Date(`${iso}-01`).toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
@@ -33,101 +35,108 @@ function statusVariant(status: Certification["status"]) {
   }
 }
 
-const columns: ColumnDef<Certification, unknown>[] = [
-  {
-    accessorKey: "name",
-    header: "Certification",
-    meta: { cellClassName: "min-w-[260px]" },
-    cell: ({ row }) => (
-      <div>
-        <p className="font-display text-[15px] font-semibold leading-snug tracking-tight">
-          {row.original.name}
-        </p>
-        <p className="mt-1 font-mono text-[11px] text-muted-foreground">{row.original.issuer}</p>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "domain",
-    header: "Domain",
-    filterFn: "equalsString",
-    meta: { cellClassName: "whitespace-nowrap" },
-    cell: ({ getValue }) => (
-      <span className="font-mono text-[12px] text-muted-foreground">{getValue() as string}</span>
-    ),
-  },
-  {
-    accessorKey: "issuer",
-    header: "Issuer",
-    meta: { cellClassName: "whitespace-nowrap font-mono text-[12px] text-muted-foreground" },
-  },
-  {
-    accessorKey: "issued",
-    header: "Issued",
-    meta: { cellClassName: "whitespace-nowrap font-mono text-[12px] tabular-nums" },
-    cell: ({ getValue }) => formatMonth(getValue() as string),
-  },
-  {
-    accessorKey: "expires",
-    header: "Valid until",
-    meta: { cellClassName: "whitespace-nowrap" },
-    cell: ({ row }) => {
-      const soon = monthsToExpiry(row.original.expires);
-      return (
-        <span className="flex items-center gap-2 font-mono text-[12px] tabular-nums">
-          {formatMonth(row.original.expires)}
-          {soon !== null && soon <= 12 && (
-            <span
-              className="inline-flex items-center gap-1 text-primary"
-              title={`Less than ${soon} months left`}
-            >
-              <AlertTriangle className="size-3.5" />
-              {soon} mo
-            </span>
-          )}
-        </span>
-      );
+function makeColumns(t: ReturnType<typeof useSiteText>): ColumnDef<Certification, unknown>[] {
+  const noExpiry = t("credentials.table.value.noExpiry");
+
+  return [
+    {
+      accessorKey: "name",
+      header: t("credentials.table.col.name"),
+      meta: { cellClassName: "min-w-[260px]" },
+      cell: ({ row }) => (
+        <div>
+          <p className="font-display text-[15px] font-semibold leading-snug tracking-tight">
+            {row.original.name}
+          </p>
+          <p className="mt-1 font-mono text-[11px] text-muted-foreground">{row.original.issuer}</p>
+        </div>
+      ),
     },
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    filterFn: "equalsString",
-    meta: { cellClassName: "whitespace-nowrap" },
-    cell: ({ getValue }) => {
-      const value = getValue() as Certification["status"];
-      return (
-        <Badge variant={statusVariant(value)} dot={value === "active"}>
-          {value}
-        </Badge>
-      );
+    {
+      accessorKey: "domain",
+      header: t("credentials.table.col.domain"),
+      filterFn: "equalsString",
+      meta: { cellClassName: "whitespace-nowrap" },
+      cell: ({ getValue }) => (
+        <span className="font-mono text-[12px] text-muted-foreground">{getValue() as string}</span>
+      ),
     },
-  },
-  {
-    accessorKey: "credentialId",
-    header: "Credential ID",
-    meta: { cellClassName: "whitespace-nowrap font-mono text-[12px] text-muted-foreground" },
-    cell: ({ getValue }) => (
-      <span className="select-all">{getValue() as string}</span>
-    ),
-  },
-  {
-    accessorKey: "cost",
-    header: "Cost",
-    meta: {
-      headClassName: "text-right",
-      cellClassName: "text-right font-mono text-[12px] tabular-nums text-muted-foreground",
+    {
+      accessorKey: "issuer",
+      header: t("credentials.table.col.issuer"),
+      meta: { cellClassName: "whitespace-nowrap font-mono text-[12px] text-muted-foreground" },
     },
-    cell: ({ getValue }) => `Rp ${nf(getValue() as number, 1)}m`,
-  },
-];
+    {
+      accessorKey: "issued",
+      header: t("credentials.table.col.issued"),
+      meta: { cellClassName: "whitespace-nowrap font-mono text-[12px] tabular-nums" },
+      cell: ({ getValue }) => formatMonth(getValue() as string, noExpiry),
+    },
+    {
+      accessorKey: "expires",
+      header: t("credentials.table.col.expires"),
+      meta: { cellClassName: "whitespace-nowrap" },
+      cell: ({ row }) => {
+        const soon = monthsToExpiry(row.original.expires);
+        return (
+          <span className="flex items-center gap-2 font-mono text-[12px] tabular-nums">
+            {formatMonth(row.original.expires, noExpiry)}
+            {soon !== null && soon <= 12 && (
+              <span
+                className="inline-flex items-center gap-1 text-primary"
+                title={t("credentials.table.expiry.title", { count: soon })}
+              >
+                <AlertTriangle className="size-3.5" />
+                {t("credentials.table.expiry.short", { count: soon })}
+              </span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "status",
+      header: t("credentials.table.col.status"),
+      filterFn: "equalsString",
+      meta: { cellClassName: "whitespace-nowrap" },
+      cell: ({ getValue }) => {
+        const value = getValue() as Certification["status"];
+        return (
+          <Badge variant={statusVariant(value)} dot={value === "active"}>
+            {value}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: "credentialId",
+      header: t("credentials.table.col.credentialId"),
+      meta: { cellClassName: "whitespace-nowrap font-mono text-[12px] text-muted-foreground" },
+      cell: ({ getValue }) => (
+        <span className="select-all">{getValue() as string}</span>
+      ),
+    },
+    {
+      accessorKey: "cost",
+      header: t("credentials.table.col.cost"),
+      meta: {
+        headClassName: "text-right",
+        cellClassName: "text-right font-mono text-[12px] tabular-nums text-muted-foreground",
+      },
+      cell: ({ getValue }) =>
+        t("credentials.table.value.cost", { amount: nf(getValue() as number, 1) }),
+    },
+  ];
+}
 
 /**
  * Certification table. The "cost" column is shown plainly on purpose,
  * as context for the learning investment, not to show off numbers.
  */
 export function CertificationTable() {
+  const t = useSiteText();
   const { certifications } = useEntries();
+  const columns = React.useMemo(() => makeColumns(t), [t]);
 
   // Domains and issuers are free text, so the filters follow the stored rows.
   const domains = [...new Set(certifications.map((c) => c.domain))];
@@ -138,13 +147,13 @@ export function CertificationTable() {
     <DataTable
       data={certifications}
       columns={columns}
-      searchHint="Search certification, issuer, or credential ID"
+      searchHint={t("credentials.table.searchHint")}
       pageSize={8}
-      footnote="Credential IDs can be copied for verification"
+      footnote={t("credentials.table.footnote")}
       facets={[
-        { columnId: "domain", label: "Domain", options: domains },
-        { columnId: "status", label: "Status", options: statuses },
-        { columnId: "issuer", label: "Issuer", options: issuers },
+        { columnId: "domain", label: t("credentials.table.facet.domain"), options: domains },
+        { columnId: "status", label: t("credentials.table.facet.status"), options: statuses },
+        { columnId: "issuer", label: t("credentials.table.facet.issuer"), options: issuers },
       ]}
     />
   );

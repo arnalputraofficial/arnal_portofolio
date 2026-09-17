@@ -37,14 +37,6 @@ import { cn } from "@/lib/utils";
 
 const MIN_MESSAGE = 20;
 
-const TOPICS = [
-  "IT Lead or SPV role",
-  "Infrastructure consulting",
-  "Operational readiness",
-  "Collaboration or mentoring",
-  "Questions about the portfolio",
-];
-
 const FIELD =
   "flex w-full rounded-notch border border-input bg-background/60 px-3.5 py-2.5 " +
   "font-mono text-sm text-foreground placeholder:text-muted-foreground/70 " +
@@ -60,15 +52,15 @@ interface FormState {
 
 type Errors = Partial<Record<keyof FormState, string>>;
 
-const EMPTY: FormState = { name: "", email: "", topic: TOPICS[0], message: "" };
-
-function validate(form: FormState): Errors {
+function validate(form: FormState, t: ReturnType<typeof useSiteText>): Errors {
   const errors: Errors = {};
-  if (form.name.trim().length < 2) errors.name = "Write your name, at least two characters.";
+  if (form.name.trim().length < 2) errors.name = t("contact.form.error.name");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
-    errors.email = "That email address is not shaped correctly.";
+    errors.email = t("contact.form.error.email");
   if (form.message.trim().length < MIN_MESSAGE)
-    errors.message = `${MIN_MESSAGE - form.message.trim().length} more characters to go.`;
+    errors.message = t("contact.form.error.message", {
+      count: MIN_MESSAGE - form.message.trim().length,
+    });
   return errors;
 }
 
@@ -76,25 +68,44 @@ const SOCIAL_ICON = { GitHub: Github, LinkedIn: Linkedin, Email: Mail } as const
 
 export default function Contact() {
   const t = useSiteText();
-  const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
   const [failure, setFailure] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const topicOptions = useMemo(
+    () => [
+      t("contact.form.topic.option.1"),
+      t("contact.form.topic.option.2"),
+      t("contact.form.topic.option.3"),
+      t("contact.form.topic.option.4"),
+      t("contact.form.topic.option.5"),
+    ],
+    [t],
+  );
+
+  const emptyForm = useMemo<FormState>(
+    () => ({ name: "", email: "", topic: topicOptions[0], message: "" }),
+    [topicOptions],
+  );
+
+  const [form, setForm] = useState<FormState>(emptyForm);
+
   const messageLength = form.message.trim().length;
   const ready = messageLength >= MIN_MESSAGE;
+
+  const notFilled = t("contact.form.copy.placeholder.name");
 
   const plainText = useMemo(
     () =>
       [
-        `Name: ${form.name.trim() || "(not filled in yet)"}`,
-        `Email: ${form.email.trim() || "(not filled in yet)"}`,
-        `Topic: ${form.topic}`,
+        t("contact.form.preview.name", { value: form.name.trim() || notFilled }),
+        t("contact.form.preview.email", { value: form.email.trim() || notFilled }),
+        t("contact.form.preview.topic", { value: form.topic }),
         "",
         form.message.trim(),
       ].join("\n"),
-    [form],
+    [form, notFilled, t],
   );
 
   const recipientEmail = t("global.profile.email") || profile.email;
@@ -109,7 +120,7 @@ export default function Contact() {
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const found = validate(form);
+    const found = validate(form, t);
     setErrors(found);
     if (Object.keys(found).length > 0) {
       setStatus("idle");
@@ -128,12 +139,12 @@ export default function Contact() {
 
     if (!result.ok) {
       setStatus("failed");
-      setFailure(result.error ?? "The message could not be delivered.");
+      setFailure(result.error ?? t("contact.form.error.send"));
       return;
     }
 
     setStatus("sent");
-    setForm(EMPTY);
+    setForm(emptyForm);
   }
 
   async function copyMessage() {
@@ -151,7 +162,7 @@ export default function Contact() {
   return (
     <>
       <PageIntro
-        index="07"
+        index={t("contact.intro.index")}
         eyebrow={t("contact.eyebrow")}
         title={t("contact.title")}
         lead={t("contact.lead")}
@@ -160,23 +171,29 @@ export default function Contact() {
           items={[
             {
               label: t("contact.stat.response"),
-              value: "1 business day",
-              hint: "Usually faster on weekdays",
+              value: t("contact.stat.response.value"),
+              hint: t("contact.stat.response.hint"),
             },
             {
               label: t("contact.stat.timezone"),
-              value: profile.timezone,
-              hint: `I work from ${profile.location}`,
+              value: t("global.profile.timezone"),
+              hint: t("contact.stat.timezone.hint", { location: t("global.profile.location") }),
             },
             {
               label: t("contact.stat.channels"),
               value: `${profile.socials.length}`,
-              hint: profile.socials.map((s) => s.label).join(" · "),
+              hint: t("contact.stat.channels.hint", {
+                names: profile.socials.map((s) => s.label).join(" · "),
+              }),
             },
             {
               label: t("contact.stat.status"),
-              value: "Open",
-              hint: profile.availability,
+              value: t("contact.stat.status.value", {
+                availability: t("global.profile.availability"),
+              }),
+              hint: t("contact.stat.status.hint", {
+                roles: t("home.hero.stat.role.value"),
+              }),
             },
           ]}
         />
@@ -185,7 +202,7 @@ export default function Contact() {
       {/* 01 - form */}
       <PageSection>
         <SectionHeading
-          index="01"
+          index={t("contact.section.form.index")}
           eyebrow={t("contact.form.eyebrow")}
           title={t("contact.form.title")}
           description={t("contact.form.description")}
@@ -207,7 +224,7 @@ export default function Contact() {
                     name="name"
                     value={form.name}
                     onChange={(e) => update("name", e.target.value)}
-                    placeholder="Full name"
+                    placeholder={t("contact.form.field.name.placeholder")}
                     aria-invalid={Boolean(errors.name)}
                     aria-describedby={errors.name ? "name-error" : undefined}
                     className={cn(FIELD, "mt-2", errors.name && "border-destructive/60")}
@@ -232,7 +249,7 @@ export default function Contact() {
                     type="email"
                     value={form.email}
                     onChange={(e) => update("email", e.target.value)}
-                    placeholder="name@company.com"
+                    placeholder={t("contact.form.field.email.placeholder")}
                     aria-invalid={Boolean(errors.email)}
                     aria-describedby={errors.email ? "email-error" : undefined}
                     className={cn(FIELD, "mt-2", errors.email && "border-destructive/60")}
@@ -254,10 +271,10 @@ export default function Contact() {
                 </label>
                 <Select value={form.topic} onValueChange={(value) => update("topic", value)}>
                   <SelectTrigger id="topic" className="mt-2">
-                    <SelectValue placeholder="Choose a topic" />
+                    <SelectValue placeholder={t("contact.form.field.topic.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {TOPICS.map((topic) => (
+                    {topicOptions.map((topic) => (
                       <SelectItem key={topic} value={topic}>
                         {topic}
                       </SelectItem>
@@ -280,7 +297,7 @@ export default function Contact() {
                       ready ? "text-moss-300" : "text-muted-foreground",
                     )}
                   >
-                    {messageLength} characters
+                    {t("contact.form.counter", { count: messageLength })}
                   </span>
                 </div>
                 <textarea
@@ -289,7 +306,7 @@ export default function Contact() {
                   rows={7}
                   value={form.message}
                   onChange={(e) => update("message", e.target.value)}
-                  placeholder="Describe the situation: how many people are on the team, which systems are in use, and which constraint hurts the most."
+                  placeholder={t("contact.form.field.message.placeholder")}
                   aria-invalid={Boolean(errors.message)}
                   aria-describedby="message-hint"
                   className={cn(FIELD, "mt-2 resize-y", errors.message && "border-destructive/60")}
@@ -298,7 +315,7 @@ export default function Contact() {
                   value={Math.min(100, (messageLength / MIN_MESSAGE) * 100)}
                   className="mt-3 h-1"
                   indicatorClassName={ready ? "bg-moss-500" : "bg-primary"}
-                  aria-label="Message length"
+                  aria-label={t("contact.form.length.label")}
                 />
                 <p
                   id="message-hint"
@@ -309,8 +326,8 @@ export default function Contact() {
                 >
                   {errors.message ??
                     (ready
-                      ? "The message is long enough for me to answer usefully."
-                      : `At least ${MIN_MESSAGE} characters so I understand the context.`)}
+                      ? t("contact.form.hint.ready")
+                      : t("contact.form.hint.tooShort", { count: MIN_MESSAGE }))}
                 </p>
               </div>
 
@@ -321,26 +338,26 @@ export default function Contact() {
                   ) : (
                     <Send aria-hidden />
                   )}
-                  {status === "sending" ? "Sending" : "Send message"}
+                  {status === "sending" ? t("contact.form.submit.sending") : t("contact.form.submit")}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => {
-                    setForm(EMPTY);
+                    setForm(emptyForm);
                     setErrors({});
                     setStatus("idle");
                     setFailure("");
                   }}
                 >
-                  Clear
+                  {t("contact.form.clear")}
                 </Button>
                 {errorCount > 0 && (
                   <span
                     role="alert"
                     className="font-mono text-[11px] uppercase tracking-[0.1em] text-destructive"
                   >
-                    {errorCount} fields need fixing
+                    {t("contact.form.error.summary", { count: errorCount })}
                   </span>
                 )}
               </div>
@@ -352,12 +369,10 @@ export default function Contact() {
                 >
                   <p className="eyebrow flex items-center gap-2 text-moss-300">
                     <Check className="size-3.5" aria-hidden />
-                    message received
+                    {t("contact.form.sent.title")}
                   </p>
                   <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-                    The message reached{" "}
-                    <span className="font-mono text-foreground">{recipientEmail}</span>. Expect an
-                    answer within one business day, usually faster on weekdays.
+                    {t("contact.form.sent.body", { email: recipientEmail })}
                   </p>
                 </div>
               )}
@@ -369,11 +384,10 @@ export default function Contact() {
                 >
                   <p className="eyebrow flex items-center gap-2 text-destructive">
                     <AlertTriangle className="size-3.5" aria-hidden />
-                    not delivered
+                    {t("contact.form.failed.title")}
                   </p>
                   <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-                    {failure} Nothing was lost from this page, so you can press send again or copy
-                    the message and use a direct channel.
+                    {t("contact.form.failed.body", { error: failure })}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-3">
                     <Button variant="outline" size="sm" onClick={copyMessage}>
@@ -382,7 +396,7 @@ export default function Contact() {
                       ) : (
                         <Copy className="size-4" aria-hidden />
                       )}
-                      {copied ? "Copied" : "Copy message"}
+                      {copied ? t("contact.form.copy.copied") : t("contact.form.copy")}
                     </Button>
                   </div>
                 </div>
@@ -396,14 +410,14 @@ export default function Contact() {
               <div className="panel p-6 sm:p-8">
                 <p className="eyebrow flex items-center gap-2">
                   <Inbox className="size-3.5 text-primary" aria-hidden />
-                  what I will answer
+                  {t("contact.sidebar.answer.title")}
                 </p>
                 <ul className="mt-5 space-y-3 text-[14px] leading-relaxed text-muted-foreground">
                   {[
-                    "Technical questions that name the system, the scale, and the deadline.",
-                    "Second opinions on infrastructure design or IT budgeting.",
-                    "Interview invitations for a lead or supervisor role.",
-                    "Requests for reading material, not requests to do someone else's homework.",
+                    t("contact.sidebar.answer.item.1"),
+                    t("contact.sidebar.answer.item.2"),
+                    t("contact.sidebar.answer.item.3"),
+                    t("contact.sidebar.answer.item.4"),
                   ].map((item) => (
                     <li key={item} className="flex gap-3">
                       <span aria-hidden className="mt-2 size-1 shrink-0 rotate-45 bg-primary" />
@@ -416,11 +430,10 @@ export default function Contact() {
 
                 <p className="eyebrow flex items-center gap-2">
                   <ShieldCheck className="size-3.5 text-primary" aria-hidden />
-                  what I do not promise
+                  {t("contact.sidebar.promise.title")}
                 </p>
                 <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-                  I do not take on full-time freelance work, and I will not recommend tools without
-                  knowing the problem you are actually facing.
+                  {t("contact.sidebar.promise.body")}
                 </p>
               </div>
             </Reveal>
@@ -429,12 +442,10 @@ export default function Contact() {
               <div className="panel-flagged p-6 pl-8">
                 <p className="eyebrow flex items-center gap-2">
                   <AlertTriangle className="size-3.5 text-primary" aria-hidden />
-                  technical note
+                  {t("contact.sidebar.note.title")}
                 </p>
                 <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-                  Press send and the message travels to a private inbox. It is stored first, then
-                  emailed, so nothing is lost if the delivery service stumbles. No account, no
-                  tracking pixel, no third party reading along.
+                  {t("contact.sidebar.note.body")}
                 </p>
               </div>
             </Reveal>
@@ -472,19 +483,19 @@ export default function Contact() {
                 <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                   <span className="flex items-center gap-2">
                     <MapPin className="size-3.5" aria-hidden />
-                    {profile.location}
+                    {t("global.profile.location")}
                   </span>
                   <span className="flex items-center gap-2">
                     <Clock className="size-3.5" aria-hidden />
-                    {profile.timezone}
+                    {t("global.profile.timezone")}
                   </span>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-1.5">
                   <Badge variant="moss" dot>
-                    open to discussion
+                    {t("contact.channels.badge.open")}
                   </Badge>
-                  <Badge variant="muted">replies within 1 business day</Badge>
+                  <Badge variant="muted">{t("contact.channels.badge.reply")}</Badge>
                 </div>
               </div>
             </Reveal>
@@ -507,12 +518,12 @@ export default function Contact() {
               <div className="flex flex-wrap gap-3 lg:col-span-4 lg:justify-end">
                 <Button asChild variant="outline">
                   <Link to="/projects">
-                    Open the project file
+                    {t("contact.cta.button.projects")}
                     <ArrowRight className="size-4" aria-hidden />
                   </Link>
                 </Button>
                 <Button asChild variant="ghost">
-                  <Link to="/">Back to home</Link>
+                  <Link to="/">{t("contact.cta.button.home")}</Link>
                 </Button>
               </div>
             </div>

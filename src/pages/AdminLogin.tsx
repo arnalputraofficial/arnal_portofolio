@@ -57,7 +57,9 @@ export default function AdminLogin() {
     }
 
     setPassword("");
-    if (!outcome.mustChangePassword) navigate("/admin", { replace: true });
+    // No navigate here on purpose. The effect above moves the user once the
+    // provider has actually settled on a signed in identity, so the redirect
+    // cannot outrun the state it depends on.
   }
 
   return (

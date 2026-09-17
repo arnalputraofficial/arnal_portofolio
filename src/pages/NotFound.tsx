@@ -11,14 +11,29 @@ import { useSiteText } from "@/content/ContentProvider";
 
 /** Seven routes that genuinely exist, not an invented list. */
 const ROUTES = [
-  { to: "/", index: "00", label: "Home", hint: "Summary and headline numbers" },
-  { to: "/career", index: "02", label: "Career", hint: "Ten years of role history" },
-  { to: "/projects", index: "03", label: "Projects", hint: "Twelve pieces of traceable work" },
-  { to: "/credentials", index: "05", label: "Credentials", hint: "Including the expired ones" },
-  { to: "/skills", index: "04", label: "Skills", hint: "Self ratings and registry data" },
-  { to: "/about", index: "06", label: "About", hint: "Working principles and my mistakes" },
-  { to: "/contact", index: "07", label: "Contact", hint: "Email, GitHub, and LinkedIn" },
-];
+  { to: "/", index: "00", labelKey: "notfound.route.1.label", hintKey: "notfound.route.1.hint" },
+  { to: "/career", index: "02", labelKey: "notfound.route.2.label", hintKey: "notfound.route.2.hint" },
+  {
+    to: "/projects",
+    index: "03",
+    labelKey: "notfound.route.3.label",
+    hintKey: "notfound.route.3.hint",
+  },
+  { to: "/skills", index: "04", labelKey: "notfound.route.4.label", hintKey: "notfound.route.4.hint" },
+  {
+    to: "/credentials",
+    index: "05",
+    labelKey: "notfound.route.5.label",
+    hintKey: "notfound.route.5.hint",
+  },
+  { to: "/about", index: "06", labelKey: "notfound.route.6.label", hintKey: "notfound.route.6.hint" },
+  {
+    to: "/contact",
+    index: "07",
+    labelKey: "notfound.route.7.label",
+    hintKey: "notfound.route.7.hint",
+  },
+] as const;
 
 export default function NotFound() {
   const t = useSiteText();
@@ -40,7 +55,9 @@ export default function NotFound() {
           <div className="grid gap-10 lg:grid-cols-12 lg:items-center lg:gap-8">
             <div className="lg:col-span-7">
               <div className="flex items-center gap-4">
-                <span className="font-mono text-[12px] font-bold text-primary">404</span>
+                <span className="font-mono text-[12px] font-bold text-primary">
+                  {t("notfound.code")}
+                </span>
                 <span className="hairline flex-1" />
                 <span className="eyebrow">{t("notfound.eyebrow")}</span>
               </div>
@@ -49,7 +66,7 @@ export default function NotFound() {
                 aria-hidden
                 className="mt-8 font-display text-[92px] font-bold leading-[0.82] tracking-tighter text-outline sm:text-[132px]"
               >
-                404
+                {t("notfound.code")}
               </p>
 
               <h1 className="mt-4 max-w-2xl font-display text-3xl font-semibold leading-[1.06] tracking-tight text-balance sm:text-4xl lg:text-5xl">
@@ -77,21 +94,17 @@ export default function NotFound() {
               <div className="panel-flagged p-6 pl-8 sm:p-8">
                 <p className="eyebrow flex items-center gap-2">
                   <LifeBuoy className="size-3.5 text-primary" aria-hidden />
-                  if the address was mistyped
+                  {t("notfound.aside.title")}
                 </p>
                 <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-                  Every address on this site is a plain English word:{" "}
-                  <span className="font-mono text-foreground">/career</span>,{" "}
-                  <span className="font-mono text-foreground">/projects</span>,{" "}
-                  <span className="font-mono text-foreground">/credentials</span>. There is no
-                  translated version behind them, so adding another word will not help.
+                  {t("notfound.aside.body")}
                 </p>
 
                 <Separator dashed className="my-6" />
 
                 <p className="eyebrow flex items-center gap-2">
                   <Search className="size-3.5 text-primary" aria-hidden />
-                  shortcuts
+                  {t("notfound.aside.shortcuts")}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {suggestions.map((project) => (
@@ -137,10 +150,10 @@ export default function NotFound() {
                     />
                   </div>
                   <span className="font-display text-lg font-semibold tracking-tight">
-                    {route.label}
+                    {t(route.labelKey)}
                   </span>
                   <span className="mt-auto text-[13px] leading-relaxed text-muted-foreground">
-                    {route.hint}
+                    {t(route.hintKey)}
                   </span>
                 </Link>
               </SpotlightCard>
@@ -167,7 +180,7 @@ export default function NotFound() {
             </p>
             <Button asChild variant="outline">
               <Link to="/contact">
-                Report a broken link
+                {t("notfound.report.button")}
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>

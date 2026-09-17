@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { CHART_COLORS, TooltipShell } from "@/components/charts/ChartFrame";
+import { useSiteText } from "@/content/ContentProvider";
 import { useEntries } from "@/entries/EntriesProvider";
 import type { Skill } from "@/data/portfolio";
 
@@ -24,6 +25,7 @@ import type { Skill } from "@/data/portfolio";
  * so the areas backed by real proof, and the thin ones, both show up.
  */
 export function SkillBalanceRadar({ data }: { data: Skill[] }) {
+  const t = useSiteText();
   const grouped = React.useMemo(() => {
     const map = new Map<string, { total: number; count: number; evidence: number }>();
     data.forEach((s) => {
@@ -56,7 +58,7 @@ export function SkillBalanceRadar({ data }: { data: Skill[] }) {
           tickCount={5}
         />
         <Radar
-          name="Self rating"
+          name={t("skills.chart.radar.series.rating")}
           dataKey="level"
           stroke={CHART_COLORS.rust}
           fill={CHART_COLORS.rust}
@@ -65,7 +67,7 @@ export function SkillBalanceRadar({ data }: { data: Skill[] }) {
           dot={{ r: 3, fill: CHART_COLORS.rust, strokeWidth: 0 }}
         />
         <Radar
-          name="Evidence strength"
+          name={t("skills.chart.radar.series.evidence")}
           dataKey="evidence"
           stroke={CHART_COLORS.moss}
           fill={CHART_COLORS.moss}
@@ -82,7 +84,7 @@ export function SkillBalanceRadar({ data }: { data: Skill[] }) {
                 title={label as string}
                 rows={payload.map((p) => ({
                   label: p.name as string,
-                  value: `${p.value}/100`,
+                  value: t("skills.chart.value.score", { value: String(p.value) }),
                   color: p.stroke as string,
                 }))}
               />
@@ -96,6 +98,7 @@ export function SkillBalanceRadar({ data }: { data: Skill[] }) {
 
 /** The ten skills with the highest self rating. */
 export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: number }) {
+  const t = useSiteText();
   const top = React.useMemo(
     () => [...data].sort((a, b) => b.level - a.level).slice(0, limit),
     [data, limit],
@@ -129,10 +132,21 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
               <TooltipShell
                 title={row.name}
                 rows={[
-                  { label: "Level", value: `${row.level}/100`, color: CHART_COLORS.rust },
-                  { label: "Experience", value: `${row.years} years` },
-                  { label: "Last used", value: String(row.lastUsed) },
-                  { label: "Project evidence", value: `${row.evidence.length} items`, color: CHART_COLORS.moss },
+                  {
+                    label: t("skills.chart.top.row.level"),
+                    value: t("skills.chart.value.score", { value: row.level }),
+                    color: CHART_COLORS.rust,
+                  },
+                  {
+                    label: t("skills.chart.top.row.experience"),
+                    value: t("skills.chart.value.years", { count: row.years }),
+                  },
+                  { label: t("skills.chart.top.row.lastUsed"), value: String(row.lastUsed) },
+                  {
+                    label: t("skills.chart.top.row.evidence"),
+                    value: t("skills.chart.value.items", { count: row.evidence.length }),
+                    color: CHART_COLORS.moss,
+                  },
                 ]}
               />
             );
@@ -156,6 +170,7 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
  * Helps show where a technology is genuinely used, not just mentioned.
  */
 export function StackUsageChart() {
+  const t = useSiteText();
   const { projects } = useEntries();
 
   const data = React.useMemo(() => {
@@ -200,7 +215,11 @@ export function StackUsageChart() {
               <TooltipShell
                 title={label as string}
                 rows={[
-                  { label: "Used in", value: `${payload[0].value} projects`, color: CHART_COLORS.rust },
+                  {
+                    label: t("skills.chart.stack.row.usedIn"),
+                    value: t("skills.chart.stack.value.projects", { count: String(payload[0].value ?? 0) }),
+                    color: CHART_COLORS.rust,
+                  },
                 ]}
               />
             );
@@ -221,6 +240,7 @@ export function StackUsageChart() {
 
 /** Distribution of years of experience per skill category. */
 export function ExperienceSpreadChart() {
+  const t = useSiteText();
   const { skills } = useEntries();
 
   const data = React.useMemo(() => {
@@ -259,8 +279,15 @@ export function ExperienceSpreadChart() {
               <TooltipShell
                 title={label as string}
                 rows={[
-                  { label: "Longest held", value: `${row.years} years`, color: CHART_COLORS.rust },
-                  { label: "Skill count", value: `${row.count} items` },
+                  {
+                    label: t("skills.chart.spread.row.longest"),
+                    value: t("skills.chart.value.years", { count: row.years }),
+                    color: CHART_COLORS.rust,
+                  },
+                  {
+                    label: t("skills.chart.spread.row.count"),
+                    value: t("skills.chart.value.items", { count: row.count }),
+                  },
                 ]}
               />
             );

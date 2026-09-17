@@ -115,6 +115,20 @@ export const HOME_CONTENT: ContentEntry[] = [
     label: "Hero stat label: projects",
     default: "Logged projects",
   },
+  {
+    key: "home.hero.stat.team.value",
+    page: "home",
+    label: "Hero stat value: team",
+    default: "{count} people",
+    hint: "Token: {count}. The number comes from the job history, so only the wording around it is yours.",
+  },
+  {
+    key: "home.hero.stat.experience.value",
+    page: "home",
+    label: "Hero stat value: experience",
+    default: "{count} years",
+    hint: "Token: {count}.",
+  },
 
   // -------------------------------------------------------------- strip
   {
@@ -159,6 +173,13 @@ export const HOME_CONTENT: ContentEntry[] = [
     default: "Open incidents",
   },
   {
+    key: "home.health.row.incidents.unit",
+    page: "home",
+    label: "Status row: open incidents unit",
+    default: "tickets",
+    hint: "The word printed after the number, for example 3 tickets. Leave empty to show the bare number.",
+  },
+  {
     key: "home.health.row.budget",
     page: "home",
     label: "Status row: budget absorbed",
@@ -184,6 +205,27 @@ export const HOME_CONTENT: ContentEntry[] = [
     page: "home",
     label: "Summary: current role, none recorded",
     default: "Open to work",
+  },
+  {
+    key: "home.summary.certifications.value",
+    page: "home",
+    label: "Summary: certifications value",
+    default: "{active}/{total}",
+    hint: "Tokens: {active}, {total}. Both are counted from the credentials data.",
+  },
+  {
+    key: "home.summary.leadership.value",
+    page: "home",
+    label: "Summary: leadership value",
+    default: "{count} areas",
+    hint: "Token: {count}.",
+  },
+  {
+    key: "home.summary.budget.value",
+    page: "home",
+    label: "Summary: budget value",
+    default: "Rp {amount}m",
+    hint: "Token: {amount}, already formatted with thousand separators. The m stands for millions.",
   },
   {
     key: "home.summary.currentRole.hint",
@@ -230,6 +272,12 @@ export const HOME_CONTENT: ContentEntry[] = [
   },
 
   // -------------------------------------------------------------- trail
+  {
+    key: "home.trail.index",
+    page: "home",
+    label: "Trail section: index marker",
+    default: "01",
+  },
   {
     key: "home.trail.eyebrow",
     page: "home",
@@ -284,6 +332,12 @@ export const HOME_CONTENT: ContentEntry[] = [
   },
 
   // ----------------------------------------------------------- projects
+  {
+    key: "home.projects.index",
+    page: "home",
+    label: "Projects section: index marker",
+    default: "02",
+  },
   {
     key: "home.projects.eyebrow",
     page: "home",
@@ -342,6 +396,13 @@ export const HOME_CONTENT: ContentEntry[] = [
     default: "Budget",
   },
   {
+    key: "home.projects.card.budget.value",
+    page: "home",
+    label: "Project card: budget value",
+    default: "Rp {amount}m",
+    hint: "Token: {amount}, already formatted with thousand separators. The m stands for millions.",
+  },
+  {
     key: "home.projects.card.team",
     page: "home",
     label: "Project card: team label",
@@ -355,6 +416,12 @@ export const HOME_CONTENT: ContentEntry[] = [
   },
 
   // ------------------------------------------------------------ records
+  {
+    key: "home.records.index",
+    page: "home",
+    label: "Records section: index marker",
+    default: "03",
+  },
   {
     key: "home.records.eyebrow",
     page: "home",
@@ -419,5 +486,32 @@ export const HOME_CONTENT: ContentEntry[] = [
     label: "Closing block: secondary button",
     default: "Read the working approach",
     hint: "Links to the about page.",
+  },
+
+  // ------------------------------------------------------ section indexes
+  {
+    key: "home.section.trail.index",
+    page: "home",
+    label: "Section number: career trail",
+    default: "01",
+    hint: "The large faded numeral beside the section heading.",
+  },
+  {
+    key: "home.section.projects.index",
+    page: "home",
+    label: "Section number: projects",
+    default: "02",
+  },
+  {
+    key: "home.section.records.index",
+    page: "home",
+    label: "Section number: records table",
+    default: "03",
+  },
+  {
+    key: "home.section.principles.index",
+    page: "home",
+    label: "Section number: principles",
+    default: "04",
   },
 ];

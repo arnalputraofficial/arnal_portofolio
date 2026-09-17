@@ -74,7 +74,7 @@ const MISSTEPS = [
   },
 ];
 
-const FAQ = [
+const buildFaq = (t: ReturnType<typeof useSiteText>) => [
   {
     q: "Is this all real data or sample data?",
     a: "The people's names, company names, and numbers on this page are sample data I put together to show how I think. The page structure, technical decisions, and interactive features are real. I did not want to dress up invented numbers so they look like an official audit.",
@@ -89,8 +89,7 @@ const FAQ = [
   },
   {
     q: "What kind of role are you ready for?",
-    a: profile.availability +
-    ". I am most useful in organisations with many operational sites, a small team that has to grow, and a budget that needs guarding. Not a place looking for someone to simply keep servers powered on.",
+    a: t("about.faq.role.answer", { availability: t("global.profile.availability") }),
   },
 ];
 
@@ -111,7 +110,7 @@ export default function About() {
   return (
     <>
       <PageIntro
-        index="06"
+        index={t("about.intro.index")}
         eyebrow={t("about.eyebrow")}
         title={t("about.title")}
         lead={t("about.lead")}
@@ -120,23 +119,28 @@ export default function About() {
           items={[
             {
               label: t("about.stat.tenure"),
-              value: <Counter value={Math.round(totalMonths / 12)} suffix=" yrs" />,
-              hint: `${humanDuration(totalMonths)} since the first role`,
+              value: (
+                <Counter
+                  value={Math.round(totalMonths / 12)}
+                  suffix={t("about.stat.tenure.suffix")}
+                />
+              ),
+              hint: t("about.stat.tenure.hint", { duration: humanDuration(totalMonths) }),
             },
             {
               label: t("about.stat.people"),
-              value: <Counter value={profile.teamLed} suffix=" people" />,
-              hint: currentRole?.title ?? "No role recorded yet",
+              value: <Counter value={profile.teamLed} suffix={t("about.stat.people.suffix")} />,
+              hint: currentRole?.title ?? t("about.stat.people.hint.empty"),
             },
             {
               label: t("about.stat.sites"),
               value: <Counter value={profile.sitesManaged} />,
-              hint: "Stores, warehouses, and branch offices",
+              hint: t("about.stat.sites.hint"),
             },
             {
               label: t("about.stat.tools"),
               value: <Counter value={tools.length} />,
-              hint: "Spread across real projects, not a wish list",
+              hint: t("about.stat.tools.hint"),
             },
           ]}
         />
@@ -151,7 +155,7 @@ export default function About() {
       {/* 01 - working style */}
       <PageSection>
         <SectionHeading
-          index="01"
+          index={t("about.section.working.index")}
           eyebrow={t("about.working.eyebrow")}
           title={t("about.working.title")}
           description={t("about.working.description")}
@@ -177,7 +181,7 @@ export default function About() {
       {/* 02 - principles */}
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
-          index="02"
+          index={t("about.section.principles.index")}
           eyebrow={t("about.principles.eyebrow")}
           title={t("about.principles.title")}
           description={t("about.principles.description")}
@@ -209,7 +213,7 @@ export default function About() {
       {/* 03 - missteps */}
       <PageSection>
         <SectionHeading
-          index="03"
+          index={t("about.section.missteps.index")}
           eyebrow={t("about.missteps.eyebrow")}
           title={t("about.mistakes.title")}
           description={t("about.mistakes.description")}
@@ -277,7 +281,7 @@ export default function About() {
       {/* 04 - questions */}
       <PageSection className="border-t border-border">
         <SectionHeading
-          index="04"
+          index={t("about.section.faq.index")}
           eyebrow={t("about.faq.eyebrow")}
           title={t("about.faq.title")}
         />
@@ -285,7 +289,7 @@ export default function About() {
         <div className="mt-10 grid gap-6 lg:grid-cols-12">
           <Reveal className="lg:col-span-8">
             <Accordion type="single" collapsible className="panel px-6 sm:px-8">
-              {FAQ.map((item, i) => (
+              {buildFaq(t).map((item, i) => (
                 <AccordionItem key={item.q} value={`f${i}`}>
                   <AccordionTrigger>{item.q}</AccordionTrigger>
                   <AccordionContent>
@@ -300,47 +304,47 @@ export default function About() {
             <div className="panel h-full p-6 sm:p-8">
               <p className="eyebrow flex items-center gap-2">
                 <Compass className="size-3.5 text-primary" aria-hidden />
-                profile
+                {t("about.profile.eyebrow")}
               </p>
               <dl className="mt-5 space-y-4">
                 <div>
                   <dt className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                    name
+                    {t("about.profile.field.name")}
                   </dt>
                   <dd className="mt-1 font-display text-[15px] font-medium tracking-tight">
-                    {profile.fullName}
+                    {t("global.profile.fullName")}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                    role
+                    {t("about.profile.field.role")}
                   </dt>
                   <dd className="mt-1 flex items-center gap-2 text-[15px]">
                     <Target className="size-4 text-primary" aria-hidden />
-                    {profile.role}
+                    {t("global.profile.role")}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                    location
+                    {t("about.profile.field.location")}
                   </dt>
                   <dd className="mt-1 flex items-center gap-2 text-[15px]">
                     <MapPin className="size-4 text-primary" aria-hidden />
-                    {profile.location}
+                    {t("global.profile.location")}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                    time zone
+                    {t("about.profile.field.timezone")}
                   </dt>
                   <dd className="mt-1 flex items-center gap-2 text-[15px]">
                     <Clock className="size-4 text-primary" aria-hidden />
-                    {profile.timezone}
+                    {t("global.profile.timezone")}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                    email
+                    {t("about.profile.field.email")}
                   </dt>
                   <dd className="mt-1 flex items-center gap-2 text-[15px]">
                     <Mail className="size-4 text-primary" aria-hidden />
@@ -348,7 +352,7 @@ export default function About() {
                       href={`mailto:${profile.email}`}
                       className="underline decoration-primary/40 decoration-2 underline-offset-4 transition-colors hover:text-primary hover:decoration-primary"
                     >
-                      {profile.email}
+                      {t("global.profile.email")}
                     </a>
                   </dd>
                 </div>
@@ -357,18 +361,18 @@ export default function About() {
               <Separator className="my-6" />
 
               <p className="text-[14px] leading-relaxed text-muted-foreground">
-                {profile.availability}
+                {t("global.profile.availability")}
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <Button asChild size="sm">
                   <Link to="/contact">
-                    Send a message
+                    {t("about.profile.button")}
                     <ArrowRight className="size-4" aria-hidden />
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="sm">
-                  <Link to="/projects">Open the project file</Link>
+                  <Link to="/projects">{t("about.projects.button")}</Link>
                 </Button>
               </div>
             </div>

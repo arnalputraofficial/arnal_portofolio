@@ -14,6 +14,7 @@ import {
   Line,
 } from "recharts";
 import { CHART_COLORS, TooltipShell } from "@/components/charts/ChartFrame";
+import { useSiteText } from "@/content/ContentProvider";
 import { useEntries } from "@/entries/EntriesProvider";
 import type { Project, ProjectKind } from "@/data/portfolio";
 import { nf } from "@/lib/utils";
@@ -42,6 +43,7 @@ const KIND_COLOR: Record<ProjectKind, string> = {
  * stand out immediately without reading the table.
  */
 export function ProjectMap({ projects }: { projects: Project[] }) {
+  const t = useSiteText();
   const data = React.useMemo(
     () =>
       projects.map((p) => ({
@@ -60,7 +62,7 @@ export function ProjectMap({ projects }: { projects: Project[] }) {
         <XAxis
           type="number"
           dataKey="x"
-          name="Year"
+          name={t("projects.chart.axis.year")}
           domain={[2017.5, 2025.5]}
           tickCount={9}
           tickLine={false}
@@ -88,11 +90,27 @@ export function ProjectMap({ projects }: { projects: Project[] }) {
               <TooltipShell
                 title={row.name}
                 rows={[
-                  { label: "Role", value: row.role },
-                  { label: "Status", value: row.status, color: KIND_COLOR[row.kind] },
-                  { label: "Impact", value: `${row.impact}/100`, color: CHART_COLORS.rust },
-                  { label: "Budget", value: row.budgetM ? `Rp ${nf(row.budgetM)}m` : "internal" },
-                  { label: "Duration", value: `${row.months} months` },
+                  { label: t("projects.chart.row.role"), value: row.role },
+                  {
+                    label: t("projects.chart.row.status"),
+                    value: row.status,
+                    color: KIND_COLOR[row.kind],
+                  },
+                  {
+                    label: t("projects.chart.row.impact"),
+                    value: t("projects.chart.value.impactScore", { value: row.impact }),
+                    color: CHART_COLORS.rust,
+                  },
+                  {
+                    label: t("projects.chart.row.budget"),
+                    value: row.budgetM
+                      ? t("projects.chart.value.budget", { amount: nf(row.budgetM) })
+                      : t("projects.chart.value.internal"),
+                  },
+                  {
+                    label: t("projects.chart.row.duration"),
+                    value: t("projects.chart.value.months", { count: row.months }),
+                  },
                 ]}
               />
             );
@@ -121,6 +139,7 @@ export function ProjectMap({ projects }: { projects: Project[] }) {
  * Shows whether a rise in spending actually produced results.
  */
 export function BudgetImpactChart() {
+  const t = useSiteText();
   const { projects } = useEntries();
 
   const data = React.useMemo(() => {
@@ -174,11 +193,19 @@ export function BudgetImpactChart() {
             const row = payload[0].payload as (typeof data)[number];
             return (
               <TooltipShell
-                title={`Year ${label}`}
+                title={t("projects.chart.value.yearTitle", { year: String(label) })}
                 rows={[
-                  { label: "Total budget", value: `Rp ${nf(row.budget)}m`, color: CHART_COLORS.dim },
-                  { label: "Average impact", value: `${row.avgImpact}/100`, color: CHART_COLORS.rust },
-                  { label: "Project count", value: `${row.count}` },
+                  {
+                    label: t("projects.chart.row.totalBudget"),
+                    value: t("projects.chart.value.budget", { amount: nf(row.budget) }),
+                    color: CHART_COLORS.dim,
+                  },
+                  {
+                    label: t("projects.chart.row.avgImpact"),
+                    value: t("projects.chart.value.impactScore", { value: row.avgImpact }),
+                    color: CHART_COLORS.rust,
+                  },
+                  { label: t("projects.chart.row.projectCount"), value: `${row.count}` },
                 ]}
               />
             );
@@ -208,6 +235,7 @@ export function BudgetImpactChart() {
 
 /** Budget against impact spread, bubbles sized by team. */
 export function BudgetImpactScatter() {
+  const t = useSiteText();
   const { projects } = useEntries();
 
   const data = React.useMemo(
@@ -230,7 +258,7 @@ export function BudgetImpactScatter() {
         <XAxis
           type="number"
           dataKey="x"
-          name="Budget (IDR millions)"
+          name={t("projects.chart.axis.budget")}
           tickLine={false}
           axisLine={{ stroke: CHART_COLORS.grid }}
           tickFormatter={(v: number) => `${nf(v)}m`}
@@ -239,7 +267,7 @@ export function BudgetImpactScatter() {
         <YAxis
           type="number"
           dataKey="y"
-          name="Impact score"
+          name={t("projects.chart.axis.impact")}
           domain={[50, 100]}
           tickLine={false}
           axisLine={false}
@@ -255,9 +283,21 @@ export function BudgetImpactScatter() {
               <TooltipShell
                 title={row.name}
                 rows={[
-                  { label: "Budget", value: `$${nf(row.budgetM)}k`, color: CHART_COLORS.dim },
-                  { label: "Impact", value: `${row.impact}/100`, color: CHART_COLORS.rust },
-                  { label: "Team size", value: `${row.teamSize} people`, color: CHART_COLORS.moss },
+                  {
+                    label: t("projects.chart.row.budget"),
+                    value: t("projects.chart.value.budgetShort", { amount: nf(row.budgetM) }),
+                    color: CHART_COLORS.dim,
+                  },
+                  {
+                    label: t("projects.chart.row.impact"),
+                    value: t("projects.chart.value.impactScore", { value: row.impact }),
+                    color: CHART_COLORS.rust,
+                  },
+                  {
+                    label: t("projects.chart.row.teamSize"),
+                    value: t("projects.chart.value.people", { count: row.teamSize }),
+                    color: CHART_COLORS.moss,
+                  },
                 ]}
               />
             );
