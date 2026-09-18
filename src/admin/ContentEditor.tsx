@@ -32,6 +32,7 @@ import { useContent } from "@/content/ContentProvider";
 import { CONTENT_DEFAULTS, entriesForPage, PAGE_META } from "@/content/registry";
 import type { ContentEntry, ContentPageId } from "@/content/types";
 import { useAdminAuth } from "@/admin/AdminAuthProvider";
+import { AvatarCropper, CROP_SOURCE_ACCEPT } from "@/admin/AvatarCropper";
 import { plural, useAdminEditor } from "@/admin/useAdminData";
 import { supabase } from "@/lib/supabase";
 import { publicImageUrl } from "@/entries/types";
@@ -44,6 +45,16 @@ const FIELD =
 
 type ValueMap = Record<string, string>;
 
+/** Mirrors the bucket, which enforces the same allowlist and size cap itself. */
+const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+/**
+ * The source only has to be decoded in the browser, so it may be far larger
+ * than what is uploaded. This cap is here to stop a huge file from freezing the
+ * tab, not to match the bucket.
+ */
+const MAX_PHOTO_SOURCE_BYTES = 25 * 1024 * 1024;
+
 export default function ContentEditor() {
   const { overrides, drafts, previewing, setPreviewing } = useContent();
   const { identity } = useAdminAuth();
@@ -51,6 +62,14 @@ export default function ContentEditor() {
 
   const [pageId, setPageId] = React.useState<ContentPageId>(PAGE_META[0]?.id ?? "global");
   const [local, setLocal] = React.useState<ValueMap>({});
+
+  /**
+   * The photo waiting to be framed, held between the file picker and the crop
+   * dialog so closing the dialog leaves nothing behind.
+   */
+  const [pendingPhoto, setPendingPhoto] = React.useState<File | null>(null);
+  const [photoBusy, setPhotoBusy] = React.useState(false);
+  const [photoProblem, setPhotoProblem] = React.useState("");
 
   const entries = React.useMemo(() => entriesForPage(pageId), [pageId]);
   const sections = React.useMemo(() => groupBySection(entries), [entries]);
@@ -93,6 +112,44 @@ export default function ContentEditor() {
       delete next[key];
       return next;
     });
+  }
+
+  /**
+   * Takes the framed square from the crop dialog and stores it.
+   *
+   * The file arriving here is already square and already WebP, so nothing about
+   * its shape is decided again on the way out.
+   */
+  async function uploadCroppedPhoto(file: File) {
+    if (!supabase) return;
+
+    setPendingPhoto(null);
+    setPhotoProblem("");
+
+    if (!PHOTO_TYPES.includes(file.type)) {
+      setPhotoProblem("The cropped photo came out in a format the bucket refuses. Try another source file.");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoProblem(
+        `The cropped photo is ${(file.size / 1024 / 1024).toFixed(1)} MB, over the 5 MB the bucket allows.`,
+      );
+      return;
+    }
+
+    setPhotoBusy(true);
+    try {
+      const path = `profile/avatar-${Date.now()}.webp`;
+      const { error: uploadError } = await supabase.storage
+        .from("portfolio-media")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) throw uploadError;
+      setField("global.profile.avatar", path);
+    } catch (err) {
+      setPhotoProblem(err instanceof Error ? err.message : "The cropped photo could not be uploaded.");
+    } finally {
+      setPhotoBusy(false);
+    }
   }
 
   async function handleSave() {
@@ -362,37 +419,63 @@ export default function ContentEditor() {
                           </div>
                         )}
                         <div className="flex-1">
-                          <label className="inline-flex cursor-pointer items-center gap-2 rounded-notch border border-primary/40 bg-primary/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/20">
-                            <Upload className="size-3.5" />
-                            <span>Upload new photo</span>
+                          {/* The picker no longer uploads. It only hands the file to
+                              the crop dialog, so the square that gets stored is the
+                              square the home page will show. */}
+                          <label
+                            className={cn(
+                              "inline-flex items-center gap-2 rounded-notch border border-primary/40 bg-primary/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/20",
+                              photoBusy ? "cursor-wait opacity-60" : "cursor-pointer",
+                            )}
+                          >
+                            {photoBusy ? (
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                            ) : (
+                              <Upload className="size-3.5" aria-hidden />
+                            )}
+                            <span>{photoBusy ? "Uploading" : "Upload new photo"}</span>
                             <input
                               type="file"
-                              accept="image/jpeg,image/png,image/webp"
+                              accept={CROP_SOURCE_ACCEPT}
                               className="sr-only"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file || !supabase) return;
-                                try {
-                                  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-                                  const path = `profile/avatar-${Date.now()}.${ext}`;
-                                  const { error: uploadError } = await supabase.storage
-                                    .from("portfolio-media")
-                                    .upload(path, file, {
-                                      upsert: true,
-                                      contentType: file.type,
-                                    });
-                                  if (uploadError) throw uploadError;
-                                  setField(entry.key, path);
-                                } catch (err) {
-                                  console.error("Upload failed", err);
-                                  alert(err instanceof Error ? err.message : "Upload failed");
+                              disabled={photoBusy}
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                // Cleared straight away so picking the same file
+                                // twice still fires a change event.
+                                event.target.value = "";
+                                if (!file) return;
+                                setPhotoProblem("");
+                                if (!file.type.startsWith("image/")) {
+                                  setPhotoProblem(
+                                    `${file.name} is not an image file. Pick a JPG, PNG, or WebP.`,
+                                  );
+                                  return;
                                 }
+                                if (file.size > MAX_PHOTO_SOURCE_BYTES) {
+                                  setPhotoProblem(
+                                    `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MB, too large to open here. Pick one under 25 MB.`,
+                                  );
+                                  return;
+                                }
+                                setPendingPhoto(file);
                               }}
                             />
                           </label>
-                          <p className="mt-1 font-mono text-[10px] text-muted-foreground">
-                            Direct upload to portfolio-media bucket. JPG, PNG, WebP up to 5MB.
+                          <p className="mt-1 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                            Opens a square crop first, so you choose what stays in frame. Saved as a
+                            1024 x 1024 WebP in the portfolio-media bucket, JPG, PNG, WebP, AVIF up
+                            to 5 MB.
                           </p>
+                          {photoProblem ? (
+                            <p
+                              role="alert"
+                              className="mt-2 flex items-start gap-2 border-l-2 border-destructive/70 pl-3 font-mono text-[11px] leading-relaxed text-destructive"
+                            >
+                              <CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
+                              <span>{photoProblem}</span>
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                       <Input
@@ -468,8 +551,16 @@ export default function ContentEditor() {
             {identity?.email} is the only address that can write, because the database checks it
             against the allowlist on every call. This screen cannot add or remove an admin.
           </li>
-        </ul>
-      </div>
+          </ul>
+        </div>
+
+      {/* Mounted once for the whole panel. `file` being null is what keeps it shut,
+          so cancelling really does throw the picked photo away. */}
+      <AvatarCropper
+        file={pendingPhoto}
+        onCancel={() => setPendingPhoto(null)}
+        onConfirm={(cropped) => void uploadCroppedPhoto(cropped)}
+      />
     </div>
   );
 }
