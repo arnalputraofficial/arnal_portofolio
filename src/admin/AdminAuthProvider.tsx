@@ -50,6 +50,38 @@ interface AdminAuthValue {
 
 const AdminAuthContext = React.createContext<AdminAuthValue | null>(null);
 
+/** 3 hours of inactivity before an admin session is automatically signed out. */
+const IDLE_TIMEOUT_MS = 3 * 60 * 60 * 1000;
+const LAST_ACTIVITY_KEY = "arnal:admin-last-activity";
+
+function touchActivity() {
+  try {
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+  } catch {
+    // Ignore storage errors in restricted contexts
+  }
+}
+
+function clearActivity() {
+  try {
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function isIdleExpired(): boolean {
+  try {
+    const lastActivityStr = localStorage.getItem(LAST_ACTIVITY_KEY);
+    if (!lastActivityStr) return false;
+    const lastActivity = parseInt(lastActivityStr, 10);
+    if (isNaN(lastActivity)) return false;
+    return Date.now() - lastActivity >= IDLE_TIMEOUT_MS;
+  } catch {
+    return false;
+  }
+}
+
 interface AdminStateRow {
   email: string;
   must_change_password: boolean;
@@ -120,6 +152,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!effective) {
+        clearActivity();
+        setIdentity(null);
+        setStatus("signed-out");
+        return;
+      }
+
+      if (isIdleExpired()) {
+        clearActivity();
+        await supabase?.auth.signOut();
+        if (seq !== applySeq.current) return;
         setIdentity(null);
         setStatus("signed-out");
         return;
@@ -129,6 +171,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       if (seq !== applySeq.current) return;
 
       if (!next) {
+        clearActivity();
         // A signed in account that is not on the allowlist gets no access to
         // anything and loses its session, so a self service signup cannot be
         // used to probe the panel.
@@ -137,6 +180,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         setIdentity(null);
         setStatus("signed-out");
         return;
+      }
+
+      try {
+        if (!localStorage.getItem(LAST_ACTIVITY_KEY)) {
+          touchActivity();
+        }
+      } catch {
+        // Ignore storage errors
       }
 
       setIdentity(next);
@@ -192,6 +243,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: false, message: "This account is not on the admin list for this site." };
       }
 
+      touchActivity();
       setIdentity(next);
       setStatus("signed-in");
 
@@ -201,10 +253,54 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = React.useCallback(async () => {
+    clearActivity();
     await supabase?.auth.signOut();
     setIdentity(null);
     setStatus("signed-out");
   }, []);
+
+  /**
+   * Tracks user interaction (mouse/touch/keyboard/scroll) while signed in
+   * and automatically signs out after 3 hours of inactivity.
+   */
+  React.useEffect(() => {
+    if (status !== "signed-in") return;
+
+    let lastUpdate = 0;
+    const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastUpdate > 10_000) {
+        lastUpdate = now;
+        touchActivity();
+      }
+    };
+
+    const checkIdle = () => {
+      if (isIdleExpired()) {
+        void signOut();
+      }
+    };
+
+    const events: (keyof WindowEventMap)[] = ["pointerdown", "keydown", "scroll", "touchstart"];
+    events.forEach((evt) => window.addEventListener(evt, handleActivity, { passive: true }));
+
+    const intervalId = setInterval(checkIdle, 30_000);
+
+    const onFocusOrVisible = () => {
+      if (document.visibilityState === "visible") {
+        checkIdle();
+      }
+    };
+    window.addEventListener("visibilitychange", onFocusOrVisible);
+    window.addEventListener("focus", onFocusOrVisible);
+
+    return () => {
+      events.forEach((evt) => window.removeEventListener(evt, handleActivity));
+      clearInterval(intervalId);
+      window.removeEventListener("visibilitychange", onFocusOrVisible);
+      window.removeEventListener("focus", onFocusOrVisible);
+    };
+  }, [status, signOut]);
 
   const sendPasswordReset = React.useCallback(
     async (emailOrUsername: string): Promise<SignInOutcome> => {
