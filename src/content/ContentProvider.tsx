@@ -72,13 +72,19 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Drafts are asked for in the same breath as the published values. Row
-    // level security answers with an empty list for anyone who is not an
-    // admin, so a visitor pays one cheap round trip and learns nothing.
-    // Loading them here is what makes preview survive a page reload.
+    const client = supabase;
+
+    // Drafts are only accessible by authenticated admins. To avoid generating
+    // a 401 console error for public visitors, we only query portfolio_drafts
+    // if there is an active session in local storage / client.
+    const sessionRes = await client.auth.getSession();
+    const hasSession = Boolean(sessionRes.data.session);
+
     const [published, draftsResult] = await Promise.all([
-      supabase.from("portfolio_content").select("key, value"),
-      supabase.from("portfolio_drafts").select("key, value"),
+      client.from("portfolio_content").select("key, value"),
+      hasSession
+        ? client.from("portfolio_drafts").select("key, value")
+        : Promise.resolve({ data: [] as { key: string; value: string }[], error: null }),
     ]);
 
     if (published.error) {

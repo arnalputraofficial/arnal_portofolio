@@ -375,7 +375,7 @@ export default function EntriesPanel() {
           addLabel="Add a skill"
           describe={(row) => ({
             title: row.name,
-            meta: `${row.category} · level ${row.level}/5 · since ${row.since}`,
+            meta: `${row.category} · level ${row.level}/10 · since ${row.since}`,
           })}
           renderForm={({ entry, onClose }) => (
             <SkillForm
@@ -874,8 +874,8 @@ function NumberField({
   );
 }
 
-/** Levels are picked on a bar, not typed. Five bars, five being the strongest. */
-const LEVEL_SCALE = [1, 2, 3, 4, 5] as const;
+/** Levels are picked on a bar, not typed. Ten bars, ten being the strongest. */
+const LEVEL_SCALE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 function ScaleField({
   label,
@@ -2431,7 +2431,7 @@ function SkillForm({ writer, lists, entry, onClose, onCategoryAdded }: SkillForm
           label="Level"
           value={form.level}
           onChange={(v) => set("level", v)}
-          hint="Your own rating from 1 to 5, where 5 is the strongest. It is labelled as a self rating on the page."
+          hint="Your own mastery rating from 1 to 10, where 10 is the strongest. It is labelled as a self rating on the page."
         />
         <NumberField
           label="Years"

@@ -42,11 +42,11 @@ const ALL = "__all__";
 const REGISTRY_SITE = "verified-skill.com";
 
 /**
- * Levels are a 1 to 5 self rating, where 5 is the strongest. The bar and the
+ * Levels are a 1 to 10 self rating, where 10 is the strongest. The bar and the
  * radar are drawn on a 0 to 100 axis, so a level is scaled wherever a
- * percentage is needed; the labels always stay in fifths.
+ * percentage is needed; the labels always stay on the 1 to 10 scale.
  */
-const SKILL_SCALE_MAX = 5;
+const SKILL_SCALE_MAX = 10;
 
 /** Registry read time, formatted by hand so it does not depend on the newest Intl options. */
 function stamp(iso: string) {
@@ -79,7 +79,7 @@ function SkillCard({ skill, labels }: { skill: Skill; labels: Map<string, string
       <Progress
         value={(skill.level / SKILL_SCALE_MAX) * 100}
         className="mt-3 h-1.5"
-        indicatorClassName={skill.level >= 4 ? "bg-primary" : "bg-foreground/45"}
+        indicatorClassName={skill.level >= 8 ? "bg-primary" : "bg-foreground/45"}
         aria-label={t("skills.card.rating.label", {
           name: skill.name,
           value: skill.level,
@@ -315,7 +315,7 @@ export default function Skills() {
   /** Oldest year among them, for the honesty note below. */
   const heldSince = longestHeld.length > 0 ? Math.min(...longestHeld.map((s) => s.since)) : newestSince;
   /** High claims with thin evidence: one link or fewer. */
-  const thinClaims = skills.filter((s) => s.level >= 4 && s.evidence.length <= 1);
+  const thinClaims = skills.filter((s) => s.level >= 8 && s.evidence.length <= 1);
 
   /** Evidence can point to a project, a certification, or a role. */
   const evidenceLabel = new Map<string, string>([

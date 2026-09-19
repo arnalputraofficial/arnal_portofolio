@@ -135,9 +135,14 @@ export default function Home() {
             <HeroTitle text={t("home.hero.title")} />
 
             <Reveal delay={0.4}>
-              <div className="mt-7 flex flex-col gap-5 xl:flex-row xl:items-start xl:gap-6">
+              {/* The portrait floats so the lead wraps beside it and then
+                  continues at full width underneath, instead of being locked
+                  into a narrow column for its whole length. flow-root keeps
+                  the float from spilling into the buttons below when the lead
+                  turns out to be shorter than the portrait. */}
+              <div className="flow-root mt-7">
                 {t("global.profile.avatar") ? (
-                  <div className="relative size-72 shrink-0 overflow-hidden rounded-notch border-2 border-primary/50 bg-card p-1 shadow-lift sm:size-[352px] xl:size-[416px]">
+                  <div className="mb-5 size-40 overflow-hidden rounded-notch border-2 border-primary/50 bg-card p-1 shadow-lift sm:float-left sm:mr-7 sm:mb-6 sm:size-60 lg:size-72">
                     <img
                       src={
                         t("global.profile.avatar").startsWith("http")
@@ -152,7 +157,7 @@ export default function Home() {
                     />
                   </div>
                 ) : null}
-                <p className="max-w-xl text-[16px] leading-relaxed text-muted-foreground text-pretty">
+                <p className="text-[16px] leading-relaxed text-justify text-muted-foreground hyphens-auto">
                   {t("home.hero.lead", { name: t("global.profile.fullName", { name: profile.fullName }) })}
                 </p>
               </div>

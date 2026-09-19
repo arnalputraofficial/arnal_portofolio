@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { X, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEntries } from "@/entries/EntriesProvider";
+import { useSiteText } from "@/content/ContentProvider";
 import type { Skill } from "@/data/portfolio";
 
 /* --------------------------------------------------------------------------
@@ -23,6 +24,18 @@ const DIM = new THREE.Color("#6f5e4d");
 const CARD_ANIM_MS = 180;
 /** Unmount a touch later so the exit animation is always seen to finish. */
 const CARD_EXIT_MS = CARD_ANIM_MS + 20;
+
+/**
+ * Mastery is a self rating on a 1 to 10 scale, where 10 is the strongest.
+ * The card draws it as a ten step bar meter, and the node size follows it.
+ */
+const SKILL_SCALE_MAX = 10;
+const SCALE_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
+/** Single source of truth for the rendered rating, clamped and rounded. */
+function masteryOf(skill: Skill): number {
+  return Math.min(SKILL_SCALE_MAX, Math.max(1, Math.round(skill.level)));
+}
 
 /** Two entries are the same skill when their ids match, falling back to the name. */
 function sameSkill(a: Skill, b: Skill) {
@@ -70,9 +83,9 @@ function buildNodes(skills: Skill[]): NodeDef[] {
       const skill = skills[skillIndex];
       const angle = (i / ring.count) * Math.PI * 2 + ringIndex * 0.65;
       // Node size doubles as the click target, so it is kept large enough to
-      // hit comfortably while still scaling a little with proficiency. Levels
-      // run 1 to 5, so the rating is taken as its share of the scale.
-      const baseScale = 0.082 + (Math.min(Math.max(skill.level, 1), 5) / 5) * 0.05;
+      // hit comfortably while still scaling a little with mastery. Levels run
+      // 1 to 10, so the rating is taken as its share of the scale.
+      const baseScale = 0.082 + (Math.min(Math.max(skill.level, 1), SKILL_SCALE_MAX) / SKILL_SCALE_MAX) * 0.05;
 
       let nodeColor = MOSS;
       let isAccent = false;
@@ -287,6 +300,7 @@ export function HeroScene({
 }) {
   const { skills: contextSkills } = useEntries();
   const skills = propSkills ?? contextSkills;
+  const t = useSiteText();
 
   const rotation = React.useRef({ x: 0.18, y: 0.4 });
   const drag = React.useRef({ active: false, x: 0, y: 0, moved: false });
@@ -526,13 +540,43 @@ export function HeroScene({
               </button>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 pl-2 border-t border-border/50 pt-2.5">
+            <div className="mt-3 border-t border-border/50 pt-2.5 pl-2">
+              {/* Mastery meter: ten steps, filled up to the admin set rating. */}
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Mastery
+                </span>
+                <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                  {masteryOf(selectedSkill)}/{SKILL_SCALE_MAX}
+                </span>
+              </div>
+              <div
+                className="mt-1.5 flex items-end gap-[3px]"
+                role="img"
+                aria-label={`Mastery ${masteryOf(selectedSkill)} of ${SKILL_SCALE_MAX}`}
+              >
+                {SCALE_STEPS.map((step) => (
+                  <span
+                    key={step}
+                    style={{ height: `${0.6 + step * 0.21}rem` }}
+                    className={cn(
+                      "flex-1 min-w-0 rounded-sm border",
+                      step <= masteryOf(selectedSkill)
+                        ? "border-primary/60 bg-primary"
+                        : "border-border/70 bg-foreground/5",
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2 pl-2">
               <div>
                 <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
-                  Proficiency
+                  In use since
                 </p>
                 <p className="font-display text-xs font-semibold tabular-nums text-foreground">
-                  {selectedSkill.level}/5
+                  {selectedSkill.since}
                 </p>
               </div>
               <div>
@@ -540,15 +584,12 @@ export function HeroScene({
                   Experience
                 </p>
                 <p className="font-display text-xs font-semibold tabular-nums text-foreground">
-                  {selectedSkill.years} yrs
+                  {t("skills.card.years", { count: selectedSkill.years })}
                 </p>
               </div>
             </div>
 
-            <div className="mt-3 pl-2 flex items-center justify-between gap-2 pt-1">
-              <span className="font-mono text-[10px] text-muted-foreground">
-                Since {selectedSkill.since}
-              </span>
+            <div className="mt-3 pl-2 flex items-center justify-end gap-2 pt-1">
               <Link
                 to="/skills"
                 className="inline-flex items-center gap-1 font-mono text-[10px] text-primary hover:underline underline-offset-2"

@@ -133,26 +133,36 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return null;
 
     const cached = identityCache.current.get(userId);
-    if (cached !== undefined) return cached;
+    if (cached) return cached;
 
-    const { data, error } = await supabase.rpc("portfolio_admin_state");
-
-    if (error) {
-      // 42501 is the deliberate refusal raised by the function for a caller
-      // that is not on the allowlist. Anything else is a real failure and gets
-      // reported in the console so it is not silently swallowed.
-      if (error.code !== "42501") {
-        console.warn("[admin] could not read the admin state:", error.message);
+    // Retry up to 3 times with brief delays to withstand JWT token attachment
+    // timing issues or temporary network hiccups during initial login.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await new Promise((res) => setTimeout(res, 150 * attempt));
       }
-      return null;
+
+      const { data, error } = await supabase.rpc("portfolio_admin_state");
+
+      if (error) {
+        // 42501 is the deliberate refusal raised by the function for a caller
+        // that is not on the allowlist. If 42501, do not retry — caller is not an admin.
+        if (error.code === "42501") {
+          return null;
+        }
+        console.warn(`[admin] attempt ${attempt + 1} could not read admin state:`, error.message);
+        continue;
+      }
+
+      const row = (data as AdminStateRow[] | null)?.[0];
+      if (!row) return null;
+
+      const next = { email: row.email, mustChangePassword: row.must_change_password };
+      identityCache.current.set(userId, next);
+      return next;
     }
 
-    const row = (data as AdminStateRow[] | null)?.[0];
-    if (!row) return null;
-
-    const next = { email: row.email, mustChangePassword: row.must_change_password };
-    identityCache.current.set(userId, next);
-    return next;
+    return null;
   }, []);
 
   /**

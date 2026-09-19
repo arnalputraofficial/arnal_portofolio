@@ -148,7 +148,7 @@ Status per 2026-09-15.
 | Kode | Requirement | Status |
 |---|---|---|
 | FR-23 | Keahlian dikelompokkan menurut kategori dan dapat disaring, dan pemilik dapat menambah kategori sendiri dari panel admin | Selesai |
-| FR-24 | Tiap keahlian menampilkan tingkat penilaian berskala 1 sampai 5, masa pakai, tahun mulai dikuasai (`since`), dan tautan bukti ke proyek atau sertifikat terkait | Selesai |
+| FR-24 | Tiap keahlian menampilkan tingkat penilaian berskala 1 sampai 10, masa pakai, tahun mulai dikuasai (`since`), dan tautan bukti ke proyek atau sertifikat terkait | Selesai |
 | FR-25 | Halaman menandai keahlian yang paling lama dipegang dan keahlian dengan bukti tipis | Selesai |
 | FR-26 | Tersedia grafik keseimbangan kategori, keahlian teratas, dan sebaran jam terbang | Selesai |
 | FR-27 | Halaman menampilkan data dari registry keahlian terverifikasi pihak ketiga | Selesai |
@@ -335,7 +335,7 @@ Seluruh data portofolio publik berada di `src/data/portfolio.ts` sebagai sumber 
 - **`Project`**: `id`, `name`, `kind`, `status`, `role`, `year`, teknologi, dampak, dan metrik pendukung.
 - **`Certification`**: `id`, `name`, `issuer`, `domain`, `issued`, `expires`, `credentialId`, `status`, `cost`.
 - **`Skill`**: `id`, `name`, `category`, `level`, `years`, `since`, `evidence[]`.
-  `level` adalah penilaian diri berskala **1 sampai 5**, dengan 5 sebagai yang paling dikuasai,
+  `level` adalah penilaian diri berskala **1 sampai 10**, dengan 10 sebagai yang paling dikuasai,
   dan selalu disebut sebagai penilaian diri di antarmuka. `since` adalah tahun skill itu mulai dikuasai,
   sedangkan `years` tetap menyatakan lama pemakaian. `category` berupa teks bebas karena pemilik dapat
   menambah kategori sendiri dari panel admin.
@@ -797,6 +797,42 @@ Daftar ini menjelaskan hal yang sengaja tidak dikerjakan, agar tidak menimbulkan
   - Status: Selesai.
 
 ### 2026-09-19
+
+- **Kartu Node Beranda Memakai Bar Chart Skala 1-10 dan Skala Penguasaan Naik dari 1-5**: kartu inspeksi node di Beranda sebelumnya menampilkan label "Proficiency" berisi pecahan seperti `4/5`, yang tidak menjelaskan apa yang sedang diukur.
+  - Kebutuhan: permintaan pemilik produk, "Untuk node, ini proficiency ini apa? Kenapa tidak bar chart saja misalkan untuk skill ini dari tahun berapa udah menguasai skill ini dan sudah berapa lama skill ini ada dan dari bar chart 1-10 berapa total penguasaanya (itu bisa di set admin)."
+  - Perubahan yang diterapkan:
+    1. Skala penilaian diri dinaikkan dari 1-5 menjadi **1-10** di seluruh lapisan: batas `CHECK` kolom `portfolio_skills.level` di basis data, tipe `Skill` di `src/data/portfolio.ts` beserta 30 entri contoh, `SKILL_SCALE_MAX` di `src/pages/Skills.tsx` dan `src/components/charts/SkillCharts.tsx`, `ScaleField` di `src/admin/EntriesPanel.tsx` (kini sepuluh batang), serta nilai bawaan teks yang dapat disunting.
+    2. Kartu node di `src/components/three/HeroScene.tsx` kini menampilkan **bar chart sepuluh langkah** berlabel "Mastery" dengan angka `n/10`, menggantikan label "Proficiency". Bar terisi sampai nilai yang ditetapkan admin, dan tinggi tiap batang bertingkat sehingga bentuk diagramnya ikut menyatakan besaran.
+    3. Di bawah bar chart ditampilkan **"In use since"** (tahun `since`, sejak kapan skill itu dikuasai) dan **"Experience"** (nilai `years`).
+    4. Nilai pada kartu diambil lewat satu fungsi `masteryOf` yang membulatkan dan menjepit nilai ke rentang 1-10, sehingga ukuran node dan tinggi bar tidak pernah berbeda dari angka yang tertulis.
+  - Migrasi basis data: `update public.portfolio_skills set level = least(10, greatest(1, round(level * 2)::int))` dijalankan **sebelum** batas `CHECK` baru dipasang, supaya nilai lama berskala 1-5 ter-rescale proporsional (misalnya 4 menjadi 8) dan tidak ada baris yang tertolak. Batas `CHECK` diverifikasi ulang melalui `pg_get_constraintdef` dan mengembalikan `CHECK (((level >= 1) AND (level <= 10)))`.
+  - Ambang turunan yang ikut disesuaikan agar tidak salah arti pada skala baru: penanda bar tingkat tinggi di kartu skill (`>= 8`), daftar klaim dengan bukti tipis di `src/pages/Skills.tsx` (`>= 8`), dan pewarnaan batang pada `TopSkillsBar` (`>= 8` dan `>= 5`). Sumbu angka pada `TopSkillsBar` yang sebelumnya memakai domain 0-100 kini memakai domain dan tick 0-10, karena nilainya memang level, bukan persentase.
+  - Catatan jujur: 30 entri contoh di kode dan seluruh baris di basis data kini bernilai level 8 hasil rescale, sehingga penguasaan relatif antar skill belum terlihat berbeda. Pemilik perlu menyesuaikan nilai per skill dari panel admin agar bar chart-nya benar-benar informatif.
+  - Verifikasi: `npx tsc --noEmit` keluar 0, `npm run build` sukses (2844 modul, 10,70 detik), halaman Beranda dan Keahlian dimuat di peladen pengembangan tanpa galat konsol peramban.
+  - Status: Selesai. Kecuali penyesuaian nilai per skill yang memang menjadi pekerjaan pemilik di panel admin.
+
+- **Perbaikan Permanen Otentikasi Admin dan Penanganan Galat 401 Publik**:
+  - Masalah: kegagalan berkala saat login di mana status auth sempat berhasil lalu ter-reset kembali ke halaman login, serta munculnya status galat merah HTTP 401 pada `portfolio_drafts` di konsol pengembang saat halaman dibuka publik.
+  - Penyebab teknis:
+    1. Pada `loadIdentity` di `src/admin/AdminAuthProvider.tsx`, pembacaan allowlist `portfolio_admin_state` rentan terhadap jeda hidrasi JWT token pada milidetik pertama setelah `signInWithPassword`. Jika pembacaan pertama mengembalikan galat sementara (bukan 42501), ketiadaan mekanisme retry menyebabkan `loadIdentity` langsung mengembalikan `null`, yang memicu `applySession` memanggil `supabase.auth.signOut()` dan menghapus token sesi.
+    2. Pada `src/content/ContentProvider.tsx`, query `portfolio_drafts` dipanggil secara serentak untuk semua pengunjung anonim, menghasilkan respon HTTP 401 Unauthorized di konsol peramban karena tabel draf hanya boleh diakses oleh akun admin terautentikasi.
+    3. Pada `src/pages/AdminLogin.tsx`, navigasi pasca-login bergantung penuh pada efek reaktif tanpa pengalihan langsung saat penyerahan formulir berhasil.
+  - Solusi yang diterapkan:
+    1. `loadIdentity` dilengkapi mekanisme coba-ulang otomatis hingga 3 kali dengan jeda waktu terukur (150 ms) khusus untuk kegagalan sementara, dan hanya menghentikan percobaan jika server secara eksplisit mengembalikan galat `42501` (bukan admin). Cache identitas kini hanya menyimpan hasil positif.
+    2. `ContentProvider.tsx` memeriksa ketersediaan sesi aktif sebelum meminta draf dari basis data. Pengunjung publik tidak lagi memicu kueri ke tabel `portfolio_drafts`, menghilangkan galat 401 dari konsol.
+    3. `AdminLogin.tsx` mengeksekusi navigasi langsung `navigate("/admin", { replace: true })` begitu panggilan `signIn` selesai dengan sukses.
+  - Verifikasi: `npx tsc --noEmit` keluar 0 dan `npm run build` sukses. Alur pendaftaran dan pembaruan sesi diverifikasi melalui log Edge dan basis data PostgreSQL.
+  - Status: Selesai dan Permanen.
+
+- **Paragraf Hero Membungkus Foto dan Diratakan Rata Kanan-Kiri**: paragraf lead Beranda sebelumnya berdampingan dengan foto dalam dua kolom, sehingga teks hanya memakai kolom sempit sepanjang paragrafnya.
+  - Kebutuhan: permintaan pemilik produk, "Untuk bagian hero paragraph, bisakah untuk agar wrapping text outside the image? dan untuk textnya bisakah dibuat justify saja agar lebih rapih"
+  - Keadaan sebelumnya: wadah memakai `flex flex-col gap-5 xl:flex-row xl:items-start xl:gap-6`, foto berukuran sampai 416 px sebagai anak flex yang tidak menyusut, dan paragraf dibatasi `max-w-xl`. Akibatnya teks hanya menempati kolom 265 px sampai 289 px di desktop dan tidak pernah memakai lebar penuh kolom kiri.
+  - Perubahan kode pada `src/pages/Home.tsx`: wadah flex diganti satu blok `flow-root`, foto menjadi `float` (`sm:float-left sm:mr-7 sm:mb-6`) dengan ukuran diturunkan menjadi `size-40` di ponsel, `sm:size-60`, dan `lg:size-72`, dan paragraf mendapat `text-justify` serta `hyphens-auto` dengan batas `max-w-xl` dilepas. Perataan rata kanan-kiri tanpa pemenggalan kata akan membuat celah antar kata melebar, jadi `hyphens-auto` wajib ada di sini.
+  - Alasan `flow-root`: bila paragraf ternyata lebih pendek dari foto, float akan melimpah ke blok tombol di bawahnya. `flow-root` membentuk konteks pemformatan baru sehingga batas blok tetap utuh, dan tidak ada kelas yang perlu ditambah ke `src/index.css`.
+  - Perlakuan layar sempit: float baru aktif mulai 640 px. Di bawah itu foto tetap menjadi blok penuh di atas paragraf, karena kolom 350 px akan menyisakan sekitar 175 px untuk teks bila float dipaksa, dan perataan rata kanan-kiri pada kolom sesempit itu tidak terbaca.
+  - Verifikasi: `npx tsc --noEmit` keluar 0 dan `npm run build` berhasil. Keempat utilitas baru dikonfirmasi benar-benar ada di CSS terkompilasi (`hyphens:auto`, `text-align:justify`, `display:flow-root`, `float:left`), karena kelas Tailwind yang tidak ada akan diam diam tidak berlaku. Halaman dimuat di peramban tanpa galat konsol.
+  - Catatan jujur: perataan rata kanan-kiri hanya terlihat rapi bila pemenggalan kata didukung peramban. Firefox dan Safari mendukungnya; Chromium mendukung sejak versi 88, tetapi hanya untuk beberapa bahasa. Bila pemenggalan tidak aktif, teks tetap rata kanan-kiri namun dengan celah antar kata yang lebih lebar.
+  - Status: Selesai.
 
 - **Perbaikan Gagal Login Admin yang Terlempar Kembali ke Halaman Login**: setelah kata sandi diterima, panel admin sempat tidak mau terbuka; pemilik melaporkan, "Ada error tidak bisa login. Tadi sempat bisa tapi malah masuk ke login page lagi."
   - Gejala di layar pemilik: halaman berkedip antara `/admin` dan `/admin/login`, konsol memuat peringatan peramban `Throttling navigation to the prevent the browser from hanging`, satu permintaan `auth/v1/token?grant_type=password` berstatus 400, dan satu permintaan `auth/v1/logout` berstatus 403.

@@ -19,17 +19,17 @@ import { useSiteText } from "@/content/ContentProvider";
 import { useEntries } from "@/entries/EntriesProvider";
 import type { Skill } from "@/data/portfolio";
 
-/** Levels are a 1 to 5 self rating, where 5 is the strongest. */
-const SKILL_SCALE_MAX = 5;
+/** Levels are a 1 to 10 self rating, where 10 is the strongest. */
+const SKILL_SCALE_MAX = 10;
 
 /**
  * Competency balance radar.
  * Self-rating is compared against the number of project evidence items,
  * so the areas backed by real proof, and the thin ones, both show up.
  *
- * Levels are a 1 to 5 self rating while evidence is a 0 to 100 count, so the
+ * Levels are a 1 to 10 self rating while evidence is a 0 to 100 count, so the
  * rating is drawn as its share of the scale. That keeps one axis for both
- * series; the labels still speak in fifths.
+ * series; the labels still speak in tenths.
  */
 export function SkillBalanceRadar({ data }: { data: Skill[] }) {
   const t = useSiteText();
@@ -47,8 +47,8 @@ export function SkillBalanceRadar({ data }: { data: Skill[] }) {
       return {
         category,
         level: Math.round((level / SKILL_SCALE_MAX) * 100),
-        /** The same rating in fifths, for the tooltip. */
-        levelOf5: Math.round(level * 10) / 10,
+        /** The same rating on the 1 to 10 scale, for the tooltip. */
+        levelOf10: Math.round(level * 10) / 10,
         // evidence normalized to a 0-100 scale so both series share one chart
         evidence: Math.min(100, Math.round((v.evidence / 9) * 100)),
       };
@@ -91,7 +91,7 @@ export function SkillBalanceRadar({ data }: { data: Skill[] }) {
         <Tooltip
           content={({ active, payload, label }) => {
             if (!active || !payload?.length) return null;
-            const row = payload[0].payload as { levelOf5: number };
+            const row = payload[0].payload as { levelOf10: number };
             return (
               <TooltipShell
                 title={label as string}
@@ -99,7 +99,7 @@ export function SkillBalanceRadar({ data }: { data: Skill[] }) {
                   label: p.name as string,
                   value:
                     p.dataKey === "level"
-                      ? t("skills.chart.value.score", { value: String(row.levelOf5) })
+                      ? t("skills.chart.value.score", { value: String(row.levelOf10) })
                       : t("skills.chart.value.percent", { value: String(p.value) }),
                   color: p.stroke as string,
                 }))}
@@ -126,7 +126,8 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
         <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="2 4" horizontal={false} />
         <XAxis
           type="number"
-          domain={[0, 100]}
+          domain={[0, SKILL_SCALE_MAX]}
+          ticks={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
           tickLine={false}
           axisLine={false}
           tick={{ fill: CHART_COLORS.axis, fontSize: 10, fontFamily: "JetBrains Mono" }}
@@ -172,7 +173,7 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
           {top.map((s) => (
             <Cell
               key={s.id}
-              fill={s.level >= 4 ? CHART_COLORS.rustDeep : s.level >= 3 ? CHART_COLORS.rust : CHART_COLORS.moss}
+              fill={s.level >= 8 ? CHART_COLORS.rustDeep : s.level >= 5 ? CHART_COLORS.rust : CHART_COLORS.moss}
             />
           ))}
         </Bar>

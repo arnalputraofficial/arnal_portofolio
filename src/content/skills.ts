@@ -142,8 +142,8 @@ export const SKILLS_CONTENT: ContentEntry[] = [
     key: "skills.chart.value.score",
     page: "skills",
     label: "Chart: score value",
-    default: "{value}/5",
-    hint: "Token: {value}. Used by the radar and top skills charts. Levels run 1 to 5.",
+    default: "{value}/10",
+    hint: "Token: {value}. Used by the radar and top skills charts. Levels run 1 to 10.",
   },
   {
     key: "skills.chart.value.percent",
@@ -419,7 +419,7 @@ export const SKILLS_CONTENT: ContentEntry[] = [
     key: "skills.card.rating.label",
     page: "skills",
     label: "Skill card: rating accessible label",
-    default: "Self rating for {name}: {value} out of 5",
+    default: "Self rating for {name}: {value} out of 10",
     hint: "Tokens: {name}, {value}.",
   },
   {
@@ -564,7 +564,7 @@ export const SKILLS_CONTENT: ContentEntry[] = [
     key: "skills.summary.row.aria",
     page: "skills",
     label: "Category summary: progress accessible label",
-    default: "Average {category}: {value} out of 5",
+    default: "Average {category}: {value} out of 10",
     hint: "Tokens: {category}, {value}.",
   },
   {

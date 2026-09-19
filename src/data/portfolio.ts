@@ -467,7 +467,7 @@ export interface Skill {
   id: string;
   name: string;
   category: string;
-  level: number; // 1-5, self-assessment, 5 is the strongest
+  level: number; // 1-10, self-assessment, 10 is the strongest
   years: number;
   since: number; // year the skill was first picked up
   evidence: string[]; // project ids that back it up
@@ -475,46 +475,46 @@ export interface Skill {
 
 export const skills: Skill[] = [
   // Leadership
-  { id: "s01", name: "Technical Team Leadership", category: "Leadership", level: 4, years: 6, since: 2019, evidence: ["p01", "p07", "p08"] },
-  { id: "s02", name: "IT Budget Planning", category: "Leadership", level: 4, years: 5, since: 2020, evidence: ["p05", "p09"] },
-  { id: "s03", name: "Vendor Management", category: "Leadership", level: 4, years: 5, since: 2019, evidence: ["p09", "p05"] },
-  { id: "s04", name: "Mentoring & People Development", category: "Leadership", level: 4, years: 4, since: 2021, evidence: ["p07"] },
-  { id: "s05", name: "Cross-functional Communication", category: "Leadership", level: 4, years: 8, since: 2017, evidence: ["p05", "p01"] },
-  { id: "s06", name: "IT Strategy Planning", category: "Leadership", level: 4, years: 4, since: 2021, evidence: ["p02", "p08"] },
+  { id: "s01", name: "Technical Team Leadership", category: "Leadership", level: 8, years: 6, since: 2019, evidence: ["p01", "p07", "p08"] },
+  { id: "s02", name: "IT Budget Planning", category: "Leadership", level: 8, years: 5, since: 2020, evidence: ["p05", "p09"] },
+  { id: "s03", name: "Vendor Management", category: "Leadership", level: 8, years: 5, since: 2019, evidence: ["p09", "p05"] },
+  { id: "s04", name: "Mentoring & People Development", category: "Leadership", level: 8, years: 4, since: 2021, evidence: ["p07"] },
+  { id: "s05", name: "Cross-functional Communication", category: "Leadership", level: 8, years: 8, since: 2017, evidence: ["p05", "p01"] },
+  { id: "s06", name: "IT Strategy Planning", category: "Leadership", level: 8, years: 4, since: 2021, evidence: ["p02", "p08"] },
 
   // Infrastructure
-  { id: "s07", name: "Linux Server", category: "Infrastructure", level: 4, years: 9, since: 2016, evidence: ["p03", "p08"] },
-  { id: "s08", name: "Kubernetes", category: "Infrastructure", level: 4, years: 4, since: 2021, evidence: ["p03"] },
-  { id: "s09", name: "Terraform / IaC", category: "Infrastructure", level: 4, years: 4, since: 2021, evidence: ["p03"] },
-  { id: "s10", name: "Networking & Routing", category: "Infrastructure", level: 4, years: 9, since: 2015, evidence: ["p10", "p04"] },
-  { id: "s11", name: "Virtualization (Proxmox/VMware)", category: "Infrastructure", level: 4, years: 8, since: 2016, evidence: ["p03"] },
-  { id: "s12", name: "CI/CD & GitOps", category: "Infrastructure", level: 4, years: 3, since: 2022, evidence: ["p03", "p06"] },
+  { id: "s07", name: "Linux Server", category: "Infrastructure", level: 8, years: 9, since: 2016, evidence: ["p03", "p08"] },
+  { id: "s08", name: "Kubernetes", category: "Infrastructure", level: 8, years: 4, since: 2021, evidence: ["p03"] },
+  { id: "s09", name: "Terraform / IaC", category: "Infrastructure", level: 8, years: 4, since: 2021, evidence: ["p03"] },
+  { id: "s10", name: "Networking & Routing", category: "Infrastructure", level: 8, years: 9, since: 2015, evidence: ["p10", "p04"] },
+  { id: "s11", name: "Virtualization (Proxmox/VMware)", category: "Infrastructure", level: 8, years: 8, since: 2016, evidence: ["p03"] },
+  { id: "s12", name: "CI/CD & GitOps", category: "Infrastructure", level: 8, years: 3, since: 2022, evidence: ["p03", "p06"] },
 
   // Engineering
-  { id: "s13", name: "TypeScript / Node.js", category: "Engineering", level: 4, years: 5, since: 2020, evidence: ["p01", "p06", "p11"] },
-  { id: "s14", name: "React", category: "Engineering", level: 4, years: 5, since: 2020, evidence: ["p01", "p11"] },
-  { id: "s15", name: "PostgreSQL", category: "Engineering", level: 4, years: 7, since: 2018, evidence: ["p01", "p02"] },
-  { id: "s16", name: "API Design & Integration", category: "Engineering", level: 4, years: 6, since: 2019, evidence: ["p06", "p02"] },
-  { id: "s17", name: "Python (Automation & Data)", category: "Engineering", level: 4, years: 6, since: 2018, evidence: ["p05", "p12"] },
+  { id: "s13", name: "TypeScript / Node.js", category: "Engineering", level: 8, years: 5, since: 2020, evidence: ["p01", "p06", "p11"] },
+  { id: "s14", name: "React", category: "Engineering", level: 8, years: 5, since: 2020, evidence: ["p01", "p11"] },
+  { id: "s15", name: "PostgreSQL", category: "Engineering", level: 8, years: 7, since: 2018, evidence: ["p01", "p02"] },
+  { id: "s16", name: "API Design & Integration", category: "Engineering", level: 8, years: 6, since: 2019, evidence: ["p06", "p02"] },
+  { id: "s17", name: "Python (Automation & Data)", category: "Engineering", level: 8, years: 6, since: 2018, evidence: ["p05", "p12"] },
 
   // Security
-  { id: "s18", name: "System Hardening", category: "Security", level: 4, years: 6, since: 2019, evidence: ["p04"] },
-  { id: "s19", name: "Network Segmentation", category: "Security", level: 4, years: 6, since: 2018, evidence: ["p04", "p10"] },
-  { id: "s20", name: "Compliance & Audit", category: "Security", level: 4, years: 4, since: 2021, evidence: ["p04", "c10"] },
-  { id: "s21", name: "Incident Management", category: "Security", level: 4, years: 7, since: 2018, evidence: ["p08", "p04"] },
+  { id: "s18", name: "System Hardening", category: "Security", level: 8, years: 6, since: 2019, evidence: ["p04"] },
+  { id: "s19", name: "Network Segmentation", category: "Security", level: 8, years: 6, since: 2018, evidence: ["p04", "p10"] },
+  { id: "s20", name: "Compliance & Audit", category: "Security", level: 8, years: 4, since: 2021, evidence: ["p04", "c10"] },
+  { id: "s21", name: "Incident Management", category: "Security", level: 8, years: 7, since: 2018, evidence: ["p08", "p04"] },
 
   // Data
-  { id: "s22", name: "Data Modeling", category: "Data", level: 4, years: 4, since: 2021, evidence: ["p02"] },
-  { id: "s23", name: "Dashboarding (Grafana/Metabase)", category: "Data", level: 4, years: 5, since: 2020, evidence: ["p02", "p08"] },
-  { id: "s24", name: "Analytical SQL", category: "Data", level: 4, years: 8, since: 2017, evidence: ["p02"] },
+  { id: "s22", name: "Data Modeling", category: "Data", level: 8, years: 4, since: 2021, evidence: ["p02"] },
+  { id: "s23", name: "Dashboarding (Grafana/Metabase)", category: "Data", level: 8, years: 5, since: 2020, evidence: ["p02", "p08"] },
+  { id: "s24", name: "Analytical SQL", category: "Data", level: 8, years: 8, since: 2017, evidence: ["p02"] },
 
   // Operations
-  { id: "s25", name: "ITIL / Service Management", category: "Operations", level: 4, years: 6, since: 2019, evidence: ["r3"] },
-  { id: "s26", name: "Project Management", category: "Operations", level: 4, years: 6, since: 2019, evidence: ["p05"] },
-  { id: "s27", name: "Technical Documentation", category: "Operations", level: 4, years: 9, since: 2016, evidence: ["p10", "p09"] },
-  { id: "s28", name: "On-call & Incident Response", category: "Operations", level: 4, years: 8, since: 2017, evidence: ["p08"] },
-  { id: "s29", name: "User Training", category: "Operations", level: 4, years: 7, since: 2017, evidence: ["p05", "p07"] },
-  { id: "s30", name: "Technology Cost Analysis", category: "Operations", level: 4, years: 4, since: 2020, evidence: ["p09"] },
+  { id: "s25", name: "ITIL / Service Management", category: "Operations", level: 8, years: 6, since: 2019, evidence: ["r3"] },
+  { id: "s26", name: "Project Management", category: "Operations", level: 8, years: 6, since: 2019, evidence: ["p05"] },
+  { id: "s27", name: "Technical Documentation", category: "Operations", level: 8, years: 9, since: 2016, evidence: ["p10", "p09"] },
+  { id: "s28", name: "On-call & Incident Response", category: "Operations", level: 8, years: 8, since: 2017, evidence: ["p08"] },
+  { id: "s29", name: "User Training", category: "Operations", level: 8, years: 7, since: 2017, evidence: ["p05", "p07"] },
+  { id: "s30", name: "Technology Cost Analysis", category: "Operations", level: 8, years: 4, since: 2020, evidence: ["p09"] },
 ];
 
 /** Profile summary: used in the hero and the about page. */
