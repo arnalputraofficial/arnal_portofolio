@@ -156,6 +156,30 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
+   * Records this browser as an active admin session.
+   *
+   * postgrest-js only sends the request when the builder is awaited, so this
+   * must never be written as a bare `void supabase.rpc(...)`: that sends
+   * nothing, and the heartbeat below then finds no row for a session that was
+   * never revoked, which is indistinguishable from a remote sign out.
+   */
+  const registerSession = React.useCallback(async (): Promise<boolean> => {
+    if (!supabase) return false;
+
+    const { error } = await supabase.rpc("portfolio_register_session", {
+      p_session_id: getOrCreateSessionId(),
+      p_user_agent: navigator.userAgent,
+    });
+
+    if (error) {
+      console.warn("[admin] could not register the admin session:", error.message);
+      return false;
+    }
+
+    return true;
+  }, []);
+
+  /**
    * Turns a session into a status. Only the newest call is allowed to write, so
    * a stale one cannot overwrite what just happened.
    *
@@ -219,16 +243,13 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         // Ignore storage errors
       }
 
-      const sid = getOrCreateSessionId();
-      void supabase?.rpc("portfolio_register_session", {
-        p_session_id: sid,
-        p_user_agent: navigator.userAgent,
-      });
+      await registerSession();
+      if (seq !== applySeq.current) return;
 
       setIdentity(next);
       setStatus("signed-in");
     },
-    [loadIdentity],
+    [loadIdentity, registerSession],
   );
 
   React.useEffect(() => {
@@ -282,16 +303,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       setIdentity(next);
       setStatus("signed-in");
 
-      // Register this session in the database
-      const sid = getOrCreateSessionId();
-      void supabase?.rpc("portfolio_register_session", {
-        p_session_id: sid,
-        p_user_agent: navigator.userAgent,
-      });
+      // The auth listener runs applySession too, but it is not ordered against
+      // this promise. Registering here means the dashboard never opens before
+      // the row the heartbeat looks for exists.
+      await registerSession();
 
       return { ok: true, mustChangePassword: next.mustChangePassword };
     },
-    [loadIdentity],
+    [loadIdentity, registerSession],
   );
 
   const signOut = React.useCallback(async () => {
@@ -316,13 +335,18 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     if (status !== "signed-in") return;
 
     let lastUpdate = 0;
+    const pingSession = async () => {
+      await supabase?.rpc("portfolio_touch_session", { p_session_id: getOrCreateSessionId() });
+    };
+
     const handleActivity = () => {
       const now = Date.now();
       if (now - lastUpdate > 10_000) {
         lastUpdate = now;
         touchActivity();
-        const sid = getOrCreateSessionId();
-        void supabase?.rpc("portfolio_touch_session", { p_session_id: sid });
+        // Awaited inside pingSession so the request is actually sent. The
+        // answer is not needed here: checkIdle below owns that decision.
+        void pingSession();
       }
     };
 
@@ -332,15 +356,23 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       // Check if session was revoked remotely
-      if (supabase) {
-        const sid = getOrCreateSessionId();
-        const { data, error } = await supabase.rpc("portfolio_touch_session", {
-          p_session_id: sid,
-        });
-        if (!error && data === false) {
-          // Revoked by another admin session!
-          void signOut();
-        }
+      if (!supabase) return;
+
+      const sid = getOrCreateSessionId();
+      const { data, error } = await supabase.rpc("portfolio_touch_session", {
+        p_session_id: sid,
+      });
+      if (error || data !== false) return;
+
+      // False covers two cases: the row was revoked on purpose, or there is no
+      // row at all. Registering again is safe because it never clears a
+      // revocation, so only a second false is the real thing.
+      await registerSession();
+      const { data: afterRegister } = await supabase.rpc("portfolio_touch_session", {
+        p_session_id: sid,
+      });
+      if (afterRegister === false) {
+        void signOut();
       }
     };
 
@@ -363,7 +395,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("visibilitychange", onFocusOrVisible);
       window.removeEventListener("focus", onFocusOrVisible);
     };
-  }, [status, signOut]);
+  }, [status, signOut, registerSession]);
 
   const sendPasswordReset = React.useCallback(
     async (emailOrUsername: string): Promise<SignInOutcome> => {
