@@ -15,10 +15,11 @@ export type ContentPageId =
   | "skills"
   | "about"
   | "contact"
+  | "steadbyte"
   | "notfound";
 
 export interface ContentEntry {
-  /** Permanent identifier, for example "home.hero.title.line1". */
+  /** Permanent identifier, for example "home.hero.title". */
   key: string;
   page: ContentPageId;
   /** Shown next to the field in the admin panel. */

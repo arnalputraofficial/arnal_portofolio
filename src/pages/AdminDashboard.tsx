@@ -11,12 +11,14 @@ import ContentEditor from "@/admin/ContentEditor";
 import EntriesPanel from "@/admin/EntriesPanel";
 import MessagesPanel from "@/admin/MessagesPanel";
 import HistoryPanel from "@/admin/HistoryPanel";
+import { SessionsPanel } from "@/admin/SessionsPanel";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { id: "content", label: "Content" },
   { id: "entries", label: "Entries" },
   { id: "messages", label: "Inbox" },
+  { id: "sessions", label: "Sessions" },
   { id: "history", label: "Revisions" },
   { id: "account", label: "Account" },
 ] as const;
@@ -101,6 +103,8 @@ export default function AdminDashboard() {
         {tab === "entries" ? <EntriesPanel /> : null}
 
         {tab === "messages" ? <MessagesPanel /> : null}
+
+        {tab === "sessions" ? <SessionsPanel /> : null}
 
         {tab === "history" ? <HistoryPanel /> : null}
 

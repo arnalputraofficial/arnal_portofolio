@@ -48,7 +48,7 @@ export const NOTFOUND_CONTENT: ContentEntry[] = [
     page: "notfound",
     label: "Error lead description",
     default:
-      "There is no page at that address. Instead of an empty apology, I am showing you the seven routes you can actually open.",
+      "There is no page at that address. Instead of an empty apology, I am showing you the eight routes you can actually open.",
     multiline: true,
   },
   {
@@ -144,7 +144,7 @@ export const NOTFOUND_CONTENT: ContentEntry[] = [
     page: "notfound",
     label: "Beyond these routes description",
     default:
-      "There is no other page. This site is deliberately capped at seven routes so that nothing dangles without an end.",
+      "There is no other page. This site is deliberately capped at eight routes so that nothing dangles without an end.",
     multiline: true,
   },
   {
@@ -250,5 +250,17 @@ export const NOTFOUND_CONTENT: ContentEntry[] = [
     page: "notfound",
     label: "Route list 7: description",
     default: "Email, GitHub, and LinkedIn",
+  },
+  {
+    key: "notfound.route.8.label",
+    page: "notfound",
+    label: "Route list 8: name",
+    default: "About Steadbyte",
+  },
+  {
+    key: "notfound.route.8.hint",
+    page: "notfound",
+    label: "Route list 8: description",
+    default: "How this site itself was built",
   },
 ];

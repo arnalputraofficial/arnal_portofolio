@@ -56,9 +56,9 @@ export const GLOBAL_CONTENT: ContentEntry[] = [
   {
     key: "global.profile.email",
     page: "global",
-    label: "Email address",
+    label: "Contact email address",
     default: profile.email,
-    hint: "Display text only. Change the mailto link in the data file if the address itself changes.",
+    hint: "Shown in the header, footer, and About. The mailto link and the contact form follow this value, so the displayed text and the link always match.",
   },
   {
     key: "global.profile.availability",
@@ -111,6 +111,12 @@ export const GLOBAL_CONTENT: ContentEntry[] = [
     page: "global",
     label: "Navigation: Contact",
     default: "Contact",
+  },
+  {
+    key: "nav.steadbyte",
+    page: "global",
+    label: "Navigation: About Steadbyte",
+    default: "About Steadbyte",
   },
   {
     key: "header.monogram",
@@ -166,17 +172,13 @@ export const GLOBAL_CONTENT: ContentEntry[] = [
     hint: "One item per line. Delete every line to hide the strip.",
   },
   {
-    key: "footer.closing.line1",
+    key: "footer.closing",
     page: "global",
-    label: "Footer statement, first line",
-    default: "Good systems do not feel heroic.",
-  },
-  {
-    key: "footer.closing.line2",
-    page: "global",
-    label: "Footer statement, second line",
-    default: "They just work, every single day.",
-    hint: "Rendered in a dimmer colour beneath the first line.",
+    label: "Footer statement",
+    default: "Good systems do not feel heroic.\n*They just work, every single day.*",
+    multiline: true,
+    hint:
+      "One line here is one line on the page. Wrap a line in asterisks to render it in the dimmer colour, like *this line*.",
   },
   {
     key: "footer.siteMap",

@@ -2,7 +2,7 @@ import * as React from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X, ArrowUpRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, mailtoHref } from "@/lib/utils";
 import { ThemeToggle } from "@/components/fx/ThemeToggle";
 import { useSiteText } from "@/content/ContentProvider";
 import { profile } from "@/data/portfolio";
@@ -15,6 +15,7 @@ export const navItems = [
   { to: "/credentials", label: "Credentials", key: "nav.credentials", index: "05" },
   { to: "/about", label: "About", key: "nav.about", index: "06" },
   { to: "/contact", label: "Contact", key: "nav.contact", index: "07" },
+  { to: "/about-steadbyte", label: "About Steadbyte", key: "nav.steadbyte", index: "08" },
 ];
 
 export function SiteHeader() {
@@ -177,7 +178,7 @@ export function SiteHeader() {
               <div className="mt-8 flex items-center justify-between">
                 <ThemeToggle />
                 <a
-                  href={profile.socials[2].href}
+                  href={mailtoHref(t("global.profile.email")) || undefined}
                   className="font-mono text-[12px] uppercase tracking-[0.12em] text-primary"
                 >
                   {t("global.profile.email")}

@@ -40,24 +40,13 @@ export const HOME_CONTENT: ContentEntry[] = [
     hint: "Tokens: {location}, {timezone}.",
   },
   {
-    key: "home.hero.title.line1",
+    key: "home.hero.title",
     page: "home",
-    label: "Hero heading, line 1",
-    default: "An IT Lead who picks",
-    hint: "The h1 is built from three lines. Keep them short so they do not wrap badly.",
-  },
-  {
-    key: "home.hero.title.line2",
-    page: "home",
-    label: "Hero heading, line 2",
-    default: "the boring systems",
-    hint: "Rendered in the accent colour.",
-  },
-  {
-    key: "home.hero.title.line3",
-    page: "home",
-    label: "Hero heading, line 3",
-    default: "because reliability rarely makes headlines.",
+    label: "Hero heading",
+    default: "An IT Lead who picks\nthe boring systems\nbecause reliability rarely makes headlines.",
+    multiline: true,
+    hint:
+      "One line here is one line on the page. Wrap a line in asterisks to render it in the accent colour, like *the boring systems*. Keep each line short so it does not wrap.",
   },
   {
     key: "home.hero.lead",

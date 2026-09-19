@@ -32,12 +32,23 @@ export interface SignInOutcome {
   message?: string;
 }
 
+export interface AdminSessionInfo {
+  id: string;
+  sessionId: string;
+  email: string;
+  userAgent: string | null;
+  createdAt: string;
+  lastActiveAt: string;
+  isCurrent: boolean;
+}
+
 interface AdminAuthValue {
   status: AdminStatus;
   identity: AdminIdentity | null;
   canSignIn: boolean;
   /** Set when the client could not be built at all, so the panel says why. */
   configMessage: string | null;
+  currentSessionId: string;
   signIn: (username: string, password: string) => Promise<SignInOutcome>;
   signOut: () => Promise<void>;
   /** Requests a password reset email from Supabase Auth. */
@@ -46,6 +57,10 @@ interface AdminAuthValue {
   resetPasswordWithToken: (nextPassword: string) => Promise<SignInOutcome>;
   /** Sets a new password and clears the must change flag. */
   changePassword: (currentPassword: string, nextPassword: string) => Promise<SignInOutcome>;
+  /** Lists active admin sessions across devices. */
+  listSessions: () => Promise<AdminSessionInfo[]>;
+  /** Revokes a session so it gets kicked out on next heartbeat. */
+  revokeSession: (sessionId: string) => Promise<boolean>;
 }
 
 const AdminAuthContext = React.createContext<AdminAuthValue | null>(null);
@@ -53,6 +68,20 @@ const AdminAuthContext = React.createContext<AdminAuthValue | null>(null);
 /** 3 hours of inactivity before an admin session is automatically signed out. */
 const IDLE_TIMEOUT_MS = 3 * 60 * 60 * 1000;
 const LAST_ACTIVITY_KEY = "arnal:admin-last-activity";
+const SESSION_ID_KEY = "arnal:admin-session-id";
+
+function getOrCreateSessionId(): string {
+  try {
+    let sid = localStorage.getItem(SESSION_ID_KEY);
+    if (!sid) {
+      sid = "sess_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      localStorage.setItem(SESSION_ID_KEY, sid);
+    }
+    return sid;
+  } catch {
+    return "sess_" + Date.now().toString(36);
+  }
+}
 
 function touchActivity() {
   try {
@@ -190,6 +219,12 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         // Ignore storage errors
       }
 
+      const sid = getOrCreateSessionId();
+      void supabase?.rpc("portfolio_register_session", {
+        p_session_id: sid,
+        p_user_agent: navigator.userAgent,
+      });
+
       setIdentity(next);
       setStatus("signed-in");
     },
@@ -247,6 +282,13 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       setIdentity(next);
       setStatus("signed-in");
 
+      // Register this session in the database
+      const sid = getOrCreateSessionId();
+      void supabase?.rpc("portfolio_register_session", {
+        p_session_id: sid,
+        p_user_agent: navigator.userAgent,
+      });
+
       return { ok: true, mustChangePassword: next.mustChangePassword };
     },
     [loadIdentity],
@@ -254,13 +296,20 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = React.useCallback(async () => {
     clearActivity();
+    const sid = getOrCreateSessionId();
+    try {
+      await supabase?.rpc("portfolio_revoke_session", { p_session_id: sid });
+    } catch {
+      // Ignore if cannot contact db during logout
+    }
     await supabase?.auth.signOut();
     setIdentity(null);
     setStatus("signed-out");
   }, []);
 
   /**
-   * Tracks user interaction (mouse/touch/keyboard/scroll) while signed in
+   * Tracks user interaction (mouse/touch/keyboard/scroll) while signed in,
+   * checks heartbeat with server to see if this session was remotely revoked,
    * and automatically signs out after 3 hours of inactivity.
    */
   React.useEffect(() => {
@@ -272,23 +321,37 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       if (now - lastUpdate > 10_000) {
         lastUpdate = now;
         touchActivity();
+        const sid = getOrCreateSessionId();
+        void supabase?.rpc("portfolio_touch_session", { p_session_id: sid });
       }
     };
 
-    const checkIdle = () => {
+    const checkIdle = async () => {
       if (isIdleExpired()) {
         void signOut();
+        return;
+      }
+      // Check if session was revoked remotely
+      if (supabase) {
+        const sid = getOrCreateSessionId();
+        const { data, error } = await supabase.rpc("portfolio_touch_session", {
+          p_session_id: sid,
+        });
+        if (!error && data === false) {
+          // Revoked by another admin session!
+          void signOut();
+        }
       }
     };
 
     const events: (keyof WindowEventMap)[] = ["pointerdown", "keydown", "scroll", "touchstart"];
     events.forEach((evt) => window.addEventListener(evt, handleActivity, { passive: true }));
 
-    const intervalId = setInterval(checkIdle, 30_000);
+    const intervalId = setInterval(() => void checkIdle(), 30_000);
 
     const onFocusOrVisible = () => {
       if (document.visibilityState === "visible") {
-        checkIdle();
+        void checkIdle();
       }
     };
     window.addEventListener("visibilitychange", onFocusOrVisible);
@@ -406,19 +469,60 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     [identity],
   );
 
+  const currentSessionId = getOrCreateSessionId();
+
+  const listSessions = React.useCallback(async (): Promise<AdminSessionInfo[]> => {
+    if (!supabase) return [];
+    const currentId = getOrCreateSessionId();
+    const { data, error } = await supabase.rpc("portfolio_list_sessions");
+    if (error || !Array.isArray(data)) return [];
+
+    return data.map((row: Record<string, unknown>) => ({
+      id: String(row.id),
+      sessionId: String(row.session_id),
+      email: String(row.email),
+      userAgent: (row.user_agent as string | null) ?? null,
+      createdAt: String(row.created_at),
+      lastActiveAt: String(row.last_active_at),
+      isCurrent: String(row.session_id) === currentId,
+    }));
+  }, []);
+
+  const revokeSession = React.useCallback(async (sessionIdToRevoke: string): Promise<boolean> => {
+    if (!supabase) return false;
+    const { error } = await supabase.rpc("portfolio_revoke_session", {
+      p_session_id: sessionIdToRevoke,
+    });
+    return !error;
+  }, []);
+
   const value = React.useMemo<AdminAuthValue>(
     () => ({
       status,
       identity,
       canSignIn: isSupabaseConfigured,
       configMessage: isSupabaseConfigured ? null : MISSING_CONFIG_MESSAGE,
+      currentSessionId,
       signIn,
       signOut,
       sendPasswordReset,
       resetPasswordWithToken,
       changePassword,
+      listSessions,
+      revokeSession,
     }),
-    [status, identity, signIn, signOut, sendPasswordReset, resetPasswordWithToken, changePassword],
+    [
+      status,
+      identity,
+      currentSessionId,
+      signIn,
+      signOut,
+      sendPasswordReset,
+      resetPasswordWithToken,
+      changePassword,
+      listSessions,
+      revokeSession,
+    ],
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;

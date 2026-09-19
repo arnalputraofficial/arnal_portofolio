@@ -29,7 +29,7 @@ import {
 import { principles, profile } from "@/data/portfolio";
 import { useEntries } from "@/entries/EntriesProvider";
 import { useSiteText } from "@/content/ContentProvider";
-import { humanDuration, monthsBetween } from "@/lib/utils";
+import { humanDuration, mailtoHref, monthsBetween } from "@/lib/utils";
 
 /** Four working habits you can use to judge me, not just slogans. */
 const WORKING_STYLE = [
@@ -101,9 +101,14 @@ export default function About() {
   const currentRole = career.find((role) => role.end === null) ?? career[career.length - 1] ?? null;
   const tools = [...new Set(projects.flatMap((p) => p.stack))];
 
-  /** A skill is stale when it has not been used in the past year. */
-  const staleFrom = Math.max(0, ...skills.map((s) => s.lastUsed));
-  const staleCount = skills.filter((s) => s.lastUsed < staleFrom).length;
+  /**
+   * Skills held the longest: the ones picked up before the most recent one.
+   * The count and the earliest year are read from the since column.
+   */
+  const newestSince = skills.length > 0 ? Math.max(...skills.map((s) => s.since)) : 0;
+  const heldLongestCount = skills.filter((s) => s.since < newestSince).length;
+  const heldLongestSince =
+    heldLongestCount > 0 ? Math.min(...skills.map((s) => s.since)) : newestSince;
   const activeCerts = certifications.filter((c) => c.status === "active").length;
   const expiredCerts = certifications.filter((c) => c.status === "expired");
 
@@ -262,7 +267,7 @@ export default function About() {
                 </li>
                 <li className="flex gap-3">
                   <span aria-hidden className="mt-2 size-1 shrink-0 rotate-45 bg-primary" />
-                  Keeping {staleCount} skills alive that were last used before {staleFrom}.{" "}
+                  {heldLongestCount} skills I have held since {heldLongestSince} or earlier.{" "}
                   {activeCerts} active certificates, {expiredCerts.length} already expired.
                 </li>
               </ul>
@@ -349,7 +354,7 @@ export default function About() {
                   <dd className="mt-1 flex items-center gap-2 text-[15px]">
                     <Mail className="size-4 text-primary" aria-hidden />
                     <a
-                      href={`mailto:${profile.email}`}
+                      href={mailtoHref(t("global.profile.email")) || undefined}
                       className="underline decoration-primary/40 decoration-2 underline-offset-4 transition-colors hover:text-primary hover:decoration-primary"
                     >
                       {t("global.profile.email")}

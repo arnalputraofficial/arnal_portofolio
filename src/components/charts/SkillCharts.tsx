@@ -19,10 +19,17 @@ import { useSiteText } from "@/content/ContentProvider";
 import { useEntries } from "@/entries/EntriesProvider";
 import type { Skill } from "@/data/portfolio";
 
+/** Levels are a 1 to 5 self rating, where 5 is the strongest. */
+const SKILL_SCALE_MAX = 5;
+
 /**
  * Competency balance radar.
  * Self-rating is compared against the number of project evidence items,
  * so the areas backed by real proof, and the thin ones, both show up.
+ *
+ * Levels are a 1 to 5 self rating while evidence is a 0 to 100 count, so the
+ * rating is drawn as its share of the scale. That keeps one axis for both
+ * series; the labels still speak in fifths.
  */
 export function SkillBalanceRadar({ data }: { data: Skill[] }) {
   const t = useSiteText();
@@ -35,12 +42,17 @@ export function SkillBalanceRadar({ data }: { data: Skill[] }) {
       cur.evidence += s.evidence.length;
       map.set(s.category, cur);
     });
-    return [...map.entries()].map(([category, v]) => ({
-      category,
-      level: Math.round(v.total / v.count),
-      // evidence normalized to a 0-100 scale so both series share one chart
-      evidence: Math.min(100, Math.round((v.evidence / 9) * 100)),
-    }));
+    return [...map.entries()].map(([category, v]) => {
+      const level = v.total / v.count;
+      return {
+        category,
+        level: Math.round((level / SKILL_SCALE_MAX) * 100),
+        /** The same rating in fifths, for the tooltip. */
+        levelOf5: Math.round(level * 10) / 10,
+        // evidence normalized to a 0-100 scale so both series share one chart
+        evidence: Math.min(100, Math.round((v.evidence / 9) * 100)),
+      };
+    });
   }, [data]);
 
   return (
@@ -79,12 +91,16 @@ export function SkillBalanceRadar({ data }: { data: Skill[] }) {
         <Tooltip
           content={({ active, payload, label }) => {
             if (!active || !payload?.length) return null;
+            const row = payload[0].payload as { levelOf5: number };
             return (
               <TooltipShell
                 title={label as string}
                 rows={payload.map((p) => ({
                   label: p.name as string,
-                  value: t("skills.chart.value.score", { value: String(p.value) }),
+                  value:
+                    p.dataKey === "level"
+                      ? t("skills.chart.value.score", { value: String(row.levelOf5) })
+                      : t("skills.chart.value.percent", { value: String(p.value) }),
                   color: p.stroke as string,
                 }))}
               />
@@ -141,7 +157,7 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
                     label: t("skills.chart.top.row.experience"),
                     value: t("skills.chart.value.years", { count: row.years }),
                   },
-                  { label: t("skills.chart.top.row.lastUsed"), value: String(row.lastUsed) },
+                  { label: t("skills.chart.top.row.since"), value: String(row.since) },
                   {
                     label: t("skills.chart.top.row.evidence"),
                     value: t("skills.chart.value.items", { count: row.evidence.length }),
@@ -156,7 +172,7 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
           {top.map((s) => (
             <Cell
               key={s.id}
-              fill={s.level >= 85 ? CHART_COLORS.rustDeep : s.level >= 75 ? CHART_COLORS.rust : CHART_COLORS.moss}
+              fill={s.level >= 4 ? CHART_COLORS.rustDeep : s.level >= 3 ? CHART_COLORS.rust : CHART_COLORS.moss}
             />
           ))}
         </Bar>

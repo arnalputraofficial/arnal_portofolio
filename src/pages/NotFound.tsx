@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { useEntries } from "@/entries/EntriesProvider";
 import { useSiteText } from "@/content/ContentProvider";
 
-/** Seven routes that genuinely exist, not an invented list. */
+/** Eight routes that genuinely exist, not an invented list. */
 const ROUTES = [
   { to: "/", index: "00", labelKey: "notfound.route.1.label", hintKey: "notfound.route.1.hint" },
   { to: "/career", index: "02", labelKey: "notfound.route.2.label", hintKey: "notfound.route.2.hint" },
@@ -32,6 +32,12 @@ const ROUTES = [
     index: "07",
     labelKey: "notfound.route.7.label",
     hintKey: "notfound.route.7.hint",
+  },
+  {
+    to: "/about-steadbyte",
+    index: "08",
+    labelKey: "notfound.route.8.label",
+    hintKey: "notfound.route.8.hint",
   },
 ] as const;
 

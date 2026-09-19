@@ -19,6 +19,7 @@ import type {
   CareerEntry,
   CertificationEntry,
   EntryTable,
+  ProjectCurvePoint,
   ProjectEntry,
   SkillEntry,
 } from "@/entries/types";
@@ -35,6 +36,19 @@ export interface ImageInput {
   certificationId: string;
   storagePath: string;
   caption: string;
+  /** The type the browser reported for the picked file. */
+  mimeType: string;
+  width?: number | null;
+  height?: number | null;
+  byteSize?: number | null;
+}
+
+export interface ProjectPhotoInput {
+  projectId: string;
+  storagePath: string;
+  caption: string;
+  /** The type the browser reported for the picked file. */
+  mimeType: string;
   width?: number | null;
   height?: number | null;
   byteSize?: number | null;
@@ -55,6 +69,8 @@ export interface EntryWriterValue {
   saveProject: (input: ProjectInput) => Promise<string | null>;
   saveCertification: (input: CertificationInput) => Promise<string | null>;
   saveSkill: (input: SkillInput) => Promise<string | null>;
+  /** Adds one skill category to the shared list. Returns its id, or null. */
+  addSkillCategory: (name: string) => Promise<string | null>;
   setVisible: (table: EntryTable, id: string, visible: boolean) => Promise<boolean>;
   removeEntry: (table: EntryTable, id: string) => Promise<boolean>;
   reorderEntries: (table: EntryTable, ids: string[]) => Promise<boolean>;
@@ -62,6 +78,14 @@ export interface EntryWriterValue {
   /** Removes the row and the stored object behind it. */
   removeImage: (id: string, storagePath: string) => Promise<boolean>;
   reorderImages: (certificationId: string, ids: string[]) => Promise<boolean>;
+  /** Returns the new row id, or null when the write was refused. */
+  addProjectPhoto: (input: ProjectPhotoInput) => Promise<string | null>;
+  /** Rewrites the words under one photo, without touching the file. */
+  setProjectPhotoCaption: (id: string, caption: string) => Promise<boolean>;
+  removeProjectPhoto: (id: string, storagePath: string) => Promise<boolean>;
+  reorderProjectPhotos: (projectId: string, ids: string[]) => Promise<boolean>;
+  /** Replaces the whole chart line. An empty list clears it. */
+  saveProjectCurve: (points: ProjectCurvePoint[]) => Promise<boolean>;
 }
 
 const MEDIA_BUCKET = "portfolio-media";
@@ -87,12 +111,12 @@ export function useEntryWriter(): EntryWriterValue {
 
   /** One write, one refetch, one line of feedback. */
   const call = React.useCallback(
-    async (
+    async <T = unknown,>(
       rpc: string,
       args: Record<string, unknown>,
       done: string,
       failure: string,
-    ): Promise<{ ok: boolean; data: unknown }> => {
+    ): Promise<{ ok: boolean; data: T | null }> => {
       if (!supabase) {
         refuse(MISSING_CONFIG_MESSAGE);
         return { ok: false, data: null };
@@ -111,7 +135,7 @@ export function useEntryWriter(): EntryWriterValue {
       await reload();
       setBusy(false);
       setFeedback({ tone: "status", text: done });
-      return { ok: true, data };
+      return { ok: true, data: (data ?? null) as T | null };
     },
     [refuse, reload],
   );
@@ -217,7 +241,7 @@ export function useEntryWriter(): EntryWriterValue {
             category: input.category,
             level: input.level,
             years: input.years,
-            lastUsed: input.lastUsed,
+            since: input.since,
             evidence: input.evidence,
             visible: input.visible,
             sortOrder: input.sortOrder ?? null,
@@ -225,6 +249,19 @@ export function useEntryWriter(): EntryWriterValue {
         },
         "The skill is saved.",
         "The skill was not saved.",
+      );
+      return result.ok ? String(result.data) : null;
+    },
+    [call],
+  );
+
+  const addSkillCategory = React.useCallback(
+    async (name: string) => {
+      const result = await call(
+        "portfolio_add_skill_category",
+        { p_name: name },
+        `The category "${name.trim()}" was added.`,
+        "The category was not added.",
       );
       return result.ok ? String(result.data) : null;
     },
@@ -279,6 +316,7 @@ export function useEntryWriter(): EntryWriterValue {
             certificationId: input.certificationId,
             storagePath: input.storagePath,
             caption: input.caption,
+            mimeType: input.mimeType,
             width: input.width ?? null,
             height: input.height ?? null,
             byteSize: input.byteSize ?? null,
@@ -326,6 +364,87 @@ export function useEntryWriter(): EntryWriterValue {
     [call],
   );
 
+  const addProjectPhoto = React.useCallback(
+    async (input: ProjectPhotoInput) => {
+      const result = await call<{ id: string }>(
+        "portfolio_add_project_image",
+        {
+          p_payload: {
+            projectId: input.projectId,
+            storagePath: input.storagePath,
+            caption: input.caption,
+            mimeType: input.mimeType,
+            width: input.width ?? null,
+            height: input.height ?? null,
+            byteSize: input.byteSize ?? null,
+          },
+        },
+        "The photo is attached.",
+        "The photo was not attached.",
+      );
+      return result.ok ? result.data?.id ?? "written" : null;
+    },
+    [call],
+  );
+
+  const setProjectPhotoCaption = React.useCallback(
+    async (id: string, caption: string) => {
+      const result = await call(
+        "portfolio_set_project_image_caption",
+        { p_id: id, p_caption: caption },
+        "The caption is saved.",
+        "The caption was not saved.",
+      );
+      return result.ok;
+    },
+    [call],
+  );
+
+  const removeProjectPhoto = React.useCallback(
+    async (id: string, storagePath: string) => {
+      const result = await call(
+        "portfolio_delete_project_image",
+        { p_id: id },
+        "The photo is removed.",
+        "The photo was not removed.",
+      );
+      if (!result.ok || !supabase) return result.ok;
+
+      const { error } = await supabase.storage.from(MEDIA_BUCKET).remove([storagePath]);
+      if (error) {
+        console.warn("[entries] the photo row was removed but its file was not:", error.message);
+      }
+      return true;
+    },
+    [call],
+  );
+
+  const reorderProjectPhotos = React.useCallback(
+    async (projectId: string, ids: string[]) => {
+      const result = await call(
+        "portfolio_reorder_project_images",
+        { p_project_id: projectId, p_ids: ids },
+        "The photo order is saved.",
+        "The new photo order was not saved.",
+      );
+      return result.ok;
+    },
+    [call],
+  );
+
+  const saveProjectCurve = React.useCallback(
+    async (points: ProjectCurvePoint[]) => {
+      const result = await call(
+        "portfolio_save_project_curve",
+        { p_points: points },
+        points.length > 0 ? "The chart line is saved." : "The chart line is cleared.",
+        "The chart line was not saved.",
+      );
+      return result.ok;
+    },
+    [call],
+  );
+
   return {
     busy,
     feedback,
@@ -334,11 +453,17 @@ export function useEntryWriter(): EntryWriterValue {
     saveProject,
     saveCertification,
     saveSkill,
+    addSkillCategory,
     setVisible,
     removeEntry,
     reorderEntries,
     addImage,
     removeImage,
     reorderImages,
+    addProjectPhoto,
+    setProjectPhotoCaption,
+    removeProjectPhoto,
+    reorderProjectPhotos,
+    saveProjectCurve,
   };
 }

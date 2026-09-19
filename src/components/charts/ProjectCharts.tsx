@@ -55,6 +55,17 @@ export function ProjectMap({ projects }: { projects: Project[] }) {
     [projects],
   );
 
+  /**
+   * The axis follows the stored rows. A fixed window would drop a project off
+   * the chart the moment its year fell outside it, which is a real risk now
+   * that any year can be entered.
+   */
+  const yearDomain = React.useMemo<[number, number]>(() => {
+    if (data.length === 0) return [2017.5, 2025.5];
+    const years = data.map((d) => d.x);
+    return [Math.floor(Math.min(...years)) - 0.5, Math.ceil(Math.max(...years)) + 0.5];
+  }, [data]);
+
   return (
     <ResponsiveContainer width="100%" height={330}>
       <ScatterChart margin={{ top: 12, right: 18, left: 4, bottom: 8 }}>
@@ -63,8 +74,8 @@ export function ProjectMap({ projects }: { projects: Project[] }) {
           type="number"
           dataKey="x"
           name={t("projects.chart.axis.year")}
-          domain={[2017.5, 2025.5]}
-          tickCount={9}
+          domain={yearDomain}
+          tickCount={Math.max(3, Math.min(14, Math.round(yearDomain[1] - yearDomain[0]) + 1))}
           tickLine={false}
           axisLine={{ stroke: CHART_COLORS.grid }}
           tickFormatter={(v: number) => String(Math.floor(v))}
@@ -135,14 +146,29 @@ export function ProjectMap({ projects }: { projects: Project[] }) {
 
 /**
  * Budget against impact per year.
- * Bars are total budget, the line is the average impact score.
+ * Bars are total budget, the line is the impact score.
  * Shows whether a rise in spending actually produced results.
+ *
+ * The line is computed from the project rows until the owner writes one of
+ * their own in the panel. An empty stored curve is the signal to compute, not
+ * to plot nothing, so clearing the curve returns the chart to this shape.
  */
 export function BudgetImpactChart() {
   const t = useSiteText();
-  const { projects } = useEntries();
+  const { projects, curve } = useEntries();
 
   const data = React.useMemo(() => {
+    if (curve.length > 0) {
+      return [...curve]
+        .sort((a, b) => a.year - b.year)
+        .map((point) => ({
+          year: point.year,
+          budget: point.budgetM,
+          avgImpact: point.impact,
+          count: projects.filter((p) => p.year === point.year).length,
+        }));
+    }
+
     const map = new Map<number, { year: number; budget: number; impact: number[]; count: number }>();
     projects.forEach((p) => {
       const cur = map.get(p.year) ?? { year: p.year, budget: 0, impact: [], count: 0 };
@@ -159,7 +185,10 @@ export function BudgetImpactChart() {
         avgImpact: Math.round(d.impact.reduce((a, b) => a + b, 0) / d.impact.length),
         count: d.count,
       }));
-  }, [projects]);
+  }, [projects, curve]);
+
+  // A hand set line is not an average of anything, so its tooltip says so.
+  const manual = curve.length > 0;
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -196,12 +225,16 @@ export function BudgetImpactChart() {
                 title={t("projects.chart.value.yearTitle", { year: String(label) })}
                 rows={[
                   {
-                    label: t("projects.chart.row.totalBudget"),
+                    label: manual
+                      ? t("projects.chart.row.budget")
+                      : t("projects.chart.row.totalBudget"),
                     value: t("projects.chart.value.budget", { amount: nf(row.budget) }),
                     color: CHART_COLORS.dim,
                   },
                   {
-                    label: t("projects.chart.row.avgImpact"),
+                    label: manual
+                      ? t("projects.chart.row.impact")
+                      : t("projects.chart.row.avgImpact"),
                     value: t("projects.chart.value.impactScore", { value: row.avgImpact }),
                     color: CHART_COLORS.rust,
                   },
@@ -238,6 +271,17 @@ export function BudgetImpactScatter() {
   const t = useSiteText();
   const { projects } = useEntries();
 
+  /**
+   * The window follows the rows. A project whose impact sits below the old
+   * fixed floor would otherwise be plotted off screen with no way to see it.
+   */
+  const impactDomain = React.useMemo<[number, number]>(() => {
+    const scores = projects.map((p) => p.impact);
+    if (scores.length === 0) return [50, 100];
+    const low = Math.max(0, Math.floor((Math.min(...scores) - 5) / 5) * 5);
+    return [low, Math.min(100, Math.ceil((Math.max(...scores) + 5) / 5) * 5)];
+  }, [projects]);
+
   const data = React.useMemo(
     () =>
       projects
@@ -268,7 +312,7 @@ export function BudgetImpactScatter() {
           type="number"
           dataKey="y"
           name={t("projects.chart.axis.impact")}
-          domain={[50, 100]}
+          domain={impactDomain}
           tickLine={false}
           axisLine={false}
           tick={{ fill: CHART_COLORS.axis, fontSize: 10.5, fontFamily: "JetBrains Mono" }}

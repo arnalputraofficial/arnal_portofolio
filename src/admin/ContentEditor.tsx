@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useContent } from "@/content/ContentProvider";
-import { CONTENT_DEFAULTS, entriesForPage, PAGE_META } from "@/content/registry";
+import { CONTENT_DEFAULTS, entriesForPage, PAGE_META, tokensForEntry } from "@/content/registry";
 import type { ContentEntry, ContentPageId } from "@/content/types";
 import { useAdminAuth } from "@/admin/AdminAuthProvider";
 import { AvatarCropper, CROP_SOURCE_ACCEPT } from "@/admin/AvatarCropper";
@@ -71,6 +71,14 @@ export default function ContentEditor() {
   const [photoBusy, setPhotoBusy] = React.useState(false);
   const [photoProblem, setPhotoProblem] = React.useState("");
 
+  /**
+   * Live DOM nodes for the text fields, keyed by content key. Inserting a token
+   * has to read the caret from the real element, which React state cannot see.
+   */
+  const fieldRefs = React.useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>(
+    {},
+  );
+
   const entries = React.useMemo(() => entriesForPage(pageId), [pageId]);
   const sections = React.useMemo(() => groupBySection(entries), [entries]);
 
@@ -98,12 +106,72 @@ export default function ContentEditor() {
     [entries, drafts],
   );
 
+  /**
+   * The unsaved keys that belong to the page on screen. "Publish page" is
+   * scoped to one page, so it must not reach for edits made somewhere else.
+   */
+  const pageDirtyKeys = React.useMemo(() => {
+    const onPage = new Set(entries.map((entry) => entry.key));
+    return dirtyKeys.filter((key) => onPage.has(key));
+  }, [dirtyKeys, entries]);
+
+  /**
+   * Everything on this page a publish would ship: the drafts already stored,
+   * plus the edits that have not been written yet.
+   */
+  const publishableKeys = React.useMemo(
+    () => [...new Set([...pageDirtyKeys, ...draftKeys])],
+    [pageDirtyKeys, draftKeys],
+  );
+
   function valueOf(key: string): string {
     return key in local ? local[key] : (disk[key] ?? "");
   }
 
   function setField(key: string, value: string) {
     setLocal((current) => ({ ...current, [key]: value }));
+  }
+
+  /**
+   * Inserts a token where the caret sits, then puts the caret back after it.
+   *
+   * The caret position is read from the DOM at click time instead of being
+   * tracked in React state. React never sees the caret move, so a state copy
+   * would go stale the moment the admin uses the arrow keys, and the token
+   * would land in the wrong place.
+   */
+  function insertToken(key: string, token: string, field: HTMLInputElement | HTMLTextAreaElement | null) {
+    const current = valueOf(key);
+
+    // Without a focused field there is no caret to trust, so append instead.
+    if (!field || document.activeElement !== field) {
+      const separator = current.length === 0 || current.endsWith(" ") ? "" : " ";
+      setField(key, `${current}${separator}${token}`);
+      return;
+    }
+
+    const start = field.selectionStart ?? current.length;
+    const end = field.selectionEnd ?? start;
+    const before = current.slice(0, start);
+    const after = current.slice(end);
+
+    // Mirrors what would be typed by hand: a space between words, but no space
+    // in the middle of one.
+    const needsLead = before.length > 0 && !/\s$/.test(before);
+    const needsTrail = after.length > 0 && !/^\s/.test(after);
+
+    const inserted = `${needsLead ? " " : ""}${token}${needsTrail ? " " : ""}`;
+    const caret = start + inserted.length;
+
+    setField(key, `${before}${inserted}${after}`);
+
+    // The value is controlled by React, so the DOM still holds the old text at
+    // this point. Restoring the caret on the next frame lets React commit the
+    // new value first; setting it now would be undone by that commit.
+    requestAnimationFrame(() => {
+      field.focus();
+      field.setSelectionRange(caret, caret);
+    });
   }
 
   function resetField(key: string) {
@@ -152,20 +220,52 @@ export default function ContentEditor() {
     }
   }
 
-  async function handleSave() {
-    const payload = dirtyKeys.map((key) => ({ key, value: valueOf(key) }));
-    if (payload.length === 0) return;
-
-    const ok = await editor.saveDrafts(payload);
-    if (!ok) return;
-
-    // The store has been refetched by now, so dropping the local copies is
-    // what makes the fields fall back to the values that were actually saved.
+  function dropLocal(keys: string[]) {
     setLocal((current) => {
       const next = { ...current };
-      for (const entry of payload) delete next[entry.key];
+      for (const key of keys) delete next[key];
       return next;
     });
+  }
+
+  /**
+   * Writes the given keys to drafts and returns the ones the database took.
+   *
+   * A refused field is left in `local`, so it stays on screen marked "edited"
+   * with its text intact. Clearing it anyway would show the old value as if the
+   * edit had been saved.
+   */
+  async function writeDrafts(keys: string[]): Promise<string[]> {
+    const payload = keys.map((key) => ({ key, value: valueOf(key) }));
+    if (payload.length === 0) return [];
+
+    const { saved } = await editor.saveDrafts(payload);
+    if (saved.length > 0) dropLocal(saved);
+    return saved;
+  }
+
+  async function handleSave() {
+    await writeDrafts(dirtyKeys);
+  }
+
+  /**
+   * Publishing is save-then-publish.
+   *
+   * "Publish page" used to read the drafts table only, so a field that had been
+   * typed into but not saved was silently left out of the publish: the page
+   * shipped with the old text and nothing said why. Saving the unsaved keys
+   * first means one press ships what is on screen.
+   */
+  async function handlePublish(keys: string[]) {
+    const saved = await writeDrafts(keys);
+    if (saved.length === 0) return;
+
+    // A refused field is still on screen, waiting to be fixed. Publishing the
+    // rest now would replace its error with a success message, which reads as
+    // "everything went through".
+    if (saved.length < keys.length) return;
+
+    await editor.publishDrafts(saved);
   }
 
   async function handleDiscardPage() {
@@ -228,8 +328,8 @@ export default function ContentEditor() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void editor.publishDrafts(draftKeys)}
-              disabled={editor.busy || draftKeys.length === 0}
+              onClick={() => void handlePublish(publishableKeys)}
+              disabled={editor.busy || publishableKeys.length === 0}
             >
               Publish page
               <Upload aria-hidden />
@@ -346,6 +446,12 @@ export default function ContentEditor() {
                 stored !== (overrides[entry.key] ?? CONTENT_DEFAULTS[entry.key] ?? "");
               const writing = editor.pendingKey === entry.key;
               const fieldId = `field-${entry.key}`;
+
+              // The photo field holds a storage path, so braces would be part of
+              // a filename rather than a token. Pages also use the value as a URL
+              // in places, where the renderer never substitutes tokens.
+              const tokens =
+                entry.key === "global.profile.avatar" ? [] : tokensForEntry(entry);
 
               return (
                 <div
@@ -506,6 +612,9 @@ export default function ContentEditor() {
                     <textarea
                       id={fieldId}
                       rows={4}
+                      ref={(node) => {
+                        fieldRefs.current[entry.key] = node;
+                      }}
                       value={valueOf(entry.key)}
                       onChange={(event) => setField(entry.key, event.target.value)}
                       className={cn(FIELD, "mt-2 resize-y")}
@@ -513,6 +622,9 @@ export default function ContentEditor() {
                   ) : (
                     <Input
                       id={fieldId}
+                      ref={(node) => {
+                        fieldRefs.current[entry.key] = node;
+                      }}
                       value={valueOf(entry.key)}
                       onChange={(event) => setField(entry.key, event.target.value)}
                       className="mt-2"
@@ -523,6 +635,34 @@ export default function ContentEditor() {
                     <p className="mt-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
                       {entry.hint}
                     </p>
+                  ) : null}
+
+                  {/* Tokens are only useful if the admin can spell them, and a
+                      mistyped name silently renders as literal braces. Clicking
+                      one inserts it at the caret. */}
+                  {tokens.length > 0 ? (
+                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground/70">
+                        insert
+                      </span>
+                      {tokens.map((token) => (
+                        <button
+                          key={token}
+                          type="button"
+                          // Keeps the caret where the admin left it. Without this
+                          // the button takes focus first, and the insert has no
+                          // position to read.
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() =>
+                            insertToken(entry.key, `{${token}}`, fieldRefs.current[entry.key] ?? null)
+                          }
+                          title={`Insert {${token}}`}
+                          className="rounded-notch border border-border bg-card/60 px-2 py-0.5 font-mono text-[11px] text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                        >
+                          {`{${token}}`}
+                        </button>
+                      ))}
+                    </div>
                   ) : null}
                 </div>
               );

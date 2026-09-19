@@ -70,8 +70,9 @@ function buildNodes(skills: Skill[]): NodeDef[] {
       const skill = skills[skillIndex];
       const angle = (i / ring.count) * Math.PI * 2 + ringIndex * 0.65;
       // Node size doubles as the click target, so it is kept large enough to
-      // hit comfortably while still scaling a little with proficiency.
-      const baseScale = 0.082 + (Math.min(Math.max(skill.level, 35), 100) / 100) * 0.05;
+      // hit comfortably while still scaling a little with proficiency. Levels
+      // run 1 to 5, so the rating is taken as its share of the scale.
+      const baseScale = 0.082 + (Math.min(Math.max(skill.level, 1), 5) / 5) * 0.05;
 
       let nodeColor = MOSS;
       let isAccent = false;
@@ -531,7 +532,7 @@ export function HeroScene({
                   Proficiency
                 </p>
                 <p className="font-display text-xs font-semibold tabular-nums text-foreground">
-                  {selectedSkill.level}%
+                  {selectedSkill.level}/5
                 </p>
               </div>
               <div>
@@ -546,7 +547,7 @@ export function HeroScene({
 
             <div className="mt-3 pl-2 flex items-center justify-between gap-2 pt-1">
               <span className="font-mono text-[10px] text-muted-foreground">
-                Active {selectedSkill.lastUsed}
+                Since {selectedSkill.since}
               </span>
               <Link
                 to="/skills"

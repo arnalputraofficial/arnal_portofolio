@@ -41,6 +41,13 @@ const ALL = "__all__";
 /** Host name of the third-party registry, used inside the editable copy. */
 const REGISTRY_SITE = "verified-skill.com";
 
+/**
+ * Levels are a 1 to 5 self rating, where 5 is the strongest. The bar and the
+ * radar are drawn on a 0 to 100 axis, so a level is scaled wherever a
+ * percentage is needed; the labels always stay in fifths.
+ */
+const SKILL_SCALE_MAX = 5;
+
 /** Registry read time, formatted by hand so it does not depend on the newest Intl options. */
 function stamp(iso: string) {
   const d = new Date(iso);
@@ -65,14 +72,14 @@ function SkillCard({ skill, labels }: { skill: Skill; labels: Map<string, string
           {skill.name}
         </h3>
         <span className="shrink-0 font-mono text-[12px] tabular-nums text-primary">
-          {skill.level}
+          {skill.level}/{SKILL_SCALE_MAX}
         </span>
       </div>
 
       <Progress
-        value={skill.level}
+        value={(skill.level / SKILL_SCALE_MAX) * 100}
         className="mt-3 h-1.5"
-        indicatorClassName={skill.level >= 85 ? "bg-primary" : "bg-foreground/45"}
+        indicatorClassName={skill.level >= 4 ? "bg-primary" : "bg-foreground/45"}
         aria-label={t("skills.card.rating.label", {
           name: skill.name,
           value: skill.level,
@@ -84,7 +91,7 @@ function SkillCard({ skill, labels }: { skill: Skill; labels: Map<string, string
           <Clock className="size-3.5" aria-hidden />
           {t("skills.card.years", { count: skill.years })}
         </span>
-        <span>{t("skills.card.lastUsed", { year: skill.lastUsed })}</span>
+        <span>{t("skills.card.since", { year: skill.since })}</span>
       </div>
 
       <div className="mt-auto pt-4">
@@ -290,21 +297,25 @@ export default function Skills() {
   const [tab, setTab] = useState<string>(ALL);
   const { career, certifications, projects, skills } = useEntries();
 
-  const categories = [...new Set(skills.map((s) => s.category))] as Skill["category"][];
+  const categories = [...new Set(skills.map((s) => s.category))];
   const totalSkills = skills.length;
   const avgLevel =
-    totalSkills > 0 ? Math.round(skills.reduce((acc, s) => acc + s.level, 0) / totalSkills) : 0;
+    totalSkills > 0
+      ? Math.round((skills.reduce((acc, s) => acc + s.level, 0) / totalSkills) * 10) / 10
+      : 0;
   const totalEvidence = skills.reduce((acc, s) => acc + s.evidence.length, 0);
-  const latestYear = skills.length > 0 ? Math.max(...skills.map((s) => s.lastUsed)) : 0;
   const deepest = [...skills].sort((a, b) => b.years - a.years)[0] ?? null;
 
-  /** Skills I have not touched in a while. Shown, not hidden. */
-  const staleSkills = skills.filter((s) => s.lastUsed < latestYear);
-  /** Oldest year among the stale skills, for the honesty note below. */
-  const staleFrom =
-    staleSkills.length > 0 ? Math.min(...staleSkills.map((s) => s.lastUsed)) : latestYear;
+  /**
+   * Skills held the longest: every skill I picked up earlier than I picked up
+   * the most recent one. Shown, not hidden.
+   */
+  const newestSince = skills.length > 0 ? Math.max(...skills.map((s) => s.since)) : 0;
+  const longestHeld = skills.filter((s) => s.since < newestSince);
+  /** Oldest year among them, for the honesty note below. */
+  const heldSince = longestHeld.length > 0 ? Math.min(...longestHeld.map((s) => s.since)) : newestSince;
   /** High claims with thin evidence: one link or fewer. */
-  const thinClaims = skills.filter((s) => s.level >= 80 && s.evidence.length <= 1);
+  const thinClaims = skills.filter((s) => s.level >= 4 && s.evidence.length <= 1);
 
   /** Evidence can point to a project, a certification, or a role. */
   const evidenceLabel = new Map<string, string>([
@@ -319,7 +330,7 @@ export default function Skills() {
       return {
         category,
         count: rows.length,
-        avg: Math.round(rows.reduce((acc, s) => acc + s.level, 0) / rows.length),
+        avg: Math.round((rows.reduce((acc, s) => acc + s.level, 0) / rows.length) * 10) / 10,
         maxYears: Math.max(...rows.map((s) => s.years)),
         evidence: rows.reduce((acc, s) => acc + s.evidence.length, 0),
       };
@@ -345,7 +356,7 @@ export default function Skills() {
             },
             {
               label: t("skills.stat.rating"),
-              value: `${avgLevel}/100`,
+              value: `${avgLevel}/${SKILL_SCALE_MAX}`,
               hint: t("skills.stat.hint.rating"),
             },
             {
@@ -354,7 +365,7 @@ export default function Skills() {
               hint: deepest
                 ? t("skills.stat.longest.hint", {
                     name: deepest.name,
-                    year: deepest.lastUsed,
+                    year: deepest.since,
                   })
                 : undefined,
             },
@@ -469,12 +480,12 @@ export default function Skills() {
                 <span className="eyebrow">{t("skills.honesty.stale.title")}</span>
                 <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
                   {t("skills.honesty.stale.body", {
-                    count: staleSkills.length,
-                    year: staleFrom,
+                    count: longestHeld.length,
+                    year: heldSince,
                   })}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {staleSkills.map((skill) => (
+                  {longestHeld.map((skill) => (
                     <Badge key={skill.id} variant="muted" size="sm">
                       {skill.name}
                     </Badge>
@@ -588,11 +599,11 @@ export default function Skills() {
                         {row.category}
                       </span>
                       <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
-                        {row.avg}/100
+                        {row.avg}/{SKILL_SCALE_MAX}
                       </span>
                     </div>
                     <Progress
-                      value={row.avg}
+                      value={(row.avg / SKILL_SCALE_MAX) * 100}
                       className="mt-2 h-1.5"
                       indicatorClassName="bg-foreground/70"
                       aria-label={t("skills.summary.row.aria", {

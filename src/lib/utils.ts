@@ -30,6 +30,38 @@ export function monthsBetween(start: string, end: string | null) {
   return Math.max(0, (now[0] - sy) * 12 + (now[1] - sm));
 }
 
+/**
+ * Splits an editable heading into the visual lines it should render as.
+ *
+ * Headings are stored as one field with one line per line, so an editor never
+ * has to juggle "heading, line 2" again. A line wrapped in asterisks is marked
+ * as styled, which lets the caller colour that line on its own. The asterisks
+ * are stripped, so they are syntax, not content.
+ */
+export function parseStyledLines(text: string) {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const styled = line.length > 2 && line.startsWith("*") && line.endsWith("*");
+      return { text: styled ? line.slice(1, -1).trim() : line, styled };
+    });
+}
+
+/**
+ * Turns an editable address into a mailto link.
+ *
+ * The field holds an address, not a URL, so the scheme is added here. A value
+ * that already starts with "mailto:" is accepted as typed, and a value without
+ * an "@" yields an empty string so the caller can fall back to plain text
+ * instead of rendering a link that goes nowhere.
+ */
+export function mailtoHref(address: string) {
+  const cleaned = address.trim().replace(/^mailto:/i, "").replace(/\s+/g, "");
+  return cleaned.includes("@") ? `mailto:${cleaned}` : "";
+}
+
 /** "3y 4mo" */
 export function humanDuration(months: number) {
   const y = Math.floor(months / 12);

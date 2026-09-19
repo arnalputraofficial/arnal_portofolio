@@ -33,7 +33,7 @@ import {
 import { profile } from "@/data/portfolio";
 import { useSiteText } from "@/content/ContentProvider";
 import { sendContactMessage } from "@/lib/messages";
-import { cn } from "@/lib/utils";
+import { cn, mailtoHref } from "@/lib/utils";
 
 const MIN_MESSAGE = 20;
 
@@ -456,11 +456,17 @@ export default function Contact() {
                 <RevealGroup className="mt-5 space-y-px overflow-hidden rounded-notch border border-border bg-border">
                   {profile.socials.map((social) => {
                     const Icon = SOCIAL_ICON[social.label as keyof typeof SOCIAL_ICON] ?? Mail;
+                    // The email channel follows the editable address so the
+                    // channel list never points at a stale mailbox.
+                    const href = social.href.startsWith("mailto:")
+                      ? mailtoHref(t("global.profile.email"))
+                      : social.href;
+                    if (!href) return null;
                     return (
                       <RevealItem key={social.label}>
                         <SpotlightCard className="rounded-none border-0 p-0">
                           <a
-                            href={social.href}
+                            href={href}
                             className="group flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/40"
                           >
                             <span className="flex items-center gap-3">

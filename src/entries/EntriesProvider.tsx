@@ -32,6 +32,7 @@ import {
   type CertificationEntry,
   type EntrySnapshot,
   type EntryTable,
+  type ProjectCurvePoint,
   type ProjectEntry,
   type SkillEntry,
 } from "@/entries/types";
@@ -39,13 +40,19 @@ import {
 /** Re-read the cheap version marker this often, to catch edits made elsewhere. */
 const VERSION_POLL_MS = 60_000;
 
-/** A scan of a certificate, resolved to something an <img> can use. */
+/** A scan of a certificate, resolved to something a viewer can render. */
 export interface CertificationScan {
   id: string;
   caption: string;
   url: string;
   /** Kept alongside the URL because removing a scan has to delete the object. */
   storagePath: string;
+  /**
+   * What the object is, so the viewer knows whether to show a picture or embed
+   * a document. Carried through from the stored row rather than guessed from
+   * the URL, which is often extensionless.
+   */
+  mimeType: string;
 }
 
 export interface EntryLists {
@@ -55,11 +62,29 @@ export interface EntryLists {
   skills: SkillEntry[];
 }
 
+/** A project photo, resolved to something a gallery can render. */
+export interface ProjectPhoto {
+  id: string;
+  /** The words that go with the picture. May be empty. */
+  caption: string;
+  url: string;
+  /** Kept alongside the URL because removing a photo has to delete the object. */
+  storagePath: string;
+}
+
 export interface EntriesContextValue extends EntryLists {
   /** Every stored row, hidden ones included. The panel edits from this. */
   all: EntryLists;
   /** Scans belonging to one certificate, in the order the owner set. */
   scansFor: (certificationId: string) => CertificationScan[];
+  /** Photos belonging to one project, in the order the owner set. */
+  photosFor: (projectId: string) => ProjectPhoto[];
+  /**
+   * The hand set chart line, one point per year. Empty when the owner has not
+   * set one, which is the signal for the chart to fall back to its computed
+   * values rather than plot nothing.
+   */
+  curve: ProjectCurvePoint[];
   /** False until the first read attempt has settled. */
   ready: boolean;
   /** True when the read failed and every list is showing bundled samples. */
@@ -199,8 +224,28 @@ export function EntriesProvider({ children }: { children: React.ReactNode }) {
       const url = publicImageUrl(image.storagePath);
       if (!url) continue;
       const list = grouped.get(image.certificationId) ?? [];
-      list.push({ id: image.id, caption: image.caption, url, storagePath: image.storagePath });
+      list.push({
+        id: image.id,
+        caption: image.caption,
+        url,
+        storagePath: image.storagePath,
+        mimeType: image.mimeType,
+      });
       grouped.set(image.certificationId, list);
+    }
+
+    const photoGroups = new Map<string, ProjectPhoto[]>();
+    for (const image of snapshot?.projectImages ?? []) {
+      const url = publicImageUrl(image.storagePath);
+      if (!url) continue;
+      const list = photoGroups.get(image.projectId) ?? [];
+      list.push({
+        id: image.id,
+        caption: image.caption,
+        url,
+        storagePath: image.storagePath,
+      });
+      photoGroups.set(image.projectId, list);
     }
 
     return {
@@ -212,6 +257,8 @@ export function EntriesProvider({ children }: { children: React.ReactNode }) {
       skills: written.has("skills") ? all.skills.filter((row) => row.visible) : SAMPLES.skills,
       all,
       scansFor: (certificationId: string) => grouped.get(certificationId) ?? [],
+      photosFor: (projectId: string) => photoGroups.get(projectId) ?? [],
+      curve: snapshot?.projectCurve ?? [],
       ready,
       offline,
       isSample: (table: EntryTable) => !written.has(table),

@@ -42,6 +42,13 @@ export function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
+export interface DraftSaveResult {
+  /** Keys the database accepted and now holds as drafts. */
+  saved: string[];
+  /** Keys the database refused, with the reason, so the caller can report it. */
+  failed: Array<{ key: string; message: string }>;
+}
+
 export interface AdminEditorValue {
   /** Key being written right now, so a single field can show that it is busy. */
   pendingKey: string | null;
@@ -51,7 +58,8 @@ export interface AdminEditorValue {
   /** Bumped after every successful write, so the history can follow along. */
   version: number;
   clearFeedback: () => void;
-  saveDrafts: (entries: DraftEntry[]) => Promise<boolean>;
+  /** Reports exactly which keys landed, because a batch can fail per field. */
+  saveDrafts: (entries: DraftEntry[]) => Promise<DraftSaveResult>;
   /** Pass null to discard every draft. */
   discardDrafts: (keys: string[] | null) => Promise<boolean>;
   /** Pass null to publish every draft. */
@@ -94,12 +102,25 @@ export function useAdminEditor(): AdminEditorValue {
   }, []);
 
   const saveDrafts = React.useCallback(
-    async (entries: DraftEntry[]): Promise<boolean> => {
-      if (entries.length === 0) return true;
-      if (!supabase) return refuse(MISSING_CONFIG_MESSAGE);
+    async (entries: DraftEntry[]): Promise<DraftSaveResult> => {
+      if (entries.length === 0) return { saved: [], failed: [] };
+
+      if (!supabase) {
+        refuse(MISSING_CONFIG_MESSAGE);
+        return {
+          saved: [],
+          failed: entries.map((entry) => ({ key: entry.key, message: MISSING_CONFIG_MESSAGE })),
+        };
+      }
 
       setBusy(true);
       setFeedback(null);
+
+      // One refused field must not cancel the rest of the batch. The editor
+      // sends every unsaved field at once, so stopping at the first error used
+      // to drop every field after it without saying so.
+      const saved: string[] = [];
+      const failed: Array<{ key: string; message: string }> = [];
 
       for (const entry of entries) {
         setPendingKey(entry.key);
@@ -110,14 +131,33 @@ export function useAdminEditor(): AdminEditorValue {
         });
 
         if (error) {
-          return finish(false, `${entry.key} was not saved. ${describeWriteError(error)}`);
+          console.warn(`[admin] draft refused for ${entry.key}:`, error.message);
+          failed.push({ key: entry.key, message: describeWriteError(error) });
+        } else {
+          saved.push(entry.key);
         }
       }
 
-      return finish(
-        true,
-        `${plural(entries.length, "draft", "drafts")} saved. A draft stays private until it is published.`,
-      );
+      if (failed.length === 0) {
+        await finish(
+          true,
+          `${plural(saved.length, "draft", "drafts")} saved. A draft stays private until it is published.`,
+        );
+        return { saved, failed };
+      }
+
+      const [first] = failed;
+      const head =
+        failed.length === 1
+          ? `${first.key} was refused: ${first.message}`
+          : `${failed.length} fields were refused, the first being ${first.key}: ${first.message}`;
+      const tail =
+        saved.length > 0
+          ? ` The other ${plural(saved.length, "field", "fields")} in this batch were saved as drafts.`
+          : " Nothing in this batch was saved.";
+
+      await finish(false, `${head}.${tail}`);
+      return { saved, failed };
     },
     [finish, refuse],
   );

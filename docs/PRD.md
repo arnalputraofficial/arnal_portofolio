@@ -95,7 +95,7 @@ Status per 2026-09-15.
 
 | Kode | Requirement | Status |
 |---|---|---|
-| FR-1 | Situs memiliki delapan rute: Beranda, Karier, Proyek, Sertifikasi, Keahlian, Tentang, Kontak, dan halaman 404 untuk alamat tak dikenal | Selesai |
+| FR-1 | Situs memiliki sembilan rute: Beranda, Karier, Proyek, Sertifikasi, Keahlian, Tentang, Kontak, Tentang Steadbyte, dan halaman 404 untuk alamat tak dikenal | Selesai |
 | FR-2 | Perpindahan antar halaman dianimasikan halus, tanpa kedipan atau lompatan posisi gulir | Selesai |
 | FR-3 | Setiap halaman memiliki pemisah gulir, penanda posisi, dan tombol kembali ke atas | Selesai |
 | FR-4 | Navigasi utama menandai halaman yang sedang aktif | Selesai |
@@ -139,14 +139,17 @@ Status per 2026-09-15.
 | FR-20 | Sertifikasi yang mendekati kedaluwarsa ditandai | Selesai |
 | FR-21 | Tersedia visualisasi sebaran bidang sertifikasi dan investasi biaya belajar | Selesai |
 | FR-22 | Tersedia tabel sertifikasi interaktif | Selesai |
+| FR-22a | Tiap sertifikat dapat dilampirkan berkas sertifikat berupa gambar (JPEG, PNG, WebP) maupun PDF, sampai 10 MB per berkas | Selesai |
+| FR-22b | Lampiran dapat langsung dipratinjau: gambar tampil penuh di dalam penampil, PDF dirender sebagai dokumen di dalam penampil tanpa diunduh lebih dulu | Selesai |
+| FR-22c | Jenis berkas dicatat saat unggah, bukan disimpulkan dari nama berkas, karena berkas sertifikat sering tanpa ekstensi | Selesai |
 
 ### 5.6 Keahlian
 
 | Kode | Requirement | Status |
 |---|---|---|
-| FR-23 | Keahlian dikelompokkan menurut kategori dan dapat disaring | Selesai |
-| FR-24 | Tiap keahlian menampilkan tingkat penilaian, masa pakai, tahun terakhir dipakai, dan tautan bukti ke proyek atau sertifikat terkait | Selesai |
-| FR-25 | Halaman menandai keahlian yang jarang dipakai dan keahlian dengan bukti tipis | Selesai |
+| FR-23 | Keahlian dikelompokkan menurut kategori dan dapat disaring, dan pemilik dapat menambah kategori sendiri dari panel admin | Selesai |
+| FR-24 | Tiap keahlian menampilkan tingkat penilaian berskala 1 sampai 5, masa pakai, tahun mulai dikuasai (`since`), dan tautan bukti ke proyek atau sertifikat terkait | Selesai |
+| FR-25 | Halaman menandai keahlian yang paling lama dipegang dan keahlian dengan bukti tipis | Selesai |
 | FR-26 | Tersedia grafik keseimbangan kategori, keahlian teratas, dan sebaran jam terbang | Selesai |
 | FR-27 | Halaman menampilkan data dari registry keahlian terverifikasi pihak ketiga | Selesai |
 | FR-28 | Bila registry tidak terjangkau, tampilkan status offline beserta alasan dan tombol coba lagi, tanpa angka karangan | Selesai |
@@ -183,6 +186,16 @@ Status per 2026-09-15.
 | FR-40 | Halaman 404 menampilkan alamat yang salah dan daftar semua rute yang tersedia | Selesai |
 | FR-41 | Halaman 404 menyarankan proyek berdampak tertinggi sebagai jalan pintas | Selesai |
 
+### 5.9a Tentang Steadbyte
+
+| Kode | Requirement | Status |
+|---|---|---|
+| FR-80 | Situs memiliki halaman informasi "About Steadbyte" sebagai rute kedelapan, ditempatkan paling akhir setelah Kontak sehingga nomor halaman lain tidak bergeser | Selesai |
+| FR-81 | Halaman menjelaskan apa itu Steadbyte, yaitu situs portofolio ini sendiri beserta panel admin yang menyertainya, dan bukan menyamar sebagai produk pihak ketiga | Selesai |
+| FR-82 | Halaman memuat empat bagian: ringkasan beserta status terkini, masalah yang dipecahkan, peran dan keputusan teknis, serta catatan kejujuran berisi hal yang belum dibangun | Selesai |
+| FR-83 | Seluruh teks pada halaman ini dapat disunting dari panel admin dan dipratinjau di situs publik sebelum diterbitkan, seperti halaman lain | Selesai |
+| FR-84 | Tautan ke halaman ini muncul di navigasi utama, menu kaki, dan daftar rute halaman 404 | Selesai |
+
 ### 5.10 Kejujuran data
 
 | Kode | Requirement | Status |
@@ -211,6 +224,7 @@ Status per 2026-09-15.
 | FR-71 | Foto profil dapat diunggah langsung dari tab Content, disimpan pada bucket `portfolio-media` di folder `profile/`, dan tampil di samping teks hero Beranda dengan bingkai bernuansa karat | Selesai |
 | FR-72 | Seluruh halaman (Karier, Proyek, Sertifikasi, Keahlian, Tentang, Kontak, dan 404) membaca judul, lead, label statistik, dan judul seksinya dari registry konten, bukan dari teks yang dipatri di dalam komponen | Selesai |
 | FR-73 | Kartu detail node 3D pada Beranda muncul dan hilang dengan animasi yang sama durasinya, tertutup otomatis saat node lain diklik (kartu baru menunggu kartu lama selesai menutup), tertutup saat klik kiri di luar area kluster, dan tertutup lewat tombol tutup | Selesai |
+| FR-80 | Judul yang tampil berbaris disimpan sebagai satu field, bukan satu field per baris. Satu baris pada field itu menjadi satu baris di halaman, dan baris yang diapit tanda bintang dirender dengan warna gayanya sendiri (aksen pada judul hero Beranda, warna redup pada pernyataan penutup footer) tanpa ikut menampilkan tanda bintangnya | Selesai |
 
 ### 5.12 Pengelolaan entri portofolio
 
@@ -223,14 +237,21 @@ Tab **Entries** pada panel admin. Berbeda dari penyunting teks pada 5.11, entri 
 | FR-60 | Setiap entri memiliki sakelar tampil. Entri yang disembunyikan hilang dari halaman publik tanpa ikut terhapus | Selesai |
 | FR-61 | Urutan entri pada halaman publik mengikuti urutan yang ditetapkan pemilik di panel | Selesai |
 | FR-62 | Formulir menolak nilai di luar batas yang dijaga basis data, sehingga galat batas tidak pernah sampai ke pengguna sebagai pesan mentah | Selesai |
-| FR-63 | Setiap sertifikat dapat memiliki beberapa gambar scan, diunggah dari formulir sertifikat | Selesai |
+| FR-63 | Setiap sertifikat dapat memiliki beberapa berkas scan, berupa gambar atau PDF, diunggah dari formulir sertifikat | Selesai |
 | FR-64 | Scan dapat diurutkan ulang dan dihapus. Menghapus scan juga menghapus berkasnya di Storage | Selesai |
 | FR-65 | Halaman Credentials menampilkan seluruh scan dalam slideshow layar penuh, dikelompokkan per sertifikat | Selesai |
 | FR-66 | Slideshow dapat ditelusuri dengan papan tik dan menutup dengan tombol Escape, serta mengembalikan fokus ke elemen pemanggilnya | Selesai |
 | FR-67 | Selama sebuah daftar belum pernah diisi, halaman publik menampilkan entri contoh agar halaman tidak terlihat rusak. Setelah entri pertama disimpan, daftar itu sepenuhnya memakai isi basis data | Selesai |
 | FR-68 | Daftar yang sengaja dikosongkan pemilik tetap tampil kosong, tidak diisi kembali dengan entri contoh | Selesai |
 | FR-69 | Seluruh penulisan entri dan gambar melewati fungsi `security definer` yang memeriksa daftar izin di basis data, dan ditolak dengan `42501` bila pemanggil bukan admin | Selesai |
-| FR-70 | Unggahan gambar dibatasi di sisi klien dengan batas yang sama seperti yang dijaga Storage, dan berkas yang gagal disimpan barisnya tidak ditinggalkan di Storage | Selesai |
+| FR-70 | Unggahan berkas dibatasi di sisi klien dengan batas yang sama seperti yang dijaga Storage (10 MB, JPEG/PNG/WebP/PDF), dan berkas yang gagal disimpan barisnya tidak ditinggalkan di Storage | Selesai |
+| FR-81 | Setiap proyek dapat memiliki banyak foto atau tangkapan layar hasil pekerjaan, diunggah dari formulir proyek (JPEG/PNG/WebP, tanpa PDF karena ditampilkan sebagai galeri). Beberapa berkas dapat dipilih sekaligus dalam satu kali unggah | Selesai |
+| FR-82 | Setiap foto proyek menyimpan kata-katanya sendiri (caption) yang dapat diisi dan disunting langsung di daftar foto. Foto dapat diurutkan ulang dan dihapus, dan menghapusnya juga menghapus berkasnya di Storage | Selesai |
+| FR-83 | Halaman Proyek menampilkan galeri foto di dalam dialog detail proyek, dan klik satu foto membuka penampil layar penuh dengan navigasi sebelumnya/berikutnya, tombol tutup, serta keterangan foto atau penghitung bila caption kosong | Selesai |
+| FR-84 | Garis kurva pada grafik anggaran dan dampak dapat ditetapkan manual per tahun (tahun, anggaran, dampak) dari panel admin, sehingga bentuk kurvanya mengikuti angka yang diinput pemilik | Selesai |
+| FR-85 | Selama garis manual belum diisi, grafik tetap memakai rata-rata yang dihitung dari proyek yang tampil. Mengosongkan garis manual mengembalikan grafik ke perhitungan itu, dan tombol "Fill from projects" dapat mengisi awal tabel dari proyek yang ada | Selesai |
+| FR-86 | Beberapa proyek dapat disimpan sekaligus dengan menempelkan tabel teks (satu proyek per baris; pemisah tab, koma, atau pipa) dari dialog "Paste many". Setiap baris ditampilkan hasil pembacaannya sebelum apa pun ditulis, dan baris yang tidak terbaca dilaporkan beserta nomor barisnya, bukan gagal diam-diam | Selesai |
+| FR-87 | Field proyek yang jarang diubah (peran, lokasi, jumlah bulan, ukuran tim, stack, sorotan) berada di balik satu bagian yang dapat dilipat, sehingga dialog proyek terbuka pada field yang paling sering disentuh | Selesai |
 
 ## 6. Requirement Non Fungsional
 
@@ -313,7 +334,11 @@ Seluruh data portofolio publik berada di `src/data/portfolio.ts` sebagai sumber 
 - **`Role`** (karier): `id`, `title`, `company`, `sector`, `location`, `start`, `end`, `level` (`IC`/`Lead`/`SPV`/`Manager`), `headcount`, `summary`, `highlights[]`, `stack[]`.
 - **`Project`**: `id`, `name`, `kind`, `status`, `role`, `year`, teknologi, dampak, dan metrik pendukung.
 - **`Certification`**: `id`, `name`, `issuer`, `domain`, `issued`, `expires`, `credentialId`, `status`, `cost`.
-- **`Skill`**: `id`, `name`, `category`, `level`, `years`, `lastUsed`, `evidence[]`.
+- **`Skill`**: `id`, `name`, `category`, `level`, `years`, `since`, `evidence[]`.
+  `level` adalah penilaian diri berskala **1 sampai 5**, dengan 5 sebagai yang paling dikuasai,
+  dan selalu disebut sebagai penilaian diri di antarmuka. `since` adalah tahun skill itu mulai dikuasai,
+  sedangkan `years` tetap menyatakan lama pemakaian. `category` berupa teks bebas karena pemilik dapat
+  menambah kategori sendiri dari panel admin.
   Kolom `evidence` merujuk ke id proyek, sertifikat, atau peran, sehingga tiap klaim keahlian dapat ditelusuri.
 - **`profile`**: identitas, ringkasan, lokasi, zona waktu, surel, dan tautan profesional.
 - **`principles`**: prinsip kerja sebagai blok editorial.
@@ -457,8 +482,25 @@ Uji jalur tulis 2026-09-15, dijalankan terhadap project nyata, bukan tiruan:
     semua alamat ke `index.html`, dan kunci `headers` yang mengirim enam header keamanan pada
     setiap jawaban. Satu kelonggaran disengaja pada `img-src`, yaitu `https:` dibiarkan terbuka
     agar pemilik dapat menempelkan alamat gambar luar pada `global.profile.avatar` dan tetap
-    tampil. `connect-src` dibatasi ke origin Supabase dan `verified-skill.com`. Langkah unggah ke
-    Vercel dan variabel lingkungan yang wajib diisi dicatat pada riwayat perubahan di bagian 15.
+    tampil. `connect-src` dibatasi ke origin Supabase dan `verified-skill.com`, dan `frame-src`
+    dibatasi ke origin Supabase saja, yaitu izin yang membuat PDF lampiran sertifikat dapat
+    dirender di dalam penampil. `object-src` tetap `'none'`, sehingga `<object>` dan `<embed>`
+    dilarang dan dokumen harus lewat `<iframe>`. Langkah unggah ke Vercel dan variabel lingkungan
+    yang wajib diisi dicatat pada riwayat perubahan di bagian 15.
+17. **Pratinjau PDF bergantung penampil bawaan peramban.** Berkasnya dirender langsung oleh
+    peramban, bukan oleh situs, sehingga tampilannya berbeda antar peramban, tidak mengikuti tema
+    terang atau gelap situs, dan sebagian peramban ponsel hanya menampilkan halaman pertama.
+    Alamat objeknya publik, jadi siapa pun yang memiliki tautannya dapat membukanya penuh, sama
+    seperti gambar scan. Penampil menyediakan tautan buka di tab baru sebagai jalan keluar;
+    menggantinya dengan penyaji PDF sendiri berarti menambah dependensi baru dan belum dianggap
+    sepadan.
+18. **Batas unggah ditegakkan dua kali.** Angka 10 MB dan daftar empat MIME ada di dua tempat,
+    yaitu pengaturan bucket dan `MAX_UPLOAD_BYTES` serta `ACCEPTED_TYPES` pada `EntriesPanel.tsx`.
+    Keduanya harus diubah bersamaan; bila bucket lebih ketat daripada panel, berkas akan gagal di
+    tengah unggah dengan pesan dari Storage, bukan pesan dari panel.
+19. **Lampiran sertifikat baru diuji sampai lapisan yang bisa diperiksa tanpa berkas nyata.**
+    Perubahan skema, bentuk payload, pemeriksaan tipe, dan build sudah diverifikasi. Mengunggah
+    PDF sungguhan dari panel dan membukanya di penampil masih menunggu pemeriksaan manual pemilik.
 
 ## 13. Risiko dan Mitigasi
 
@@ -753,4 +795,100 @@ Daftar ini menjelaskan hal yang sengaja tidak dikerjakan, agar tidak menimbulkan
   - Alasan: PRD masih menyatakan formulir kontak "tidak punya tujuan" dan "tidak ada server yang menerima pesan", padahal sejak perubahan di atas pesan dikirim ke server, disimpan, dan dinotifikasikan. Membiarkannya berarti PRD berbohong tentang isi kode.
   - Perubahan dokumen: "Pengiriman formulir kontak ke server" dipindah dari daftar "tidak termasuk" ke "termasuk", ditambah catatan revisi bertanggal; FR-37 dan FR-39 diganti bunyinya agar sesuai perilaku baru; empat requirement baru ditambahkan, yaitu FR-76 (template surel bertema), FR-77 (titik akhir publik), FR-78 (kuota pengiriman), dan FR-79 (tab Inbox); butir 3 pada bagian 12 diganti menjadi batasan ketergantungan pada Resend dan status best effort surel.
   - Status: Selesai.
+
+### 2026-09-19
+
+- **Sertifikat Bisa Dilampirkan PDF dan Dipratinjau Langsung**: lampiran sertifikat sebelumnya hanya menerima gambar, sehingga sertifikat yang diterbitkan sebagai PDF tidak punya tempat.
+  - Kebutuhan: permintaan pemilik produk, "Saya juga ingin di page Certificate saya bisa melampirkan PDF/ Photo yang bisa langsung dipreview. Untuk saya menaro certificate." Batas ukuran yang dipilih pemilik: 10 MB per berkas.
+  - Keadaan sebelumnya: bucket `portfolio-media` menolak apa pun selain JPEG, PNG, dan WebP dengan batas 5 MB, dan tabel `portfolio_certification_images` tidak menyimpan jenis berkas. Penampil karena itu harus menebak dari ekstensi, padahal berkas sertifikat sering bernama tanpa ekstensi atau berakhiran `.php`.
+  - Perubahan basis data: migrasi `supabase/migrations/20260919010000_portfolio_certificate_files.sql` menaikkan `file_size_limit` bucket ke 10485760, memperluas `allowed_mime_types` dengan `application/pdf`, menambah kolom `mime_type` (not null, default `image/jpeg`) dengan check constraint empat nilai, dan mengganti dua fungsi: `portfolio_entries()` ikut mengembalikan `mimeType` per baris, serta `portfolio_add_certification_image(jsonb)` membaca `mimeType` dari payload, memvalidasinya, dan menolak jenis di luar daftar dengan pesan `Unsupported file type`. Fungsi itu tetap menerima pemanggil lama: bila `mimeType` tidak dikirim, jenis disimpulkan dari ekstensi path.
+  - Perubahan kode: `src/entries/types.ts` menambah `mimeType` pada `CertificationImage` beserta `isPdfScan()`; `src/entries/EntriesProvider.tsx` meneruskannya ke `CertificationScan`; `src/entries/useEntryWriter.ts` mengirimnya di `ImageInput`; `src/admin/EntriesPanel.tsx` menerima `application/pdf`, memakai batas 10 MB, melewati pengukuran piksel untuk PDF, memilih ekstensi dari jenis berkas bila nama berkas tidak punya ekstensi, dan menampilkan ikon dokumen alih alih gambar rusak pada baris lampiran; `src/components/CertificateSlideshow.tsx` menampilkan tile PDF di kisi dan merender PDF di dalam penampil sebagai dokumen.
+  - Perubahan CSP: `vercel.json` menambah `frame-src https://jpxndlyctfnlswzrxnrx.supabase.co`. Tanpa itu PDF hanya tampil sebagai kotak kosong, karena `frame-src` jatuh ke `default-src 'self'`. `object-src 'none'` sengaja dipertahankan, sehingga `<object>` dan `<embed>` tetap dilarang dan dokumen dirender lewat `<iframe>`.
+  - Catatan jujur: PDF dirender oleh penampil bawaan peramban, jadi tampilannya berbeda antar peramban dan sebagian peramban ponsel hanya menampilkan halaman pertama. Karena itu penampil menyediakan tautan "Open the PDF in a new tab" sebagai jalan keluar, dan PDF tidak bisa dipaksa memakai tema situs.
+  - Verifikasi: migrasi dijalankan ke basis data dan hasilnya diperiksa langsung, yaitu bucket `file_size_limit = 10485760` dengan empat MIME, kolom `mime_type` `text` `not null`, dan check constraint empat nilai. Fungsi `portfolio_entries()` dijalankan dan mengembalikan array gambar dengan kunci baru. `npx tsc --noEmit` keluar 0, `npm run build` berhasil (`built in 10.89s`), dan halaman dibuka di peladen pengembangan tanpa galat konsol.
+  - Status: Selesai untuk sisi kode dan basis data. Jalur unggah PDF sungguhan dari panel belum diuji dengan berkas nyata; butir 19 pada bagian 12 mencatatnya.
+
+- **Judul Berbaris Digabung Menjadi Satu Field**: judul hero Beranda dipecah menjadi tiga field terpisah (`line1`, `line2`, `line3`) dan pernyataan penutup footer menjadi dua, sehingga pemilik harus menebak potongan mana yang membentuk satu kalimat.
+  - Kebutuhan: permintaan pemilik produk, "Saya ada kesulitan untuk edit edit tab seperti Career, projects, crendetials dan lain-lain. Karena Heronya terpotong menjadi satu per satu. Bisakah untuk digabungkan saja? Misalkan hero heading ada line 1-2-3 nah ini dibuat saja menjadi 1 field. Terapkan juga untuk yang lain field-fieldnya."
+  - Keadaan sebelumnya: hanya dua tempat di seluruh registry yang masih memecah satu kalimat menjadi beberapa field, yaitu `home.hero.title.line1..3` dan `footer.closing.line1..2`. Halaman lain (Karier, Proyek, Sertifikasi, Keahlian, Tentang, Kontak) sudah memakai field tunggal, jadi tidak ada pemecahan lain yang perlu digabung.
+  - Perubahan kode: `home.hero.title.line1..3` menjadi satu field `home.hero.title` dan `footer.closing.line1..2` menjadi `footer.closing`, keduanya `multiline`. `src/lib/utils.ts` menambah `parseStyledLines()`, yang memecah nilai per baris dan menandai baris yang diapit `*...*` sebagai bergaya. `src/pages/Home.tsx` merender tiap baris sebagai blok dengan animasi `SplitHeading` bertahap dan memberi warna `text-primary` pada baris bergaya; `src/components/layout/SiteFooter.tsx` melakukan hal yang sama dengan warna `text-ink-400`. Komponen hero dipindah ke `HeroTitle` lokal di Beranda.
+  - Konvensi yang dipilih: satu baris pada field menjadi satu baris di halaman, dan tanda bintang dipakai untuk menandai baris bergaya. Alasan: warna aksen tidak bisa ditentukan dari posisi baris tanpa menebak, sedangkan tanda bintang memberi kendali penuh kepada pemilik dan dijelaskan pada `hint` tiap field.
+  - Migrasi data: tiga override produksi yang sudah ditulis pemilik dipindahkan ke key baru sebelum key lama dihapus, yaitu `home.hero.title.line1` dan `home.hero.title.line2` digabung dengan baris ketiga dari default menjadi `home.hero.title` (baris kedua dibungkus tanda bintang karena sebelumnya berwarna aksen), dan `footer.closing.line1` digabung dengan baris kedua dari default menjadi `footer.closing`. Lima baris key lama dihapus. Ini dilakukan karena komentar di `src/content/types.ts` mengingatkan bahwa mengganti nama key akan menghilangkan override yang tersimpan di bawah nama lama.
+  - Verifikasi: `npx tsc --noEmit` keluar 0, `npm run build` berhasil (`built in 10.63s`), halaman dibuka di peladen pengembangan (`http://localhost:5177/`) dengan status 200 dan tanpa galat baru di terminal. Hasil migrasi diperiksa langsung di basis data: hanya `home.hero.title` dan `footer.closing` yang tersisa pada kedua pola key itu.
+  - Catatan jujur: aturan tanda bintang belum diuji dengan klik sungguhan di peramban oleh pemilik, dan tampilan hero setelah penggabungan belum diperiksa secara visual dari sisi ini. Bila pemilik menulis tanda bintang di luar maksud menandai baris, tanda itu akan diperlakukan sebagai penanda gaya.
+  - Status: Selesai.
+
+- **Foto Hasil Kerja dan Kata-kata pada Proyek**: proyek tidak lagi hanya berupa deretan angka dan satu blok ringkasan; pemilik dapat melampirkan tangkapan layar hasil pekerjaan beserta keterangannya, sebanyak yang diperlukan.
+  - Kebutuhan: permintaan pemilik produk, "Saya juga ingin menambahkan hasil foto/ screenshot untuk portofolio saya jadi di pages project saya ingin juga menambahkan agar bisa memaasukkan foto dan kat-kata... saya ingin bisa memasukkan foto dan kata-kata dan bisa multiple/ banyak."
+  - Perubahan basis data: tabel `portfolio_project_images` (urutan, caption, `mime_type`, ukuran piksel, ukuran byte) dengan policy baca publik, grant `select` untuk `anon` dan `authenticated`, tulis hanya lewat empat fungsi security definer (`portfolio_add_project_image`, `portfolio_set_project_image_caption`, `portfolio_reorder_project_images`, `portfolio_remove_project_image`). `portfolio_entries()` ikut mengembalikan daftar foto per proyek.
+  - Perubahan kode: `src/entries/types.ts` dan `src/entries/EntriesProvider.tsx` menambah `ProjectImage`, `projectImages`, dan `photosFor(id)`; `src/entries/useEntryWriter.ts` menambah `addProjectPhoto`, `setProjectPhotoCaption`, `removeProjectPhoto`, serta `reorderProjectPhotos`.
+  - Perubahan panel: `src/admin/EntriesPanel.tsx` menambah komponen `ProjectPhotos` (pilih beberapa berkas sekaligus, unggah satu per satu ke `projects/{id}/`, hapus objek kembali bila barisnya ditolak, naik/turunkan urutan, hapus dengan konfirmasi) dan `PhotoCaption` yang menyimpan caption saat fokus berpindah atau Enter ditekan, bukan per ketikan.
+  - Perubahan halaman publik: `src/pages/Projects.tsx` menampilkan galeri di dalam dialog detail proyek dan penampil layar penuh dengan navigasi sebelumnya/berikutnya serta keterangan foto. Lima kunci teks baru ditambahkan pada `src/content/projects.ts` (`projects.detail.gallery`, `...gallery.alt`, `...gallery.close`, `...gallery.prev`, `...gallery.next`, `...gallery.counter`, `...value.photos`), semuanya dapat disunting dari panel.
+  - Keputusan yang diambil pemilik lewat pertanyaan pilihan: foto diletakkan di dialog detail proyek, bukan di luar, dan PDF tidak diterima di galeri ini karena tampilannya berupa gambar.
+  - Verifikasi: `npx tsc --noEmit` keluar 0, `npm run build` berhasil (`built in 10.22s`), dan kedua halaman (`/projects` serta `/admin`) dibuka di peladen pengembangan tanpa galat konsol.
+  - Status: Selesai untuk sisi kode dan basis data. Unggah foto sungguhan dari panel belum diuji dengan berkas nyata dari sisi ini.
+
+- **Garis Kurva Grafik Dapat Diisi Manual per Tahun**: bentuk kurva grafik anggaran dan dampak di halaman Proyek sebelumnya selalu turunan dari rata-rata proyek, sehingga pemilik tidak bisa membuatnya mengikuti angka yang ia punya sendiri.
+  - Kebutuhan: permintaan pemilik produk, "untuk chartnya juga bisa saya tampilkan dan bisa saya edit (jadi untuk curve chartnya ini bisa di adjust juga sesuai data yang saya input)". Bentuk input yang dipilih pemilik: input manual per tahun.
+  - Perubahan basis data: tabel `portfolio_project_curve` (satu baris per tahun, berisi `budget_m` dan `impact`) dengan policy baca publik dan penulisan lewat fungsi security definer `portfolio_save_project_curve(jsonb)`; mengirim array kosong berarti menghapus seluruh garis manual.
+  - Perubahan kode: `src/entries/types.ts` menambah `ProjectCurvePoint`; `src/entries/EntriesProvider.tsx` mengembalikannya sebagai `curve`; `src/entries/useEntryWriter.ts` menambah `saveProjectCurve`; `src/admin/EntriesPanel.tsx` menambah `ProjectCurveEditor` dengan tabel tahun/anggaran/dampak, tombol tambah baris, "Fill from projects" untuk mengisi awal dari proyek yang ada, simpan, dan kosongkan.
+  - Perilaku yang dipilih: selama garis manual kosong, grafik memakai rata-rata terhitung dari proyek yang tampil, sehingga halaman tidak pernah berakhir dengan grafik kosong. Baris diurutkan per tahun sebelum dikirim, dan label tooltip berubah agar pembaca tahu angkanya manual atau hasil hitungan.
+  - Perbaikan sumbu yang ditemukan sambil mengerjakan: sumbu tahun pada peta proyek dan sumbu dampak pada sebaran sebelumnya dipaku pada rentang tetap, sehingga tahun di luar rentang itu hilang dari grafik. Keduanya kini menghitung rentangnya dari data yang ada.
+  - Verifikasi: `npx tsc --noEmit` keluar 0, `npm run build` berhasil, dan halaman Proyek dibuka di peladen pengembangan tanpa galat konsol.
+  - Status: Selesai. Penyuntingan kurva lewat klik sungguhan di panel belum diuji dari sisi ini.
+
+- **Kategori Keahlian, Skala 1-5, dan Since Menggantikan Last used**: tiga perubahan pada tab Skills di panel admin, yaitu kategori yang dapat ditambah sendiri, tingkat keahlian yang dipilih lewat diagram batang, dan penanda tahun mulai alih alih tahun terakhir dipakai.
+  - Kebutuhan: permintaan pemilik produk, "Untuk didalam skills, pada category bisa menambahkan category... Sama untuk level ketimbang menulis angka, saya lebih suka sebagai bar chart 1-5 jadi kalau 5 itu adalah terbaik/ paling dikuasai. Untuk last used mungkin bisa diganti dengan Since."
+  - Keputusan yang diambil pemilik lewat pertanyaan pilihan: skala `level` **diganti total** menjadi 1-5 (data lama dibulatkan), catatan kejujuran "jarang dipakai" diganti menjadi "held the longest" (skill yang paling lama dipegang, dihitung dari `since` paling awal), dan `years` **tetap disimpan** bersama `since` karena keduanya dipakai grafik yang berbeda.
+  - Perubahan basis data: migrasi `supabase/migrations/20260919030000_portfolio_skill_options.sql`. Tabel baru `portfolio_skill_category_options` (nama unik tanpa peduli huruf besar kecil, `sort_order`, `updated_by`) berisi enam kategori lama sebagai data awal, dengan policy baca publik dan penulisan hanya lewat fungsi security definer baru `portfolio_add_skill_category(text)`. `portfolio_skill_categories()` berubah dari `immutable` yang dipaku di dalam fungsi menjadi `stable` yang membaca tabel itu, sehingga kategori yang ditambah pemilik langsung muncul di panel. Kolom `level` dikonversi dengan rumus `greatest(1, least(5, round(level / 20)))`, default berubah menjadi 3, dan check constraint diganti menjadi 1-5. Kolom `last_used` dihapus setelah kolom `since` diisi dengan `last_used - years`, lalu `since` diberi default tahun berjalan dan check constraint 1980-2100. `portfolio_save_skill` dan `portfolio_entries()` diperbarui mengikuti `since`.
+  - Perubahan kode: `src/data/portfolio.ts` mengubah `Skill` menjadi `{ level: 1-5, years, since }` dengan `category` bertipe teks bebas, dan ketiga puluh entri contoh dikonversi; `src/entries/types.ts` membaca `since`; `src/entries/useEntryWriter.ts` mengirim `since` dan menambah `addSkillCategory`.
+  - Perubahan panel: `src/admin/EntriesPanel.tsx` menambah `ScaleField` (lima batang bertingkat yang dapat diklik, `aria-pressed`, label `n/5`), `CategoryField` (dropdown dengan tombol "Add a category" yang membuka kolom nama dan menyegarkan daftar lewat `reload()` dari `useValueLists()`), dan `PanelMessage` untuk kegagalan yang ditangkap formulir sendiri. Field `Last used` menjadi `Since`.
+  - Perubahan halaman publik: `src/pages/Skills.tsx` menampilkan `n/5`, rata-rata satu desimal, ambang kuat pada 4 ke atas, dan catatan kejujuran "held the longest" beserta jumlah serta tahun terawalnya; `src/components/charts/SkillCharts.tsx` menggambar radar dengan `level / 5 × 100` agar satu sumbu 0-100 tetap terpakai bersama seri bukti (label tetap perlimaan lewat `levelOf5` di tooltip) dan bar keahlian teratas memakai sumbu 0-5 bertick bulat; `src/components/three/HeroScene.tsx` memakai `level/5` untuk ukuran node serta menampilkan level dan `Since` pada kartu inspeksi; `src/pages/About.tsx` menghitung skill yang paling lama dipegang dari `since`.
+  - Migrasi data nyata: satu baris produksi yang sudah ada ("Digital Process Lead", Leadership, level 80, last used 2026, years 2) menjadi `level 4`, `years 2`, `since 2024`.
+  - Verifikasi: `npx tsc --noEmit` keluar 0, `npm run build` berhasil (`built in 10.29s`), halaman `/skills` dibuka di peladen pengembangan dengan status 200 dan hanya galat jaringan dari registry pihak ketiga yang memang diharapkan **offline**. Sisi basis data diperiksa langsung: enam kategori awal ada, `level` 0-100 tidak tersisa, kolom `last_used` hilang, dan pemanggilan `portfolio_add_skill_category` oleh pengguna non-admin ditolak lewat `42501` tanpa meninggalkan baris.
+  - Catatan jujur: penambahan kategori lewat klik sungguhan di panel dan penyimpanan skill dengan level 1-5 belum diuji dari sisi ini; kedua jalur itu baru diverifikasi lewat tipe, build, dan pemeriksaan langsung ke basis data.
+  - Status: Selesai untuk sisi kode dan basis data.
+
+- **Input Proyek Dipermudah: Tempel Massal dan Field Terlipat**: menambah proyek satu per satu lewat dialog dengan sebelas kolom angka adalah bagian paling lambat dari merawat halaman Proyek.
+  - Kebutuhan: permintaan pemilik produk, "Saya ingin juga untuk dipermudah dalam inputannya". Tiga kemudahan yang dipilih pemilik: unggah banyak foto sekaligus, tempel massal data proyek, dan form yang lebih sederhana.
+  - Perubahan kode: `src/lib/paste.ts` baru berisi pembacaan tabel tempel (`pastedLines`, `splitPastedLine`, `pastedNumber`) yang terpisah dari React dan basis data supaya bisa diubah sendiri. Pemisah yang diterima adalah tab, koma, atau pipa, dan tanda kutip ganda menahan pemisah di dalamnya. Angka dibaca dengan satu aturan tetap: pemisah yang diikuti tepat tiga digit dianggap pemisah ribuan, sisanya dianggap titik desimal, sehingga `1.450` dan `1,450` sama-sama seribu empat ratus lima puluh.
+  - Perubahan panel: `ProjectPaste` menyimpan banyak proyek sekaligus dari teks yang ditempel, menampilkan pratinjau tiap baris sebelum apa pun ditulis, dan melaporkan baris yang tidak terbaca beserta nomor barisnya alih alih gagal diam-diam. `FoldedFields` menaruh peran, lokasi, jumlah bulan, ukuran tim, stack, dan sorotan di balik satu klik sehingga dialog terbuka pada field yang paling sering disentuh.
+  - Verifikasi: `npx tsc --noEmit` keluar 0, `npm run build` berhasil, dan halaman Proyek serta panel admin dibuka di peladen pengembangan tanpa galat konsol.
+  - Catatan jujur: pembacaan angka memakai aturan tetap, bukan menebak maksud penulis, jadi angka seperti `1.2345` dibaca sebagai satu koma dua tiga empat lima. Pemilik dapat memeriksa hasil bacanya di pratinjau sebelum menyimpan.
+  - Status: Selesai. Penempelan sungguhan dari berkas pemilik belum diuji dari sisi ini.
+
+- **Alamat Surel Profil Benar-benar Dapat Diubah dan Menggerakkan Semua Tautan**: mengubah alamat surel dari panel tidak berpengaruh pada apa pun, sehingga pemilik menyimpulkan field itu tidak ada.
+  - Kebutuhan: laporan pemilik produk, "Untuk bagian halo@arnal.dev ini juga saya tidak memukan untuk ganti emailnya. Coba bantu check lagi. Harusnya ini bisa di edit dan bisa dimasukkan sesuai dengan email yang saya mau."
+  - Keadaan sebelumnya: kunci `global.profile.email` sudah ada di panel sejak awal, tetapi tiga hal membuatnya tampak tidak berfungsi. Pertama, `SiteFooter.tsx` menampilkan `profile.email` langsung dari berkas data, bukan `t("global.profile.email")`, jadi nilai yang disunting tidak pernah muncul di footer yang terlihat pemilik. Kedua, tautan `mailto:` di header, Tentang, Beranda, footer, dan daftar kanal Kontak semuanya memakai nilai statis, sehingga teks berubah tetapi tujuan tautannya tetap alamat lama. Ketiga, `src/data/portfolio.ts` sendiri tidak konsisten: `email` berisi `halo@arnal.dev`, sedangkan `socials[2].href` berisi `mailto:arnal@steadbyte.com`, dan hint field berbunyi "Display text only. Change the mailto link in the data file if the address itself changes." yang secara eksplisit menyatakan bahwa field itu memang hanya teks tampilan.
+  - Perubahan kode: `src/lib/utils.ts` menambah `mailtoHref(address)`, yang memangkas spasi, membuang awalan `mailto:` yang terlanjur ditulis, dan mengembalikan string kosong bila nilainya tidak memuat `@`, sehingga pemanggil dapat memilih tidak merender tautan alih alih membuat tautan yang menyesatkan. Enam tempat memakainya sebagai satu-satunya aturan: `src/components/layout/SiteHeader.tsx`, `src/components/layout/SiteFooter.tsx` (blok kontak dan entri "Email" pada daftar Network), `src/pages/About.tsx`, `src/pages/Home.tsx`, dan `src/pages/Contact.tsx` (daftar kanal). Entri `socials` yang berskema `mailto:` kini diturunkan dari nilai yang dapat disunting, sedangkan entri `http` tetap dari berkas data.
+  - Perbaikan data: `socials[2].href` disamakan menjadi `mailto:halo@arnal.dev` supaya tidak ada lagi dua alamat berbeda di satu berkas.
+  - Perubahan teks panel: label `global.profile.email` menjadi "Contact email address" agar mudah ditemukan, dan hintnya berubah menjadi "Shown in the header, footer, and About. The mailto link and the contact form follow this value, so the displayed text and the link always match." Hint lama dihapus karena isinya bertentangan dengan perilaku yang diinginkan.
+  - Verifikasi: `npx tsc --noEmit` keluar 0 dan `npm run build` berhasil (`built in 11.33s`). Pencarian ulang memastikan tidak ada lagi pemakaian `profile.email` maupun `profile.socials[2].href` untuk tujuan surel di halaman publik; satu satunya sisa `profile.email` adalah nilai `default` pada `src/content/global.ts`, yang memang tempatnya.
+  - Catatan jujur: penggantian alamat lalu penerbitannya lewat klik sungguhan di panel belum diuji dari sisi ini. Karena `portfolio_validate_value` tidak memeriksa format surel, alamat yang salah ketik akan tersimpan apa adanya; `mailtoHref` hanya menolak nilai yang tidak memuat `@` dengan cara tidak merender tautannya.
+  - Status: Selesai untuk sisi kode.
+
+- **Halaman Informasi "About Steadbyte" di Paling Akhir Navigasi**: situs belum punya tempat untuk menjelaskan dirinya sendiri, padahal ia dibangun sendiri oleh pemiliknya dan punya panel admin yang layak dijelaskan.
+  - Kebutuhan: permintaan pemilik produk, "Saya juga ingin ditambahkan satu tab baru di porto dan di admin. Yang bertuliskan About Steadbyte. Jadi saya ingin memeberikan informasi (information page) tentang apa itu Steadbyte. Yang dimana disana akan berisikan Steadbyte adlaah web yang saya buat. Dan itu bisa dibuat didalam preview page dan edit admin page." Keputusan pemilik: posisi tab paling akhir setelah Kontak, dan isi halaman memuat empat bagian yang semuanya dapat disunting.
+  - Keadaan sebelumnya: registry konten berisi sembilan halaman dengan nomor rute 01 sampai 07 pada navigasi. Menambah tab di tengah akan menggeser nomor halaman lain dan membuat angka pada `about.intro.index` (`06`) serta `contact.intro.index` (`07`) tidak lagi cocok, jadi tab baru ditempatkan di urutan kedelapan.
+  - Perubahan kode: `src/content/steadbyte.ts` baru berisi 71 entri `steadbyte.*` berpola `steadbyte.<seksi>.<field>`, termasuk `steadbyte.intro.index` yang bernilai `08`. Halaman `src/pages/Steadbyte.tsx` baru memakai `PageIntro`, `StatStrip`, empat `PageSection` dengan `SectionHeading`, `RevealGroup`/`SpotlightCard` untuk kartu, dan satu blok kejujuran berpola `panel-flagged`. `src/content/types.ts` menambah `"steadbyte"` pada union `ContentPageId`; `src/content/registry.ts` mengimpor dan menyebar `STEADBYTE_CONTENT` serta menambah entri `PAGE_META` dengan `route: "/about-steadbyte"`; `src/content/global.ts` menambah kunci `nav.steadbyte` setelah `nav.contact`; `src/App.tsx` menambah rute `/about-steadbyte`; `src/components/layout/SiteHeader.tsx` menambah entri `navItems` ke delapan.
+  - Perubahan halaman 404: `src/pages/NotFound.tsx` menambah rute kedelapan pada `ROUTES`, dan `src/content/notfound.ts` menambah pasangan `notfound.route.8.label`/`.hint` serta memperbarui dua teks yang menyebut jumlah rute dari "seven" menjadi "eight".
+  - Tanpa perubahan basis data: karena satu kunci hanya memperoleh baris setelah admin menerbitkan perubahan, seluruh 71 kunci baru langsung aman dipakai dan tetap tampil dari nilai bawaan di bundel selama belum diterbitkan.
+  - Verifikasi: `npx tsc --noEmit` keluar 0 dan `npm run build` berhasil (`built in 10.41s`). Peladen pengembangan memuat `src/pages/Steadbyte.tsx`, `src/content/steadbyte.ts` (71 kemunculan kunci), dan `src/content/registry.ts` dengan status 200 tanpa galat transformasi, dan halaman `/about-steadbyte` dibuka di peramban tanpa galat konsol.
+  - Catatan jujur: penggeseran nomor tab, pengetikan teks baru, lalu penerbitannya lewat klik sungguhan di panel belum diuji dari sisi ini; halaman baru diverifikasi lewat tipe, build, dan pemuatan modul. Selain itu panel admin tidak memperoleh tab tingkat atas baru, karena halaman ini muncul sebagai halaman baru di dalam tab Content melalui `PAGE_META`, mengikuti cara halaman lain bekerja.
+  - Status: Selesai untuk sisi kode.
+
+- **Audit Backend dan Perbaikan Fungsi Baca yang Gagal di Basis Data Produksi**: seluruh jalur backend diperiksa atas permintaan pemilik, dan ditemukan satu regresi nyata yang membuat semua daftar entri gagal dimuat.
+  - Kebutuhan: permintaan pemilik produk, "Check juga untuk backendnya, pastikan untuk login input data import data dan lain-lain berfungsi normal tanpa ada masalah."
+  - Temuan kritis: fungsi `public.portfolio_entries()` di basis data produksi masih menyebut kolom `s.last_used` yang sudah dihapus oleh migrasi `20260919030000_portfolio_skill_options.sql`, sehingga setiap pemanggilan gagal dengan `42703: column s.last_used does not exist`. Penyebabnya adalah bagian 5 migrasi itu, yang menulis ulang fungsi tersebut agar memakai `s.since`, tidak pernah ikut teraplikasi, sedangkan bagian 1 sampai 4 teraplikasi. Ini persis pola kegagalan yang dimungkinkan oleh catatan migrasi itu sendiri, karena berkasnya memang dirancang untuk dijalankan sekali dan bersifat idempoten.
+  - Dampak yang ditemukan di kode: `src/entries/EntriesProvider.tsx` memperlakukan galat RPC sebagai mode offline, yaitu `snapshot` menjadi `null` dan `all` menjadi `EMPTY`. Karena `portfolio_entity_usage` sudah memuat penanda untuk `portfolio_skills`, halaman Keahlian tampil **kosong** alih alih memakai data contoh, sementara daftar lain yang belum pernah ditulis tetap menampilkan contoh. Panel Entries di admin juga melihat daftar kosong. Jadi gejalanya bukan sekadar galat tersembunyi.
+  - Perbaikan: migrasi baru `portfolio_fix_entries_since` diterapkan ke basis data produksi, berisi definisi `portfolio_entries()` yang sama dengan bagian 5 berkas migrasi asalnya (memakai `'since', s.since`), ditambah `revoke all` dan `grant execute` ke `anon, authenticated`, lalu `notify pgrst, 'reload schema';`.
+  - Verifikasi baca: `pg_get_functiondef('public.portfolio_entries'::regproc)` tidak lagi memuat `last_used` dan kini memuat `since`; `select public.portfolio_entries()` berhasil dan mengembalikan kedelapan kunci (`version`, `career`, `projects`, `projectImages`, `projectCurve`, `certifications`, `certificationImages`, `skills`) dengan `version = 3` dan satu baris keahlian nyata yang memuat `since: 2024` tanpa `lastUsed`. Pemanggilan lewat REST dengan kunci publik, yaitu jalur yang persis dipakai peramban, mengembalikan status 200 dengan muatan yang sama.
+  - Verifikasi jalur tulis: seluruh fungsi tulis (`portfolio_save_career`, `portfolio_save_project`, `portfolio_save_certification`, `portfolio_save_skill`, `portfolio_add_skill_category`, `portfolio_save_project_curve`, dan fungsi lampiran gambar) diperiksa sebagai `SECURITY DEFINER` dengan `EXECUTE` hanya untuk `authenticated`. Satu probe transaksional sebagai peran `authenticated` dengan klaim `arnal@steadbyte.com` berhasil menulis satu baris di tiap tabel, termasuk kategori keahlian baru dan kurva manual, lalu membaca kembali hasilnya lewat `portfolio_entries()` yang sudah diperbaiki. Transaksi diakhiri `rollback`, dan pemeriksaan ulang memastikan tidak ada sisa baris probe (`probe_residue = 0`, `cat_residue = 0`) serta seluruh hitungan tabel kembali ke nilai semula.
+  - Verifikasi login dan sesi: `portfolio_is_admin`, `portfolio_admin_state`, dan keempat fungsi sesi (`register`, `touch`, `revoke`, `list`) benar, memeriksa allowlist, dan ber-ACL tepat; `portfolio_list_sessions` menyaring sesi yang aktif dalam tiga jam terakhir. Fungsi baca daftar nilai (`portfolio_project_kinds`, `portfolio_certification_domains`, `portfolio_role_levels`, `portfolio_skill_categories`) terbuka untuk `anon` dan `authenticated` dan berhasil dipanggil lewat REST.
+  - Verifikasi RLS dan grant: tabel entri hanya memberi `select` kepada `authenticated` sehingga penulisan wajib lewat fungsi; `portfolio_messages` memberi `select`, `update`, dan `delete` kepada `authenticated` dengan tiga policy yang memakai `portfolio_is_admin()`; `portfolio_admins` dan `portfolio_admin_sessions` tidak punya grant sama sekali dan hanya dapat disentuh lewat fungsi, yang memang disengaja; bucket `portfolio-media` bersifat publik dengan batas 10 MB dan empat jenis berkas.
+  - Temuan penasihat keamanan, semuanya disengaja dan bukan cacat: dua tabel tanpa policy (`portfolio_admins`, `portfolio_admin_sessions`) karena aksesnya hanya lewat fungsi security definer; empat fungsi security definer yang dapat dipanggil `anon`, yaitu `portfolio_entries`, `portfolio_is_admin`, `portfolio_send_message`, dan `rls_auto_enable` bawaan Supabase, yang memang perlu agar situs publik dapat membaca dan formulir kontak dapat mengirim; serta satu setelan yang dapat dinyalakan pemilik, yaitu Leaked Password Protection di Supabase Auth yang saat ini mati.
+  - Temuan penasihat kinerja, keduanya bersifat informasi dan tidak mengubah perilaku: dua indeks yang belum pernah terpakai (`portfolio_cert_images_parent_idx`, `portfolio_project_images_parent_idx`) dan tiga tabel yang punya lebih dari satu policy permisif untuk `SELECT` oleh `authenticated` (`portfolio_content`, `portfolio_drafts`, `portfolio_media`).
+  - Verifikasi kode: `npx tsc --noEmit` keluar 0 dan `npm run build` berhasil (`built in 10.47s`). Halaman `/skills` dibuka di peladen pengembangan dan satu satunya galat konsol adalah kegagalan jaringan ke `verified-skill.com`, yaitu registry pihak ketiga yang memang diharapkan gagal saat dijalankan lokal.
+  - Catatan jujur: empat hal tidak dapat diuji dari sisi ini karena butuh kredensial, peramban, atau penerapan ke Vercel, yaitu masuk dengan `signInWithPassword` memakai kata sandi sungguhan, unggah berkas dari peramban ke bucket, pengiriman surel Resend yang sungguhan, dan titik akhir `/api/contact` yang butuh penerapan atau `vercel dev`. Jalur tulis diverifikasi lewat transaksi basis data yang di-rollback, bukan lewat klik di panel, sehingga perbedaan pada bentuk muatan dari peramban tetap mungkin muncul. Selain itu ditemukan satu catatan konfigurasi di luar repo: berkas konfigurasi MCP menyimpan token akses pribadi Supabase dalam bentuk teks biasa dan token itu juga terpasang pada satu entri yang menunjuk proyek berbeda; token sebaiknya dirotasi dan dipindahkan dari berkas konfigurasi.
+  - Status: Selesai untuk sisi basis data dan kode. Perbaikan sudah terpasang di produksi dan sudah diverifikasi.
 

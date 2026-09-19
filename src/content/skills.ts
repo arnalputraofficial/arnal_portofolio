@@ -127,10 +127,10 @@ export const SKILLS_CONTENT: ContentEntry[] = [
     default: "Experience",
   },
   {
-    key: "skills.chart.top.row.lastUsed",
+    key: "skills.chart.top.row.since",
     page: "skills",
-    label: "Top skills chart: last used label",
-    default: "Last used",
+    label: "Top skills chart: since label",
+    default: "Since",
   },
   {
     key: "skills.chart.top.row.evidence",
@@ -142,8 +142,15 @@ export const SKILLS_CONTENT: ContentEntry[] = [
     key: "skills.chart.value.score",
     page: "skills",
     label: "Chart: score value",
-    default: "{value}/100",
-    hint: "Token: {value}. Used by the radar and top skills charts.",
+    default: "{value}/5",
+    hint: "Token: {value}. Used by the radar and top skills charts. Levels run 1 to 5.",
+  },
+  {
+    key: "skills.chart.value.percent",
+    page: "skills",
+    label: "Chart: percentage value",
+    default: "{value}%",
+    hint: "Token: {value}. Used for the evidence series, which is a share of the scale.",
   },
   {
     key: "skills.chart.value.years",
@@ -219,7 +226,7 @@ export const SKILLS_CONTENT: ContentEntry[] = [
     key: "skills.stat.longest.hint",
     page: "skills",
     label: "Stat hint: longest held skill",
-    default: "{name}, last used {year}",
+    default: "{name}, held since {year}",
     hint: "Tokens: {name}, {year}.",
   },
   {
@@ -396,11 +403,11 @@ export const SKILLS_CONTENT: ContentEntry[] = [
     hint: "Token: {count}.",
   },
   {
-    key: "skills.card.lastUsed",
+    key: "skills.card.since",
     page: "skills",
-    label: "Skill card: last used",
-    default: "last used {year}",
-    hint: "Token: {year}.",
+    label: "Skill card: since",
+    default: "since {year}",
+    hint: "Token: {year} is the year the skill was first picked up.",
   },
   {
     key: "skills.card.evidence",
@@ -412,7 +419,7 @@ export const SKILLS_CONTENT: ContentEntry[] = [
     key: "skills.card.rating.label",
     page: "skills",
     label: "Skill card: rating accessible label",
-    default: "Self rating for {name}: {value} out of 100",
+    default: "Self rating for {name}: {value} out of 5",
     hint: "Tokens: {name}, {value}.",
   },
   {
@@ -557,7 +564,7 @@ export const SKILLS_CONTENT: ContentEntry[] = [
     key: "skills.summary.row.aria",
     page: "skills",
     label: "Category summary: progress accessible label",
-    default: "Average {category}: {value} out of 100",
+    default: "Average {category}: {value} out of 5",
     hint: "Tokens: {category}, {value}.",
   },
   {
@@ -614,17 +621,17 @@ export const SKILLS_CONTENT: ContentEntry[] = [
   {
     key: "skills.honesty.stale.title",
     page: "skills",
-    label: "Honesty note: rarely used heading",
-    default: "rarely used",
+    label: "Honesty note: held the longest heading",
+    default: "held the longest",
   },
   {
     key: "skills.honesty.stale.body",
     page: "skills",
-    label: "Honesty note: rarely used paragraph",
+    label: "Honesty note: held the longest paragraph",
     default:
-      "{count} skills were last used in {year}. I still consider all of them alive, but calling them \"currently active\" would be a stretch.",
+      "{count} skills have been with me since {year} or earlier. They are the ones I have carried longest, which also means they are the ones I have had the most time to get wrong.",
     multiline: true,
-    hint: "Tokens: {count}, {year}.",
+    hint: "Tokens: {count}, {year}. Both are read from the since year.",
   },
   {
     key: "skills.honesty.thin.title",

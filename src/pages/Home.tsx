@@ -27,8 +27,24 @@ import { ProjectTable } from "@/components/tables/ProjectTable";
 import { useSiteText } from "@/content/ContentProvider";
 import { useEntries } from "@/entries/EntriesProvider";
 import { principles, profile } from "@/data/portfolio";
-import { humanDuration, monthsBetween, nf } from "@/lib/utils";
+import { humanDuration, mailtoHref, monthsBetween, nf, parseStyledLines } from "@/lib/utils";
 import { publicImageUrl } from "@/entries/types";
+
+function HeroTitle({ text }: { text: string }) {
+  const lines = parseStyledLines(text);
+
+  if (lines.length === 0) return null;
+
+  return (
+    <h1 className="mt-7 font-display text-[38px] font-semibold leading-[1.02] tracking-tight text-balance sm:text-6xl lg:text-[68px]">
+      {lines.map((line, i) => (
+        <span key={`${line.text}-${i}`} className={line.styled ? "block text-primary" : "block"}>
+          <SplitHeading text={line.text} delay={i * 0.12} />
+        </span>
+      ))}
+    </h1>
+  );
+}
 
 function HealthCard() {
   const t = useSiteText();
@@ -116,15 +132,7 @@ export default function Home() {
               </span>
             </div>
 
-            <h1 className="mt-7 font-display text-[38px] font-semibold leading-[1.02] tracking-tight text-balance sm:text-6xl lg:text-[68px]">
-              <SplitHeading text={t("home.hero.title.line1")} />
-              <span className="block text-primary">
-                <SplitHeading text={t("home.hero.title.line2")} delay={0.12} />
-              </span>
-              <span className="block">
-                <SplitHeading text={t("home.hero.title.line3")} delay={0.24} />
-              </span>
-            </h1>
+            <HeroTitle text={t("home.hero.title")} />
 
             <Reveal delay={0.4}>
               <div className="mt-7 flex flex-col gap-5 xl:flex-row xl:items-start xl:gap-6">
@@ -159,7 +167,7 @@ export default function Home() {
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <a href={profile.socials[2].href}>
+                  <a href={mailtoHref(t("global.profile.email")) || undefined}>
                     {t("home.hero.cta.secondary")}
                     <ArrowUpRight className="size-4" />
                   </a>

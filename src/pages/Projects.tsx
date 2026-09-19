@@ -1,12 +1,16 @@
+import * as React from "react";
 import {
   Activity,
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Coins,
   MapPin,
   PauseCircle,
   Users,
+  X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageIntro, StatStrip } from "@/components/layout/PageIntro";
@@ -58,6 +62,9 @@ function StatusBadge({ project }: { project: Project }) {
 /** Detail for a single project. Rendered in a dialog so the list stays compact. */
 function ProjectDetail({ project }: { project: Project }) {
   const t = useSiteText();
+  const { photosFor } = useEntries();
+  const photos = photosFor(project.id);
+  const [openIndex, setOpenIndex] = React.useState<number | null>(null);
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -142,6 +149,107 @@ function ProjectDetail({ project }: { project: Project }) {
           </Badge>
         ))}
       </div>
+
+      {photos.length > 0 ? (
+        <>
+          <Separator dashed className="my-6" />
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="eyebrow">{t("projects.detail.gallery")}</span>
+            <span className="font-mono text-[12px] tabular-nums text-muted-foreground">
+              {t("projects.detail.value.photos", { count: photos.length })}
+            </span>
+          </div>
+          <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {photos.map((photo, index) => (
+              <li key={photo.id}>
+                <button
+                  type="button"
+                  onClick={() => setOpenIndex(index)}
+                  className="group block w-full text-left"
+                >
+                  <img
+                    src={photo.url}
+                    alt={photo.caption || t("projects.detail.gallery.alt", { name: project.name })}
+                    loading="lazy"
+                    className="aspect-[4/3] w-full rounded-notch border border-border object-cover transition-opacity group-hover:opacity-90"
+                  />
+                  {photo.caption ? (
+                    <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+                      {photo.caption}
+                    </p>
+                  ) : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {openIndex !== null && photos[openIndex] ? (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("projects.detail.gallery")}
+              className="fixed inset-0 z-[60] flex flex-col bg-ink-950/95 p-4"
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setOpenIndex(null);
+              }}
+            >
+              <div className="flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setOpenIndex(null)}
+                  className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-4" />
+                  <span className="sr-only">{t("projects.detail.gallery.close")}</span>
+                </button>
+              </div>
+              <div className="flex min-h-0 flex-1 items-center justify-center">
+                <img
+                  src={photos[openIndex].url}
+                  alt={
+                    photos[openIndex].caption ||
+                    t("projects.detail.gallery.alt", { name: project.name })
+                  }
+                  className="max-h-full max-w-full rounded-notch object-contain"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4 pt-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenIndex((index) =>
+                      index === null ? index : (index - 1 + photos.length) % photos.length,
+                    )
+                  }
+                  className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <ChevronLeft className="size-4" />
+                  <span className="sr-only">{t("projects.detail.gallery.prev")}</span>
+                </button>
+                <p className="text-center font-mono text-[11px] leading-relaxed text-muted-foreground">
+                  {photos[openIndex].caption ||
+                    t("projects.detail.gallery.counter", {
+                      position: openIndex + 1,
+                      total: photos.length,
+                      name: project.name,
+                    })}
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenIndex((index) =>
+                      index === null ? index : (index + 1) % photos.length,
+                    )
+                  }
+                  className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <ChevronRight className="size-4" />
+                  <span className="sr-only">{t("projects.detail.gallery.next")}</span>
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </>
   );
 }

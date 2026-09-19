@@ -6,21 +6,28 @@
  * credential stays a line of text, which is the honest state of something that
  * cannot be checked from this page.
  *
+ * A scan is usually a picture, but a certificate the issuer hands out as a PDF
+ * is not, and it is embedded as a document instead. The two are told apart by
+ * the recorded MIME type, never by the URL: an object uploaded from a phone or
+ * a "certificate.php" download has no extension to read.
+ *
  * The viewer is an overlay rather than a route, so opening a scan does not throw
  * away the page behind it. Escape closes it, the arrow keys step through every
  * scan on the page in the order the owner filed them, and focus moves into the
  * overlay so the keyboard does not stay behind on a thumbnail.
  */
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Expand, FileText, X } from "lucide-react";
 import { PageSection, SectionHeading } from "@/components/layout/SectionHeading";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/fx/Reveal";
 import { useEntries, type CertificationScan } from "@/entries/EntriesProvider";
+import { isPdfScan } from "@/entries/types";
 
 interface Slide {
   url: string;
   caption: string;
+  mimeType: string;
   certName: string;
   issuer: string;
   position: number;
@@ -61,6 +68,7 @@ export function CertificateSlideshow() {
         slides.push({
           url: scan.url,
           caption: scan.caption,
+          mimeType: scan.mimeType,
           certName: cert.name,
           issuer: cert.issuer,
           position: index + 1,
@@ -128,7 +136,7 @@ export function CertificateSlideshow() {
           index="04"
           eyebrow="Scans"
           title={`${slides.length} scans across ${groups.length} ${groups.length === 1 ? "certificate" : "certificates"}`}
-          description="The paper itself, filed in the order I keep it. Open any scan for a full screen view and step through the rest with the arrow keys."
+          description="The paper itself, filed in the order I keep it. Pictures open full screen, issued PDFs open as documents. Step through the rest with the arrow keys."
         />
 
         <div className="mt-10 space-y-6">
@@ -158,12 +166,21 @@ export function CertificateSlideshow() {
                         aria-label={`Open ${group.name} scan ${index + 1} of ${group.scans.length}`}
                         className="group relative block w-full overflow-hidden rounded-notch border border-border bg-muted"
                       >
-                        <img
-                          src={scan.url}
-                          alt=""
-                          loading="lazy"
-                          className="aspect-[4/3] w-full object-cover transition-transform duration-500 ease-out-expo group-hover:scale-[1.04]"
-                        />
+                        {isPdfScan(scan.mimeType) ? (
+                          <span className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 bg-muted/60 text-muted-foreground">
+                            <FileText className="size-6" aria-hidden />
+                            <span className="font-mono text-[10px] uppercase tracking-[0.14em]">
+                              PDF
+                            </span>
+                          </span>
+                        ) : (
+                          <img
+                            src={scan.url}
+                            alt=""
+                            loading="lazy"
+                            className="aspect-[4/3] w-full object-cover transition-transform duration-500 ease-out-expo group-hover:scale-[1.04]"
+                          />
+                        )}
                         <span
                           aria-hidden
                           className="absolute right-2 top-2 grid size-7 place-items-center rounded-[3px] bg-ink-950/70 text-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100"
@@ -213,11 +230,22 @@ export function CertificateSlideshow() {
           </div>
 
           <div className="relative flex min-h-0 flex-1 items-center justify-center p-4 sm:p-8">
-            <img
-              src={active.url}
-              alt={`${active.certName}, scan ${active.position}`}
-              className="max-h-full max-w-full rounded-notch border border-border/60 object-contain shadow-lift"
-            />
+            {isPdfScan(active.mimeType) ? (
+              // The document is embedded rather than converted, so the visitor
+              // reads the same file the issuer signed. object-src stays off;
+              // an iframe is the one element that renders it under this policy.
+              <iframe
+                src={active.url}
+                title={`${active.certName}, scan ${active.position}`}
+                className="h-full w-full max-w-5xl rounded-notch border border-border/60 bg-background shadow-lift"
+              />
+            ) : (
+              <img
+                src={active.url}
+                alt={`${active.certName}, scan ${active.position}`}
+                className="max-h-full max-w-full rounded-notch border border-border/60 object-contain shadow-lift"
+              />
+            )}
 
             {slides.length > 1 ? (
               <>
@@ -246,8 +274,24 @@ export function CertificateSlideshow() {
           <div className="border-t border-border/60 px-4 py-3 sm:px-6">
             <p className="text-center font-mono text-[11px] leading-relaxed text-muted-foreground">
               {active.caption ||
-                `${active.certName}, scan ${active.position} of ${active.total}. Escape closes this view.`}
+                `${active.certName}, scan ${active.position} of ${active.total}${
+                  isPdfScan(active.mimeType) ? " (PDF)" : ""
+                }. Escape closes this view.`}
             </p>
+            {isPdfScan(active.mimeType) ? (
+              // Some mobile browsers show only the first page of an embedded
+              // PDF, so the file is also reachable on its own.
+              <p className="mt-1 text-center font-mono text-[11px]">
+                <a
+                  href={active.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+                >
+                  Open the PDF in a new tab
+                </a>
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}

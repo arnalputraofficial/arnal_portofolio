@@ -17,6 +17,7 @@ import Credentials from "@/pages/Credentials";
 import Skills from "@/pages/Skills";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
+import Steadbyte from "@/pages/Steadbyte";
 import NotFound from "@/pages/NotFound";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
@@ -66,6 +67,7 @@ export default function App() {
                         <Route path="/skills" element={<Skills />} />
                         <Route path="/about" element={<About />} />
                         <Route path="/contact" element={<Contact />} />
+                        <Route path="/about-steadbyte" element={<Steadbyte />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </PageShell>
