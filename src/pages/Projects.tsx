@@ -33,9 +33,19 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useEntries } from "@/entries/EntriesProvider";
+import { chartValue } from "@/entries/chartSeries";
 import { useSiteText } from "@/content/ContentProvider";
 import type { Project } from "@/data/portfolio";
 import { nf } from "@/lib/utils";
+
+/**
+ * The mix is set by hand on the Charts tab, so a kind can be any label the
+ * owner typed. An unknown label falls back to a neutral colour rather than
+ * throwing on the map lookup.
+ */
+function kindColor(kind: string): string {
+  return (KIND_COLOR as Record<string, string | undefined>)[kind] ?? CHART_COLORS.dim;
+}
 
 function statusVariant(status: Project["status"]): BadgeProps["variant"] {
   switch (status) {
@@ -306,7 +316,7 @@ function FeaturedCard({ project }: { project: Project }) {
 
 export default function Projects() {
   const t = useSiteText();
-  const { projects } = useEntries();
+  const { projects, chartRows } = useEntries();
 
   const totalBudget = projects.reduce((acc, p) => acc + p.budgetM, 0);
   const totalMonths = projects.reduce((acc, p) => acc + p.months, 0);
@@ -320,11 +330,13 @@ export default function Projects() {
   const crossSite = projects.filter((p) => /stores|branches|Sumatra|sites/i.test(p.location)).length;
   const featured = projects.filter((p) => p.featured);
 
-  const kindCount = [...new Set(projects.map((p) => p.kind))]
-    .map((kind) => ({
-      kind,
-      count: projects.filter((p) => p.kind === kind).length,
-      budget: projects.filter((p) => p.kind === kind).reduce((acc, p) => acc + p.budgetM, 0),
+  // The count and the budget are set from the chart editor, so the mix can be
+  // stated by hand. The colour still comes from the kind's own entry colour.
+  const kindCount = chartRows("projects-kinds")
+    .map((row) => ({
+      kind: row.name,
+      count: chartValue(row, "count"),
+      budget: chartValue(row, "budget"),
     }))
     .sort((a, b) => b.count - a.count);
 
@@ -341,7 +353,6 @@ export default function Projects() {
   return (
     <>
       <PageIntro
-        index={t("projects.intro.index")}
         eyebrow={t("projects.eyebrow")}
         title={t("projects.title")}
         lead={t("projects.lead")}
@@ -380,7 +391,6 @@ export default function Projects() {
       {/* 01 - quick read */}
       <PageSection>
         <SectionHeading
-          index={t("projects.section.map.index")}
           eyebrow={t("projects.quickread.eyebrow")}
           title={t("projects.quickread.title")}
           description={t("projects.quickread.description")}
@@ -454,7 +464,6 @@ export default function Projects() {
       {/* 02 - featured */}
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
-          index={t("projects.section.featured.index")}
           eyebrow={t("projects.featured.eyebrow")}
           title={t("projects.featured.title")}
           description={t("projects.featured.description")}
@@ -480,7 +489,6 @@ export default function Projects() {
       {/* 03 - composition */}
       <PageSection>
         <SectionHeading
-          index={t("projects.section.composition.index")}
           eyebrow={t("projects.composition.eyebrow")}
           title={t("projects.composition.title")}
           description={t("projects.composition.note")}
@@ -510,7 +518,7 @@ export default function Projects() {
                     <span
                       aria-hidden
                       className="mt-[6px] size-2.5 shrink-0 rounded-[2px]"
-                      style={{ backgroundColor: KIND_COLOR[row.kind] }}
+                      style={{ backgroundColor: kindColor(row.kind) }}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-3">
@@ -553,7 +561,6 @@ export default function Projects() {
       {/* 04 - table */}
       <PageSection className="border-t border-border bg-card/25">
         <SectionHeading
-          index={t("projects.section.table.index")}
           eyebrow={t("projects.table.eyebrow")}
           title={t("projects.table.title")}
           description={t("projects.table.description")}

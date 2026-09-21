@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useEntries } from "@/entries/EntriesProvider";
+import { chartValue } from "@/entries/chartSeries";
 import { useSiteText } from "@/content/ContentProvider";
 import type { Certification } from "@/data/portfolio";
 import { nf } from "@/lib/utils";
@@ -89,7 +90,7 @@ function RenewalRow({ cert }: { cert: Certification }) {
 
 export default function Credentials() {
   const t = useSiteText();
-  const { certifications } = useEntries();
+  const { certifications, chartRows } = useEntries();
 
   const activeCerts = certifications.filter((c) => c.status === "active");
   const expiredCerts = certifications.filter((c) => c.status === "expired");
@@ -98,18 +99,26 @@ export default function Credentials() {
   const permanentCerts = certifications.filter((c) => c.expires === null);
   const domains = [...new Set(certifications.map((c) => c.domain))];
 
-  const timeline = [...certifications]
-    .map((cert) => {
-      const left = monthsTo(cert.expires);
-      return {
-        ...cert,
-        left,
-        // certificates without an expiry are drawn as a full bar
-        bar: left === null ? 120 : Math.max(left, -12),
-        color: DOMAIN_COLOR[cert.domain],
-      };
-    })
-    .sort((a, b) => (b.bar ?? 0) - (a.bar ?? 0));
+  const certByName = new Map(certifications.map((cert) => [cert.name, cert]));
+
+  const validity = chartRows("credentials-validity");
+
+  // The bar length is set from the chart editor. Everything else on the row
+  // (issuer, domain, expiry, colour) still comes from the entry it names, so
+  // the legend and the tooltip keep matching the certificate table.
+  const timeline = validity.map((row) => {
+    const cert = certByName.get(row.name);
+    return {
+      name: row.name,
+      issuer: cert?.issuer ?? row.name,
+      domain: cert?.domain ?? "Data",
+      expires: cert?.expires ?? null,
+      status: cert?.status ?? "active",
+      left: cert ? monthsTo(cert.expires) : null,
+      bar: chartValue(row, "months"),
+      color: DOMAIN_COLOR[cert?.domain ?? "Data"],
+    };
+  });
 
   const expiringSoon = certifications
     .filter((c) => {
@@ -118,14 +127,14 @@ export default function Credentials() {
     })
     .sort((a, b) => (monthsTo(a.expires) ?? 0) - (monthsTo(b.expires) ?? 0));
 
-  const domainStats = domains
-    .map((domain) => {
-      const items = certifications.filter((c) => c.domain === domain);
+  const domainStats = chartRows("credentials-domains")
+    .map((row) => {
+      const domain = row.name as Certification["domain"];
       return {
         domain,
-        count: items.length,
-        cost: items.reduce((acc, c) => acc + c.cost, 0),
-        color: DOMAIN_COLOR[domain],
+        count: chartValue(row, "count"),
+        cost: chartValue(row, "cost"),
+        color: DOMAIN_COLOR[domain] ?? CHART_COLORS.dim,
       };
     })
     .sort((a, b) => b.count - a.count || b.cost - a.cost);
@@ -142,7 +151,6 @@ export default function Credentials() {
   return (
     <>
       <PageIntro
-        index={t("credentials.intro.index")}
         eyebrow={t("credentials.eyebrow")}
         title={t("credentials.title")}
         lead={t("credentials.lead")}
@@ -193,7 +201,6 @@ export default function Credentials() {
       {/* 01 - validity window */}
       <PageSection>
         <SectionHeading
-          index={t("credentials.validity.index")}
           eyebrow={t("credentials.validity.eyebrow")}
           title={t("credentials.validity.title")}
           description={t("credentials.validity.description")}
@@ -270,9 +277,9 @@ export default function Credentials() {
                     }}
                   />
                   <Bar dataKey="bar" radius={[0, 3, 3, 0]}>
-                    {timeline.map((d) => (
+                    {timeline.map((d, index) => (
                       <Cell
-                        key={d.id}
+                        key={`${d.name}-${index}`}
                         fill={d.color}
                         fillOpacity={d.status === "expired" ? 0.3 : 0.75}
                         stroke={d.color}
@@ -364,7 +371,6 @@ export default function Credentials() {
       {/* 02 - domain composition */}
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
-          index={t("credentials.composition.index")}
           eyebrow={t("credentials.composition.eyebrow")}
           title={t("credentials.composition.title")}
           description={t("credentials.composition.description")}
@@ -445,7 +451,6 @@ export default function Credentials() {
       {/* 03 - table */}
       <PageSection>
         <SectionHeading
-          index={t("credentials.table.index")}
           eyebrow={t("credentials.table.eyebrow")}
           title={t("credentials.table.title")}
           description={t("credentials.table.description")}

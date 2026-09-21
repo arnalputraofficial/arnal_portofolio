@@ -162,7 +162,6 @@ export default function Contact() {
   return (
     <>
       <PageIntro
-        index={t("contact.intro.index")}
         eyebrow={t("contact.eyebrow")}
         title={t("contact.title")}
         lead={t("contact.lead")}
@@ -202,7 +201,6 @@ export default function Contact() {
       {/* 01 - form */}
       <PageSection>
         <SectionHeading
-          index={t("contact.section.form.index")}
           eyebrow={t("contact.form.eyebrow")}
           title={t("contact.form.title")}
           description={t("contact.form.description")}
@@ -467,6 +465,8 @@ export default function Contact() {
                         <SpotlightCard className="rounded-none border-0 p-0">
                           <a
                             href={href}
+                            target={href.startsWith("http") ? "_blank" : undefined}
+                            rel="noreferrer noopener"
                             className="group flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/40"
                           >
                             <span className="flex items-center gap-3">

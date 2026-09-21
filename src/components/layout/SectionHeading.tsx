@@ -2,18 +2,16 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Editorial section heading: large index number on the left,
- * title and description on the right. Deliberately not centered.
+ * Editorial section heading: eyebrow on the left, title and description on the
+ * right. Deliberately not centered.
  */
 export function SectionHeading({
-  index,
   eyebrow,
   title,
   description,
   className,
   action,
 }: {
-  index: string;
   eyebrow?: string;
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -23,13 +21,7 @@ export function SectionHeading({
   return (
     <div className={cn("grid gap-6 md:grid-cols-12 md:gap-8", className)}>
       <div className="md:col-span-2">
-        <span
-          className="font-mono text-[52px] font-bold leading-none text-foreground/10 sm:text-[68px]"
-          aria-hidden
-        >
-          {index}
-        </span>
-        {eyebrow && <p className="eyebrow mt-1">{eyebrow}</p>}
+        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
       </div>
 
       <div className="md:col-span-10">

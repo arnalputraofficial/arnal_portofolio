@@ -101,6 +101,7 @@ Status per 2026-09-15.
 | FR-4 | Navigasi utama menandai halaman yang sedang aktif | Selesai |
 | FR-5 | Mode gelap dan terang dapat ditukar pengguna dan pilihannya diingat | Selesai |
 | FR-74 | Kursor bawaan diganti reticle bernuansa teknis yang warnanya mengikuti tema, menempel pada pointer, mengecil saat terkunci pada sasaran dan saat ditekan, serta menampilkan label mono berisi jenis sasaran. Kolom teks tetap memakai kursor teks, dan reticle mati bila pengguna meminta gerak dikurangi | Selesai |
+| FR-85 | Tidak ada angka dekoratif di antarmuka. Navigasi utama, menu kaki, hero setiap halaman, judul setiap seksi, dan daftar rute halaman 404 tidak menampilkan nomor urut, karena dua sistem penomoran yang bertabrakan membuat pemilik bingung | Selesai |
 
 ### 5.2 Beranda
 
@@ -225,6 +226,7 @@ Status per 2026-09-15.
 | FR-72 | Seluruh halaman (Karier, Proyek, Sertifikasi, Keahlian, Tentang, Kontak, dan 404) membaca judul, lead, label statistik, dan judul seksinya dari registry konten, bukan dari teks yang dipatri di dalam komponen | Selesai |
 | FR-73 | Kartu detail node 3D pada Beranda muncul dan hilang dengan animasi yang sama durasinya, tertutup otomatis saat node lain diklik (kartu baru menunggu kartu lama selesai menutup), tertutup saat klik kiri di luar area kluster, dan tertutup lewat tombol tutup | Selesai |
 | FR-80 | Judul yang tampil berbaris disimpan sebagai satu field, bukan satu field per baris. Satu baris pada field itu menjadi satu baris di halaman, dan baris yang diapit tanda bintang dirender dengan warna gayanya sendiri (aksen pada judul hero Beranda, warna redup pada pernyataan penutup footer) tanpa ikut menampilkan tanda bintangnya | Selesai |
+| FR-84 | Masuk ke panel tidak pernah terlempar kembali ke kotak kata sandi selama kata sandinya benar. Seluruh tab pada satu browser berbagi satu sesi, sehingga keluar dari satu tab mengeluarkan semua tab, dan gangguan jaringan saat memeriksa daftar izin menahan sesi yang sedang berjalan alih-alih mengakhirinya | Selesai |
 
 ### 5.12 Pengelolaan entri portofolio
 
@@ -253,6 +255,27 @@ Tab **Entries** pada panel admin. Berbeda dari penyunting teks pada 5.11, entri 
 | FR-86 | Beberapa proyek dapat disimpan sekaligus dengan menempelkan tabel teks (satu proyek per baris; pemisah tab, koma, atau pipa) dari dialog "Paste many". Setiap baris ditampilkan hasil pembacaannya sebelum apa pun ditulis, dan baris yang tidak terbaca dilaporkan beserta nomor barisnya, bukan gagal diam-diam | Selesai |
 | FR-87 | Field proyek yang jarang diubah (peran, lokasi, jumlah bulan, ukuran tim, stack, sorotan) berada di balik satu bagian yang dapat dilipat, sehingga dialog proyek terbuka pada field yang paling sering disentuh | Selesai |
 
+### 5.13 Penyetelan angka grafik
+
+Tab **Charts** pada panel admin. Sebelumnya angka sebagian grafik dipatri di dalam komponen yang menggambarnya (misalnya `99.98`, `3`, `98` pada kartu Operational Status di Beranda), sehingga tidak dapat disesuaikan sama sekali tanpa mengubah kode. Grafik lain dihitung dari entri, sehingga hanya bergerak bila entri bergerak.
+
+| Kode | Requirement | Status |
+|---|---|---|
+| FR-88 | Seluruh grafik, diagram batang, dan visual serupa di situs dapat diisi angkanya secara manual dari satu tab **Charts** di panel admin. Setiap grafik tampil sebagai satu lipatan yang dapat dibuka, berisi tabel baris yang dapat ditambah dan dihapus, dengan nama baris dan setiap kolom angkanya dapat diketik | Selesai |
+| FR-89 | Di bawah setiap baris, panel menampilkan pratinjau bar yang lebarnya diukur dengan aturan yang sama persis seperti grafik publik, beserta angka dan persentasenya, sehingga bobot sebuah angka dalam serinya langsung terlihat saat diketik | Selesai |
+| FR-90 | Selama sebuah grafik belum diisi manual, grafik itu tetap memakai angka hasil hitungan dari entri, dan tombol "Fill from the current numbers" mengisi awal tabel dari angka itu. Tombol "Clear, back to computed" mengembalikan grafik ke hitungan entri, dan daftar yang dikosongkan dengan sengaja tetap tampil kosong, tidak diisi ulang dengan angka hasil hitungan | Selesai |
+| FR-91 | Nilai yang disimpan dijaga di sisi basis data: panjang nama dipangkas, kunci kolom dibatasi polanya, nilai non-numerik ditolak, dan nilai dijepit ke rentang yang wajar. Hanya admin yang dapat menulis, dan setiap penulisan tercatat pada catatan aktivitas | Selesai |
+| FR-92 | Menambah grafik baru cukup dengan menambahkan satu spesifikasi pada daftar di `src/entries/chartSeries.ts`. Grafik itu langsung muncul di panel tanpa migrasi basis data baru, karena seluruh grafik berbagi satu tabel dan satu fungsi penyimpanan | Selesai |
+
+### 5.14 Tautan Surel
+
+Seluruh tautan surel di situs dan di panel admin membuka **compose Gmail** di tab baru, dengan kolom penerima sudah terisi alamat yang ditampilkan, bukan menyerahkan kliknya ke aplikasi surel yang terpasang di perangkat pengunjung.
+
+| Kode | Requirement | Status |
+|---|---|---|
+| FR-93 | Setiap tautan surel memakai `mailtoHref()` dari `src/lib/utils.ts`, yang menghasilkan URL `https://mail.google.com/mail/?view=cm&fs=1` dengan `to` berisi alamat tujuan. Alamatnya diambil dari field profil yang dapat diedit, sehingga teks yang tampil dan tujuan tautannya selalu sama. Nilai tanpa `@` tidak menghasilkan tautan sama sekali, supaya tidak ada tautan yang menuju ke mana mana | Selesai |
+| FR-94 | Tautan yang terbuka di tab baru selalu membawa `rel="noreferrer noopener"` | Selesai |
+
 ## 6. Requirement Non Fungsional
 
 | Kode | Requirement | Status | Catatan |
@@ -274,6 +297,8 @@ Tab **Entries** pada panel admin. Berbeda dari penyunting teks pada 5.11, entri 
 | NFR-15 | Permintaan tanpa sesi ditolak, dan penolakan diuji ulang setelah setiap perubahan fungsi | Selesai | Uji anon pada `portfolio_admin_state` dan `portfolio_save_draft` mengembalikan 401 |
 | NFR-16 | Setiap jawaban HTTP membawa header keamanan: `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`, dan `Permissions-Policy` | Selesai | Ditulis pada kunci `headers` di `vercel.json`. Kebijakan itu hanya berlaku sebagai header jawaban, bukan sebagai `<meta>`. Diverifikasi 2026-09-16 |
 | NFR-17 | Tidak ada HTML mentah dari data mana pun yang dirender sebagai markup | Selesai | Tidak ada `dangerouslySetInnerHTML`, `innerHTML`, `eval`, maupun `new Function` di `src/`. React meloloskan seluruh teks |
+| NFR-18 | Peran yang dapat dijangkau pengunjung tanpa login hanya memegang izin yang benar-benar dipakai. Hak `TRUNCATE`, `REFERENCES`, `TRIGGER`, dan `MAINTAIN` dicabut dari `anon` dan `authenticated` pada seluruh tabel `public`, termasuk untuk tabel yang dibuat kemudian | Selesai | Diverifikasi 2026-09-21 lewat `has_table_privilege`. Sisa izin `anon` hanya `SELECT` pada tabel yang memang publik. Lihat catatan penting pada bagian 15 |
+| NFR-19 | Endpoint kontak menolak masukan di luar batas sebelum menyentuh basis data maupun surel: nama 2-100, surel 5-200 beserta formatnya, topik maksimal 120, pesan 20-5000 karakter, dan karakter kendali ditolak pada nama serta topik | Selesai | Batas topik mengikuti pemotongan di `portfolio_send_message`. Diverifikasi 2026-09-21 dengan sebelas payload, termasuk baris baru yang menyamar sebagai header surel |
 
 ## 7. Requirement Teknis dan Teknologi
 
@@ -369,6 +394,11 @@ kode.
 | `portfolio_revisions` | Riwayat nilai yang digantikan tiap penerbitan dan pengembalian | Baca oleh admin, tulis hanya lewat fungsi |
 | `portfolio_activity` | Catatan aksi: pelaku, aksi, sasaran, rincian, waktu | Baca oleh admin, tulis hanya lewat fungsi |
 | `portfolio_admins` | Daftar izin berupa alamat surel, catatan, dan penanda wajib ganti kata sandi | Tidak dapat dibaca maupun ditulis lewat API |
+| `portfolio_chart_series` | Angka grafik yang diisi manual dari tab Charts, satu baris per grafik, berisi daftar baris bernama beserta kolom angkanya | Baca publik, tulis hanya lewat fungsi |
+
+Tabel `portfolio_chart_series` menyimpan seluruh grafik pada satu tabel dengan nama grafik sebagai
+kunci utama, sehingga menambah grafik baru tidak memerlukan migrasi baru. Grafik yang tidak punya
+baris di tabel itu memakai angka hasil hitungan dari entri, dan itulah arti "kosong" di sini.
 
 Nilai yang tidak ada di `portfolio_content` jatuh ke teks bawaan yang ikut dikompilasi ke dalam
 bundel. Jadi situs tetap utuh walaupun basis data kosong atau tidak dapat dijangkau.
@@ -519,6 +549,8 @@ Uji jalur tulis 2026-09-15, dijalankan terhadap project nyata, bukan tiruan:
 | Skrip pihak ketiga disuntikkan ke halaman | Sesi admin atau isi teks dapat diambil alih | `script-src 'self'` tanpa `unsafe-inline` pada header `Content-Security-Policy`, dan tidak ada satu pun HTML mentah dari data yang dirender |
 | Halaman ditanam di situs lain | Klik pengunjung dibajak tanpa disadari | `frame-ancestors 'none'` dan `X-Frame-Options: DENY` |
 | Teks atau tautan entri disunting admin menyusupkan skema berbahaya | Pengunjung diarahkan ke alamat berbahaya | React meloloskan seluruh teks. `credentialUrl` saat ini hanya disimpan dan tidak pernah dirender sebagai tautan. Bila nanti dirender, skema `http` dan `https` wajib disaring lebih dulu |
+| Hak tabel berlebih tertinggal pada peran yang dapat dijangkau pengunjung tanpa login | Bila suatu saat ada jalur SQL yang berjalan sebagai `anon`, satu pernyataan `TRUNCATE` dapat mengosongkan tabel, karena `TRUNCATE` tidak difilter oleh row level security | Hak `TRUNCATE`, `REFERENCES`, `TRIGGER`, dan `MAINTAIN` dicabut dari `anon` dan `authenticated` pada seluruh tabel `public`, dan pencabutan itu juga berlaku untuk tabel yang dibuat kemudian lewat `alter default privileges` |
+| Baris baru pada nama atau topik pengunjung menyusupkan header surel tambahan | Surel notifikasi dapat dikirim ke alamat lain, atau pemilik menerima surel palsu | Endpoint kontak menolak karakter kendali pada nama dan topik sebelum apa pun disimpan atau dikirim, dan surel pembalas harus lolos pemeriksaan format tanpa spasi |
 
 ## 14. Di Luar Ruang Lingkup
 
@@ -534,6 +566,73 @@ Daftar ini menjelaskan hal yang sengaja tidak dikerjakan, agar tidak menimbulkan
 8. Berbagi otomatis ke media sosial.
 
 ## 15. Riwayat Perubahan
+
+### 2026-09-21
+
+- **FR-93 dan FR-94 Tautan Surel Membuka Compose Gmail**: permintaan pemilik, "Ini existing sekarang untuk email jika diklik masuknya ke outlook, saya ingin defaultnya agar mengcompose new message ke gmail dengan to nya ke email yang saya tampilkan".
+  - Kebutuhan: tautan memakai skema `mailto:`, sehingga kliknya diserahkan ke aplikasi surel yang terdaftar di perangkat pengunjung. Di mesin yang memasang Outlook, Outlook terbuka walaupun pengunjung memakai Gmail. Pemilik ingin tujuannya seragam bagi semua pengunjung, yaitu compose Gmail, dengan kolom penerima sudah berisi alamat yang ditampilkan.
+  - Perubahan kode:
+    1. `src/lib/utils.ts`: `mailtoHref()` kini menghasilkan `https://mail.google.com/mail/?view=cm&fs=1` dengan `to` berisi alamat tujuan, memakai `URL` dan `searchParams` supaya pengodean karakter benar tanpa `encodeURIComponent` manual. Parameter `subject` ditambahkan supaya balasan dari inbox admin ikut membawa subjeknya. Pembersihan masukan tidak berubah, termasuk penerimaan nilai yang sudah berawalan `mailto:` dan penolakan nilai tanpa `@`.
+    2. Pemanggil yang diperbarui: `SiteHeader.tsx`, `SiteFooter.tsx`, `Home.tsx`, `About.tsx`, `Contact.tsx`, dan `MessagesPanel.tsx` (tautan alamat pengirim serta tombol "Reply by Email").
+    3. Setiap tautan yang kini mengarah ke luar situs diberi `target="_blank"` beserta `rel="noreferrer noopener"`, supaya portofolio tidak ditinggalkan dan tab yang dibuka tidak dapat mengakses jendela pembukanya.
+    4. `src/data/portfolio.ts`: entri sosial "Email" disimpan sebagai penanda `mailto:` tanpa alamat, karena tujuan tautannya memang selalu diambil dari field profil yang dapat diedit. Nilai lama `halo@arnal.dev` dihapus agar tidak ada lagi alamat beku yang bisa muncul bila suatu saat penanda itu terpakai langsung.
+    5. `src/content/global.ts`: hint field surel diperbarui, karena kalimat lamanya masih menyebut "mailto link".
+  - Verifikasi: `npx tsc --noEmit` keluar 0 dan `npm run build` sukses (`built in 10.16s`). Fungsi tautannya diuji langsung dengan empat masukan: alamat biasa menghasilkan `https://mail.google.com/mail/?view=cm&fs=1&to=halo%40arnal.dev`, nilai berawalan `mailto:` dan berspasi tetap menghasilkan URL yang sama, nilai tanpa `@` menghasilkan string kosong sehingga tautannya tidak dirender, dan subjek diuraikan menjadi `&su=Re%3A+Kerja+sama`.
+  - Catatan jujur: pengodean `to` memakai `URL`, yang mengubah `@` menjadi `%40`. Gmail membaca keduanya sama, tetapi bentuk ini belum diuji dengan klik sungguhan di peramban dari sisi ini. Halaman beranda, kontak, proyek, dan kredensial sudah dibuka di peramban tanpa galat konsol.
+  - Status: Selesai untuk sisi kode.
+
+- **FR-88 sampai FR-92 Angka Grafik Dapat Disetel dari Panel Admin**: permintaan pemilik, "Bisakah untuk page yang ada chartnya seperti Role Composition per Year, Operational Status dan lain-lain yang mirip seperti ini agar untuk set di Admin lebih mudah? Ini untuk set % dan bar-barnya tidak ada. Buatkan lebih mudah untuk setnya dan ada visualisasinya untuk set chart/ bar dan lain-lainnya. Terapkan semua yang memakai chart, bar, dan visual lainnya menjadi seperti ini".
+  - Kebutuhan: angka sebagian grafik dipatri di dalam komponen yang menggambarnya, sehingga satu-satunya cara mengubahnya adalah menyunting kode dan membangun ulang situs. Grafik lain dihitung dari entri, sehingga hanya bergerak bila entri bergerak. Pemilik meminta **semua** grafik, diagram batang, dan visual serupa dapat diisi angkanya dari admin, dengan pratinjau visual saat mengetik. Pemilik memilih cakupan **semua grafik bisa di-set angkanya**, bukan hanya grafik yang dipatri, dan lokasinya **tab baru "Charts" di dashboard admin**.
+  - Perubahan basis data: tabel `portfolio_chart_series` (kunci utama `chart`, kolom `rows` bertipe `jsonb` berisi larik baris) dengan RLS aktif dan hanya `SELECT` untuk `anon` serta `authenticated`, ditambah fungsi `security definer` `portfolio_save_chart_series(p_chart text, p_rows jsonb)`. Fungsi itu memangkas nama baris, membatasi kunci kolom pada pola `^[a-zA-Z0-9_]{1,32}$`, menolak nilai non-numerik dengan mencocokkannya sebagai teks lebih dulu sebelum di-cast (pelajaran dari galat `22P02` saat nilai `true` lolos), menjepit nilai ke `[-1000000, 1000000]`, menolak larik di atas 40 baris dan muatan di atas 20 KB, menghapus baris saat lariknya kosong, dan mencatat setiap penulisan pada `portfolio_activity`. Migrasi `20260921000000_portfolio_chart_series.sql`.
+  - Perubahan kode:
+    1. `src/entries/chartSeries.ts` (baru): satu daftar `CHART_SPECS` berisi sepuluh grafik beserta kolom dan aturan barnya, ditambah `computedChartRows()` yang mereplikasi aritmetika tiap grafik persis seperti sebelumnya. Ini yang membuat grafik tanpa isian manual tampil sama seperti sebelumnya, dan membuat panel dapat menawarkan "Fill from the current numbers" tanpa salinan kedua dari perhitungan itu.
+    2. `src/admin/ChartsPanel.tsx` (baru): daftar lipatan per grafik, tabel baris yang dapat ditambah dan dihapus, pratinjau bar di bawah tiap baris yang lebarnya diukur oleh fungsi yang sama dengan grafik publik (`chartBarPercent`, dengan `chartBarCeiling` diekstrak agar tidak ada dua salinan aturan penskalaan), serta tombol simpan, isi dari hitungan, dan kembalikan ke hitungan.
+    3. `src/entries/EntriesProvider.tsx`: membaca tabel itu dan mengekspos `chartRows(id)` serta `storedCharts`. `chartRows` mengembalikan baris tersimpan bila ada, atau hasil `computedChartRows` bila tidak, sehingga halaman publik dan panel memakai satu sumber yang sama dan tidak mungkin berbeda.
+    4. `src/entries/useEntryWriter.ts`: menambah `saveChartSeries(chart, rows)` yang melewati satu jalur tulis, satu muat ulang, dan satu baris umpan balik yang sama seperti penulisan entri lain.
+    5. `src/pages/AdminDashboard.tsx`: tab **Charts** ditambahkan, dan angka dekoratif `09` pada kepala panel dihapus.
+    6. Seluruh komponen grafik beralih membaca `chartRows(...)` alih-alih menghitung sendiri: `HealthCard` di `Home.tsx`, `CareerCharts.tsx`, `SkillCharts.tsx` (termasuk `SkillBalanceRadar` yang tidak lagi menerima prop `data`), `Credentials.tsx` (validitas dan komposisi domain), dan `Projects.tsx` (komposisi jenis proyek).
+    7. `src/admin/ContentEditor.tsx`: keterangan "What this editor does not do" diperbarui, karena kalimat lamanya masih menyatakan angka grafik datang dari bundel.
+  - Verifikasi: `npx tsc --noEmit` keluar 0, `npm run build` sukses. Penulisan diuji langsung ke basis data di dalam transaksi yang dibatalkan: penyimpanan dua baris dengan satu nilai desimal tersimpan utuh, pengosongan menghapus barisnya, nama grafik yang belum ada tetap diterima (inilah yang membuat grafik baru tidak butuh migrasi), dan kedua penulisan tercatat pada `portfolio_activity`.
+  - Status: Selesai.
+
+- **NFR-18, NFR-19 Audit Keamanan Menyeluruh: Hak Tabel Berlebih Dicabut dan Endpoint Kontak Diperketat**: permintaan pemilik, "Check untuk sisi security secara menyeluruh, jangan sampai ada titik kelemahan yang dimana yang berakibatkan untuk diserang dari malware, hacker, virus dan lain-lain. Pastikan semuanya aman dan ter santize".
+  - Kebutuhan: memeriksa seluruh permukaan serangan, bukan menebak. Enam lapisan diperiksa dengan bukti: XSS di frontend, kebocoran rahasia, endpoint kontak, header keamanan, hak `anon` di Supabase beserta Storage, dan dependensi.
+  - **Temuan nyata yang diperbaiki (basis data)**: bootstrap Supabase pernah memberi hak `all` pada setiap tabel `public` kepada `anon` dan `authenticated`, dan hanya `INSERT`/`UPDATE`/`DELETE` yang pernah dicabut. Akibatnya `TRUNCATE`, `REFERENCES`, `TRIGGER`, dan `MAINTAIN` tertinggal di seluruh 18 tabel. Ini penting karena **`TRUNCATE` tidak difilter oleh row level security**: satu pernyataan dapat mengosongkan `portfolio_admins`, `portfolio_messages`, atau `portfolio_content` tanpa memandang policy. PostgREST tidak mengekspos verb `TRUNCATE`, sehingga belum dapat dieksploitasi lewat HTTP, tetapi hak itu tidak berguna dan akan menjadi hidup begitu ada jalur SQL lain yang berjalan sebagai `anon`. Migrasi `harden_anon_grants_and_event_trigger_execute` dan `revoke_leftover_maintain_privilege` mencabut keempatnya dari seluruh tabel, mencabut `execute` pada `rls_auto_enable()`, dan menambahkan `alter default privileges` agar tabel baru tidak mewarisinya.
+  - **Temuan nyata yang diperbaiki (endpoint kontak)**: `readBody()` tidak membatasi panjang `topic`, padahal nilai mentahnya dipakai pada subjek surel, dan baris baru tidak dilarang pada `topic` maupun `name`. Sebuah baris baru pada nilai itu berpotensi menyusupkan header surel tambahan. Kini topik melebihi 120 karakter ditolak (sejalan dengan pemotongan di `portfolio_send_message`), panjang nama serta surel memakai konstanta bernama, dan karakter kendali ditolak pada nama serta topik. Nilai yang sah tidak lagi dipotong diam-diam.
+  - Yang diperiksa dan sudah aman, tanpa perubahan: tidak ada `dangerouslySetInnerHTML`, `innerHTML`, `eval`, `new Function`, atau `javascript:` di `src/`; tidak ada berkas `.env` yang pernah ter-commit; `npm audit` melaporkan 0 kerentanan dari 319 dependensi; `vercel.json` sudah memuat CSP dengan `script-src 'self'`, HSTS, `nosniff`, `X-Frame-Options: DENY`, dan Permissions-Policy; seluruh 18 tabel ber-RLS dan seluruh policy tulis memakai `portfolio_is_admin()` yang gagal-tertutup; semua fungsi `security definer` sudah mengunci `search_path`; policy Storage hanya membuka `INSERT`/`UPDATE`/`DELETE` bagi `authenticated` yang lolos `portfolio_is_admin()`; `portfolio_messages` tidak dapat dibaca `anon` sama sekali.
+  - Verifikasi: `has_table_privilege` mengembalikan `false` untuk `TRUNCATE`, `REFERENCES`, `TRIGGER`, dan `MAINTAIN` pada `anon` dan `authenticated` di seluruh tabel, sedangkan `portfolio_is_admin`, `portfolio_entries`, `portfolio_send_message`, dan empat fungsi daftar nilai tetap `true` bagi `anon` sehingga situs tidak rusak. Endpoint diuji dengan sebelas payload berbahaya (topik 5000 karakter, baris baru pada nama dan topik, surel dengan baris baru, badan non-objek) dan semuanya ditolak `400` sebelum menyentuh basis data; `GET` ditolak `405`. `npx tsc --noEmit` keluar 0, `npm run build` sukses.
+  - Status: Selesai. Sisa pekerjaan di luar kode, belum ditindak: mengaktifkan Leaked Password Protection di Supabase Auth, dan merotasi token MCP yang terbaca di berkas konfigurasi.
+- **FR-85 Angka Dekoratif Dihapus dari Seluruh Antarmuka**: keluhan pemilik, "Untuk watermark angka 01,02,03 dan lainnya ini bisakah minta dihapus? Karena menjadi rancu".
+  - Kebutuhan: nomor dekoratif pada navigasi, hero halaman, dan judul seksi membingungkan karena ada dua sistem penomoran yang bertabrakan, yaitu nomor urut halaman pada `navItems` dan nomor urut seksi pada `*.intro.index` / `*.section.*.index`. Pemilik memilih cakupan **hapus semua angka dekoratif**, bukan hanya salah satu sistem.
+  - Perubahan kode:
+    1. `src/components/layout/SectionHeading.tsx`: prop `index` dihapus beserta span angka 52-68px `text-foreground/10` di samping judul seksi.
+    2. `src/components/layout/PageIntro.tsx`: prop `index` dihapus beserta span angka `text-primary` di dalam baris eyebrow hero.
+    3. `src/components/layout/SiteHeader.tsx`: dua span nomor dihapus (nav desktop dan menu mobile), lalu field `index` dibersihkan dari `navItems`.
+    4. `src/components/layout/SiteFooter.tsx`: span nomor dihapus dari daftar tautan.
+    5. `src/pages/NotFound.tsx`: span `{route.index}` dihapus dari kartu tautan rute dan field `index` dibersihkan dari delapan entri `ROUTES`.
+    6. Sembilan berkas halaman (`Home`, `About`, `Steadbyte`, `Skills`, `Projects`, `Contact`, `Credentials`, `Career`) dan `src/components/CertificateSlideshow.tsx`: seluruh pemakaian `index=` pada `PageIntro`/`SectionHeading` dihapus.
+  - Catatan: kunci konten `*.intro.index`, `*.section.*.index`, serta `home.trail.index`, `home.projects.index`, `home.records.index` **sengaja tidak dihapus**. Kunci itu kini tidak dibaca siapa pun tetapi masih hidup di registry `src/content/`, dan membersihkannya bukan bagian dari permintaan ini. Akibatnya, field tersebut masih tampil sebagai kolom yang bisa disunting di tab Content pada panel admin. Bila pemilik ingin panelnya bersih, itu pekerjaan terpisah.
+  - Verifikasi: `Grep` untuk `index=`, `route.index`, `item.index`, dan `index: "<digit>"` tidak menemukan sisa apa pun. `npx tsc --noEmit` keluar 0 dan `npm run build` sukses (2844 modul).
+  - Status: Selesai.
+- **FR-84 Sesi Admin Satu Browser: Login Tidak Lagi Terlempar ke Kotak Sandi**: keluhan pemilik, "Login enggak bisa, setelah enter malah disuruh isi password lagi", ditelusuri lewat log Supabase dan bukan dugaan.
+  - Kebutuhan: pemilik produk melaporkan bahwa setelah menekan Enter pada formulir login admin, panel tidak terbuka melainkan kembali menampilkan kotak sandi kosong. Dua keputusan yang dipilih pemilik: seluruh tab pada satu browser **berbagi satu sesi** (logout di satu tab mengeluarkan semua tab), dan bila heartbeat gagal karena jaringan lambat, **sesi ditahan dulu, jangan logout**.
+  - Bukti dari log: `auth_logs` mencatat `POST /token?grant_type=password` 200 dan `auth_audit_logs` mencatat `login` untuk `arnal@steadbyte.com`, jadi kata sandinya benar dan masalahnya ada di lapisan sesi, bukan di autentikasi. Pada detik yang sama ada `POST /token?grant_type=refresh_token` 200 dan `POST /logout?scope=global` 204, yang berarti dua tab saling berebut satu sesi Supabase. `edge_logs` memperlihatkan `portfolio_touch_session` ditembak dengan jeda tepat 10 detik, lalu `portfolio_register_session` dipanggil dari nol, tanda tab dengan ID sesi mati.
+  - Akar masalah yang teridentifikasi:
+    1. ID sesi admin disimpan di `sessionStorage` (terpisah per tab), sedangkan token Supabase berada di `localStorage` (dibagi antar tab), sehingga beberapa tab mengirim heartbeat untuk akun yang sama dan memicu `logout?scope=global`.
+    2. `checkIdle` memanggil `registerSession()` lalu `touch` lagi, sementara `portfolio_touch_session` mengembalikan `false` untuk baris yang tidak ada, sehingga tab dengan ID sesi lama langsung memanggil `signOut()`.
+    3. `loadIdentity` mengembalikan `null` untuk "bukan admin" maupun untuk "gagal baca setelah tiga percobaan", sehingga satu gangguan jaringan cukup untuk mengeluarkan pemilik dari panel.
+    4. `portfolio_register_session` versi lama tidak pernah membersihkan `is_revoked`, sehingga logout dari tab lain mematikan ID sesi browser itu secara permanen.
+  - Perubahan kode, semuanya di `src/admin/AdminAuthProvider.tsx`:
+    1. ID sesi admin pindah ke `localStorage` (`arnal:admin-session-id`), sehingga satu browser benar-benar memakai satu sesi.
+    2. `loadIdentity` kini bertipe `Promise<AdminIdentity | null | undefined>` dengan `identityCache` per `userId`. `null` berarti server menjawab `42501` atau nol baris (memang bukan admin), `undefined` berarti tiga percobaan baca gagal karena jaringan. Pemanggil wajib membedakan keduanya; menulis `if (!next)` dilarang karena akan mengeluarkan pemilik saat jaringan bermasalah.
+    3. Ditambahkan `endSessionLocally()` untuk mengakhiri sesi tanpa memanggil server, dipakai pada cabang "sesi sudah hilang", cabang idle, dan cabang "bukan admin". Penanganan galat baca memakai `signOut({ scope: "local" })` agar tidak memicu event auth tambahan.
+    4. `applySession` tidak lagi memanggil `registerSession`, karena ia berjalan pada setiap event auth termasuk `TOKEN_REFRESHED` sedangkan register menghapus `is_revoked`. Yang boleh mengklaim ulang ID sesi hanyalah `signIn`, tempat sandi baru saja diterima.
+    5. Heartbeat `checkIdle` menjadi satu `touch` saja, dan `false` diperlakukan final (`signOut()`).
+    6. `signOut` menyiarkan `signed-out` lewat `BroadcastChannel` `arnal:admin-auth`, dan sebuah efek mendengarkannya lalu menjalankan `endSessionLocally()`, sehingga logout di satu tab menutup panel di seluruh tab.
+  - Perubahan basis data: `revive_heartbeat_and_share_session_across_tabs` (percobaan pertama, dibatalkan karena touch ikut menghidupkan baris yang di-revoke sehingga tombol "Logout session" tidak berfungsi), `touch_session_revoke_public_execute` (menutup hak `execute` dari `anon` yang bocor lewat hak bawaan Supabase), dan `session_heartbeat_never_revives_revoked` sebagai keadaan akhir. Keadaan akhir: `portfolio_touch_session` hanya menyegarkan `last_active_at`, membuat ulang baris yang hilang, dan mengembalikan `false` untuk baris yang di-revoke tanpa menyentuhnya; `portfolio_register_session` hanya dipanggil setelah sandi diterima dan boleh membersihkan `is_revoked`.
+  - Verifikasi: kontrak basis data diuji berurutan dalam satu transaksi `rollback` dengan ID sesi sekali pakai dan menghasilkan `{touch_active: true, touch_after_revoke: false, touch_after_relogin: true}`. `has_function_privilege` menunjukkan `anon_can = false` dan `auth_can = true` untuk kedua fungsi, serta hanya satu overload `(text, text)` yang tersisa. `npx tsc --noEmit` keluar 0, `npm run build` sukses (2844 modul), dan `/admin` dimuat di peladen pengembangan tanpa galat konsol peramban.
+  - Catatan jujur: tiga baris di `portfolio_admin_sessions` masih menyimpan ID sesi lama yang dibuat saat ID sesi masih per-tab. Baris itu tidak berbahaya dan tidak dihapus, karena baris yang di-revoke adalah catatan bahwa pemilik menutup perangkat itu. Pemilik tetap perlu menekan "Logout session" untuk perangkat yang sudah tidak dipakai agar daftar sesinya bersih.
+  - Status: Selesai.
 
 ### 2026-09-14
 

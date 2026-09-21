@@ -7,6 +7,7 @@ import { useContent } from "@/content/ContentProvider";
 import { CONTENT_REGISTRY } from "@/content/registry";
 import { useAdminAuth } from "@/admin/AdminAuthProvider";
 import { PasswordForm } from "@/admin/PasswordForm";
+import ChartsPanel from "@/admin/ChartsPanel";
 import ContentEditor from "@/admin/ContentEditor";
 import EntriesPanel from "@/admin/EntriesPanel";
 import MessagesPanel from "@/admin/MessagesPanel";
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { id: "content", label: "Content" },
   { id: "entries", label: "Entries" },
+  { id: "charts", label: "Charts" },
   { id: "messages", label: "Inbox" },
   { id: "sessions", label: "Sessions" },
   { id: "history", label: "Revisions" },
@@ -28,9 +30,10 @@ type TabId = (typeof TABS)[number]["id"];
 /**
  * The panel.
  *
- * Three panes behind one row of tabs: the editor, the revision history, and the
- * account. Nothing here is decorative. Every control writes through a database
- * function that checks the allowlist first.
+ * Every editable surface behind one row of tabs: the wording, the entry lists,
+ * the charts, the inbox, the sessions, and the revisions. Nothing here is
+ * decorative. Every control writes through a database function that checks the
+ * allowlist first.
  */
 export default function AdminDashboard() {
   const { identity, signOut } = useAdminAuth();
@@ -42,10 +45,7 @@ export default function AdminDashboard() {
 
   return (
     <PageSection className="pt-16 sm:pt-20">
-      <div className="flex items-center gap-4">
-        <span className="font-mono text-[12px] font-bold text-primary">09</span>
-        <span className="eyebrow">admin panel</span>
-      </div>
+      <span className="eyebrow">admin panel</span>
 
       <div className="mt-6 flex flex-wrap items-end justify-between gap-6">
         <div>
@@ -101,6 +101,8 @@ export default function AdminDashboard() {
         {tab === "content" ? <ContentEditor /> : null}
 
         {tab === "entries" ? <EntriesPanel /> : null}
+
+        {tab === "charts" ? <ChartsPanel /> : null}
 
         {tab === "messages" ? <MessagesPanel /> : null}
 

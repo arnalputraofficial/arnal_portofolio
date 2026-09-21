@@ -15,6 +15,7 @@ import * as React from "react";
 import { Check, Copy, Loader2, Mail, MailOpen, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { mailtoHref } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -321,7 +322,9 @@ export default function MessagesPanel() {
                     </span>
                     <div className="flex items-center gap-2 mt-0.5">
                       <a
-                        href={`mailto:${open.email}`}
+                        href={mailtoHref(open.email) || undefined}
+                        target="_blank"
+                        rel="noreferrer noopener"
                         className="font-mono text-primary underline decoration-primary/40 hover:decoration-primary"
                       >
                         {open.email}
@@ -353,7 +356,11 @@ export default function MessagesPanel() {
               <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                 <div className="flex items-center gap-2">
                   <Button asChild size="sm">
-                    <a href={`mailto:${open.email}?subject=${encodeURIComponent(`Re: ${open.topic}`)}`}>
+                    <a
+                      href={mailtoHref(open.email, `Re: ${open.topic}`) || undefined}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                    >
                       <Mail className="size-4" aria-hidden />
                       Reply by Email
                     </a>

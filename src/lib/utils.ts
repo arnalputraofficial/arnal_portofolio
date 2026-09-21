@@ -50,16 +50,28 @@ export function parseStyledLines(text: string) {
 }
 
 /**
- * Turns an editable address into a mailto link.
+ * Turns an editable address into a Gmail compose link.
+ *
+ * A bare `mailto:` hands the click to whatever mail program the visitor's
+ * machine happens to have registered, which on a machine with Outlook installed
+ * means Outlook opens whether the visitor uses it or not. Composing in Gmail
+ * instead makes the destination the same for every visitor, and it leaves the
+ * chosen mailbox in charge of the sender line.
  *
  * The field holds an address, not a URL, so the scheme is added here. A value
  * that already starts with "mailto:" is accepted as typed, and a value without
  * an "@" yields an empty string so the caller can fall back to plain text
  * instead of rendering a link that goes nowhere.
  */
-export function mailtoHref(address: string) {
+export function mailtoHref(address: string, subject?: string) {
   const cleaned = address.trim().replace(/^mailto:/i, "").replace(/\s+/g, "");
-  return cleaned.includes("@") ? `mailto:${cleaned}` : "";
+  if (!cleaned.includes("@")) return "";
+  const compose = new URL("https://mail.google.com/mail/");
+  compose.searchParams.set("view", "cm");
+  compose.searchParams.set("fs", "1");
+  compose.searchParams.set("to", cleaned);
+  if (subject) compose.searchParams.set("su", subject);
+  return compose.toString();
 }
 
 /** "3y 4mo" */

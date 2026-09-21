@@ -26,6 +26,7 @@ import { ChartFrame, CHART_COLORS } from "@/components/charts/ChartFrame";
 import { ProjectTable } from "@/components/tables/ProjectTable";
 import { useSiteText } from "@/content/ContentProvider";
 import { useEntries } from "@/entries/EntriesProvider";
+import { chartValue } from "@/entries/chartSeries";
 import { principles, profile } from "@/data/portfolio";
 import { humanDuration, mailtoHref, monthsBetween, nf, parseStyledLines } from "@/lib/utils";
 import { publicImageUrl } from "@/entries/types";
@@ -46,8 +47,34 @@ function HeroTitle({ text }: { text: string }) {
   );
 }
 
+/**
+ * The operational status rows, drawn from whatever the panel stores under the
+ * "health" chart. With nothing stored that is the three numbers written into
+ * this page, so the card looks the same until the owner changes it on purpose.
+ *
+ * Each row carries its own scale, which is the value a full bar stands for.
+ * A percentage row therefore reads 100, and it keeps the bar honest for any
+ * measure that is not out of a hundred.
+ */
 function HealthCard() {
   const t = useSiteText();
+  const { chartRows } = useEntries();
+  const rows = chartRows("health");
+
+  const labels: Record<string, string> = {
+    availability: t("home.health.row.availability"),
+    incidents: t("home.health.row.incidents"),
+    budget: t("home.health.row.budget"),
+  };
+
+  const suffixes: Record<string, string> = {
+    availability: "%",
+    incidents: t("home.health.row.incidents.unit")
+      ? ` ${t("home.health.row.incidents.unit")}`
+      : "",
+    budget: "%",
+  };
+
   return (
     <div className="panel-flagged p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4 pl-2">
@@ -65,23 +92,28 @@ function HealthCard() {
       </div>
 
       <dl className="mt-6 space-y-4 pl-2">
-        {[
-          { label: t("home.health.row.availability"), value: 99.98, suffix: "%", decimals: 2 },
-          { label: t("home.health.row.incidents"), value: 3, suffix: t("home.health.row.incidents.unit") ? ` ${t("home.health.row.incidents.unit")}` : "", decimals: 0 },
-          { label: t("home.health.row.budget"), value: 98, suffix: "%", decimals: 0 },
-        ].map((row) => (
-          <div key={row.label} className="space-y-2">
-            <div className="flex items-baseline justify-between gap-4">
-              <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                {row.label}
-              </dt>
-              <dd className="font-display text-sm font-semibold tabular-nums">
-                <Counter value={row.value} decimals={row.decimals} suffix={row.suffix} />
-              </dd>
+        {rows.map((row, index) => {
+          const value = chartValue(row, "value");
+          const scale = chartValue(row, "scale") || 100;
+          const decimals = Number.isInteger(value) ? 0 : 2;
+
+          return (
+            <div key={`${row.name}-${index}`} className="space-y-2">
+              <div className="flex items-baseline justify-between gap-4">
+                <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  {labels[row.name] ?? row.name}
+                </dt>
+                <dd className="font-display text-sm font-semibold tabular-nums">
+                  <Counter value={value} decimals={decimals} suffix={suffixes[row.name] ?? ""} />
+                </dd>
+              </div>
+              <Progress
+                value={Math.min(100, Math.max(0, (value / scale) * 100))}
+                indicatorClassName="bg-accent"
+              />
             </div>
-            <Progress value={row.value} indicatorClassName="bg-accent" />
-          </div>
-        ))}
+          );
+        })}
       </dl>
 
       <p className="mt-6 pl-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
@@ -172,7 +204,11 @@ export default function Home() {
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <a href={mailtoHref(t("global.profile.email")) || undefined}>
+                  <a
+                    href={mailtoHref(t("global.profile.email")) || undefined}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
                     {t("home.hero.cta.secondary")}
                     <ArrowUpRight className="size-4" />
                   </a>
@@ -274,7 +310,6 @@ export default function Home() {
       {/* --------------------------------------------------------------- trail */}
       <PageSection className="pt-0">
         <SectionHeading
-          index="01"
           eyebrow={t("home.trail.eyebrow")}
           title={t("home.trail.title")}
           description={t("home.trail.description")}
@@ -311,7 +346,6 @@ export default function Home() {
       {/* ------------------------------------------------------------ projects */}
       <PageSection className="pt-0">
         <SectionHeading
-          index={t("home.projects.index")}
           eyebrow={t("home.projects.eyebrow")}
           title={t("home.projects.title")}
           description={t("home.projects.description")}
@@ -388,7 +422,6 @@ export default function Home() {
       {/* -------------------------------------------------------- full table */}
       <PageSection className="pt-0">
         <SectionHeading
-          index={t("home.records.index")}
           eyebrow={t("home.records.eyebrow")}
           title={t("home.records.title")}
           description={t("home.records.description")}
@@ -401,7 +434,6 @@ export default function Home() {
       {/* ---------------------------------------------------------- principles */}
       <PageSection className="pt-0">
         <SectionHeading
-          index={t("home.section.principles.index")}
           eyebrow={t("home.principles.eyebrow")}
           title={t("home.principles.title")}
         />

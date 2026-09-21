@@ -25,11 +25,14 @@ import {
   skills as sampleSkills,
 } from "@/data/portfolio";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { computedChartRows } from "@/entries/chartSeries";
 import {
+  parseChartSeries,
   parseSnapshot,
   publicImageUrl,
   type CareerEntry,
   type CertificationEntry,
+  type ChartRow,
   type EntrySnapshot,
   type EntryTable,
   type ProjectCurvePoint,
@@ -85,6 +88,15 @@ export interface EntriesContextValue extends EntryLists {
    * values rather than plot nothing.
    */
   curve: ProjectCurvePoint[];
+  /**
+   * The rows a chart should draw, by chart name: whatever the owner set by
+   * hand, or the numbers worked out from the entries when nothing is set.
+   * Always use this rather than recomputing in the page, so a hand set chart
+   * and its panel preview can never disagree.
+   */
+  chartRows: (id: string) => ChartRow[];
+  /** Only the hand set rows, by chart name. Empty means nothing is set. */
+  storedCharts: Record<string, ChartRow[]>;
   /** False until the first read attempt has settled. */
   ready: boolean;
   /** True when the read failed and every list is showing bundled samples. */
@@ -122,18 +134,24 @@ const SAMPLES: EntryLists = {
 const EMPTY: EntryLists = { career: [], projects: [], certifications: [], skills: [] };
 
 /**
- * The entry payload and the usage markers, one round trip each.
+ * Everything the charts read: the entries plus the rows set by hand.
  *
- * The markers are read from the table rather than through a function so the
- * same select works for a visitor and for the panel, and so a missing table
- * arrives as a plain empty list instead of a failed call.
+ * The chart rows are read from the table directly rather than through a
+ * function, for the same reason the usage markers are: the same select works
+ * for a visitor and for the panel, and a missing table arrives as an empty
+ * list rather than a failed call.
  */
-async function fetchEntries(): Promise<{ snapshot: EntrySnapshot | null; written: Set<EntryTable> }> {
-  if (!supabase) return { snapshot: null, written: new Set() };
+async function fetchEntries(): Promise<{
+  snapshot: EntrySnapshot | null;
+  written: Set<EntryTable>;
+  charts: Record<string, ChartRow[]>;
+}> {
+  if (!supabase) return { snapshot: null, written: new Set(), charts: {} };
 
-  const [entriesResult, usageResult] = await Promise.all([
+  const [entriesResult, usageResult, chartResult] = await Promise.all([
     supabase.rpc("portfolio_entries"),
     supabase.from("portfolio_entity_usage").select("entity"),
+    supabase.from("portfolio_chart_series").select("chart, rows"),
   ]);
 
   if (entriesResult.error) {
@@ -144,18 +162,27 @@ async function fetchEntries(): Promise<{ snapshot: EntrySnapshot | null; written
     console.warn("[entries] could not read the usage markers:", usageResult.error.message);
   }
 
+  if (chartResult.error) {
+    console.warn("[entries] could not read the chart rows:", chartResult.error.message);
+  }
+
   const written = new Set<EntryTable>();
   for (const row of (usageResult.data ?? []) as Array<{ entity: string }>) {
     const short = row.entity.replace(/^portfolio_/, "") as EntryTable;
     if (short in EMPTY) written.add(short);
   }
 
-  return { snapshot: entriesResult.error ? null : parseSnapshot(entriesResult.data), written };
+  return {
+    snapshot: entriesResult.error ? null : parseSnapshot(entriesResult.data),
+    written,
+    charts: chartResult.error ? {} : parseChartSeries(chartResult.data),
+  };
 }
 
 export function EntriesProvider({ children }: { children: React.ReactNode }) {
   const [snapshot, setSnapshot] = React.useState<EntrySnapshot | null>(null);
   const [written, setWritten] = React.useState<ReadonlySet<EntryTable>>(() => new Set<EntryTable>());
+  const [charts, setCharts] = React.useState<Record<string, ChartRow[]>>({});
   const [version, setVersion] = React.useState(1);
   const [ready, setReady] = React.useState(false);
   const [offline, setOffline] = React.useState(false);
@@ -171,6 +198,7 @@ export function EntriesProvider({ children }: { children: React.ReactNode }) {
     setOffline(result.snapshot === null);
     setSnapshot(result.snapshot);
     setWritten(result.written);
+    setCharts(result.charts);
     if (result.snapshot) setVersion(result.snapshot.version);
     setReady(true);
   }, []);
@@ -248,24 +276,38 @@ export function EntriesProvider({ children }: { children: React.ReactNode }) {
       photoGroups.set(image.projectId, list);
     }
 
-    return {
+    const sources = {
       career: written.has("career") ? all.career.filter((row) => row.visible) : SAMPLES.career,
       projects: written.has("projects") ? all.projects.filter((row) => row.visible) : SAMPLES.projects,
       certifications: written.has("certifications")
         ? all.certifications.filter((row) => row.visible)
         : SAMPLES.certifications,
       skills: written.has("skills") ? all.skills.filter((row) => row.visible) : SAMPLES.skills,
+    };
+
+    /**
+     * A chart the owner has written to is drawn exactly as stored, even if
+     * that leaves it empty, because an empty series is a decision. Only a
+     * chart with nothing stored falls back to the numbers the entries
+     * produce.
+     */
+    const rowsFor = (id: string) => charts[id] ?? computedChartRows(id, sources);
+
+    return {
+      ...sources,
       all,
       scansFor: (certificationId: string) => grouped.get(certificationId) ?? [],
       photosFor: (projectId: string) => photoGroups.get(projectId) ?? [],
       curve: snapshot?.projectCurve ?? [],
+      chartRows: rowsFor,
+      storedCharts: charts,
       ready,
       offline,
       isSample: (table: EntryTable) => !written.has(table),
       version,
       reload: load,
     };
-  }, [snapshot, written, ready, offline, version, load]);
+  }, [snapshot, written, charts, ready, offline, version, load]);
 
   return <EntriesContext.Provider value={value}>{children}</EntriesContext.Provider>;
 }

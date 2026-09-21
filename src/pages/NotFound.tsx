@@ -11,34 +11,14 @@ import { useSiteText } from "@/content/ContentProvider";
 
 /** Eight routes that genuinely exist, not an invented list. */
 const ROUTES = [
-  { to: "/", index: "00", labelKey: "notfound.route.1.label", hintKey: "notfound.route.1.hint" },
-  { to: "/career", index: "02", labelKey: "notfound.route.2.label", hintKey: "notfound.route.2.hint" },
-  {
-    to: "/projects",
-    index: "03",
-    labelKey: "notfound.route.3.label",
-    hintKey: "notfound.route.3.hint",
-  },
-  { to: "/skills", index: "04", labelKey: "notfound.route.4.label", hintKey: "notfound.route.4.hint" },
-  {
-    to: "/credentials",
-    index: "05",
-    labelKey: "notfound.route.5.label",
-    hintKey: "notfound.route.5.hint",
-  },
-  { to: "/about", index: "06", labelKey: "notfound.route.6.label", hintKey: "notfound.route.6.hint" },
-  {
-    to: "/contact",
-    index: "07",
-    labelKey: "notfound.route.7.label",
-    hintKey: "notfound.route.7.hint",
-  },
-  {
-    to: "/about-steadbyte",
-    index: "08",
-    labelKey: "notfound.route.8.label",
-    hintKey: "notfound.route.8.hint",
-  },
+  { to: "/", labelKey: "notfound.route.1.label", hintKey: "notfound.route.1.hint" },
+  { to: "/career", labelKey: "notfound.route.2.label", hintKey: "notfound.route.2.hint" },
+  { to: "/projects", labelKey: "notfound.route.3.label", hintKey: "notfound.route.3.hint" },
+  { to: "/skills", labelKey: "notfound.route.4.label", hintKey: "notfound.route.4.hint" },
+  { to: "/credentials", labelKey: "notfound.route.5.label", hintKey: "notfound.route.5.hint" },
+  { to: "/about", labelKey: "notfound.route.6.label", hintKey: "notfound.route.6.hint" },
+  { to: "/contact", labelKey: "notfound.route.7.label", hintKey: "notfound.route.7.hint" },
+  { to: "/about-steadbyte", labelKey: "notfound.route.8.label", hintKey: "notfound.route.8.hint" },
 ] as const;
 
 export default function NotFound() {
@@ -146,10 +126,7 @@ export default function NotFound() {
                   to={route.to}
                   className="group flex h-full flex-col gap-3 p-6 transition-colors hover:bg-muted/30"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[11px] font-bold text-primary">
-                      {route.index}
-                    </span>
+                  <div className="flex items-center justify-end">
                     <ArrowRight
                       className="size-4 text-muted-foreground transition-transform duration-300 ease-out-expo group-hover:translate-x-1 group-hover:text-primary"
                       aria-hidden

@@ -115,7 +115,6 @@ export default function About() {
   return (
     <>
       <PageIntro
-        index={t("about.intro.index")}
         eyebrow={t("about.eyebrow")}
         title={t("about.title")}
         lead={t("about.lead")}
@@ -160,7 +159,6 @@ export default function About() {
       {/* 01 - working style */}
       <PageSection>
         <SectionHeading
-          index={t("about.section.working.index")}
           eyebrow={t("about.working.eyebrow")}
           title={t("about.working.title")}
           description={t("about.working.description")}
@@ -186,7 +184,6 @@ export default function About() {
       {/* 02 - principles */}
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
-          index={t("about.section.principles.index")}
           eyebrow={t("about.principles.eyebrow")}
           title={t("about.principles.title")}
           description={t("about.principles.description")}
@@ -218,7 +215,6 @@ export default function About() {
       {/* 03 - missteps */}
       <PageSection>
         <SectionHeading
-          index={t("about.section.missteps.index")}
           eyebrow={t("about.missteps.eyebrow")}
           title={t("about.mistakes.title")}
           description={t("about.mistakes.description")}
@@ -286,7 +282,6 @@ export default function About() {
       {/* 04 - questions */}
       <PageSection className="border-t border-border">
         <SectionHeading
-          index={t("about.section.faq.index")}
           eyebrow={t("about.faq.eyebrow")}
           title={t("about.faq.title")}
         />
@@ -355,6 +350,8 @@ export default function About() {
                     <Mail className="size-4 text-primary" aria-hidden />
                     <a
                       href={mailtoHref(t("global.profile.email")) || undefined}
+                      target="_blank"
+                      rel="noreferrer noopener"
                       className="underline decoration-primary/40 decoration-2 underline-offset-4 transition-colors hover:text-primary hover:decoration-primary"
                     >
                       {t("global.profile.email")}

@@ -18,6 +18,7 @@ import { useEntries } from "@/entries/EntriesProvider";
 import type {
   CareerEntry,
   CertificationEntry,
+  ChartRow,
   EntryTable,
   ProjectCurvePoint,
   ProjectEntry,
@@ -86,6 +87,11 @@ export interface EntryWriterValue {
   reorderProjectPhotos: (projectId: string, ids: string[]) => Promise<boolean>;
   /** Replaces the whole chart line. An empty list clears it. */
   saveProjectCurve: (points: ProjectCurvePoint[]) => Promise<boolean>;
+  /**
+   * Replaces one chart's rows. An empty list clears them, which sends the
+   * chart back to the numbers the entries produce.
+   */
+  saveChartSeries: (chart: string, rows: ChartRow[]) => Promise<boolean>;
 }
 
 const MEDIA_BUCKET = "portfolio-media";
@@ -445,6 +451,19 @@ export function useEntryWriter(): EntryWriterValue {
     [call],
   );
 
+  const saveChartSeries = React.useCallback(
+    async (chart: string, rows: ChartRow[]) => {
+      const result = await call(
+        "portfolio_save_chart_series",
+        { p_chart: chart, p_rows: rows },
+        rows.length > 0 ? "The chart is saved." : "The chart is back to the computed numbers.",
+        "The chart was not saved.",
+      );
+      return result.ok;
+    },
+    [call],
+  );
+
   return {
     busy,
     feedback,
@@ -465,5 +484,6 @@ export function useEntryWriter(): EntryWriterValue {
     removeProjectPhoto,
     reorderProjectPhotos,
     saveProjectCurve,
+    saveChartSeries,
   };
 }

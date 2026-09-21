@@ -4,17 +4,15 @@ import { Reveal } from "@/components/fx/Reveal";
 import { cn } from "@/lib/utils";
 
 /**
- * Page header. Index number, hairline rule, and oversized title
- * laid out like a dossier page, not a marketing banner.
+ * Page header. Hairline rule and oversized title laid out like a dossier page,
+ * not a marketing banner.
  */
 export function PageIntro({
-  index,
   eyebrow,
   title,
   lead,
   children,
 }: {
-  index: string;
   eyebrow: string;
   title: string;
   lead?: string;
@@ -30,7 +28,6 @@ export function PageIntro({
 
       <div className="container relative py-14 sm:py-20">
         <div className="flex items-center gap-4">
-          <span className="font-mono text-[12px] font-bold text-primary">{index}</span>
           <span className="hairline flex-1" />
           <span className="eyebrow">{eyebrow}</span>
         </div>

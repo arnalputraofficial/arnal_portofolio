@@ -31,6 +31,13 @@ interface ResponseLike {
 
 const MIN_MESSAGE = 20;
 const MAX_MESSAGE = 5000;
+const MAX_NAME = 100;
+const MAX_EMAIL = 200;
+/** Matches the truncation inside `portfolio_send_message`, so mail and row agree. */
+const MAX_TOPIC = 120;
+const DEFAULT_TOPIC = "General inquiry";
+/** Anything a mail header must never contain. Deliberately stateless (no /g). */
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? "";
 const SUPABASE_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
@@ -74,14 +81,19 @@ function readBody(body: unknown): Payload | null {
   const payload: Payload = {
     name: pick("name"),
     email: pick("email"),
-    topic: pick("topic") || "General inquiry",
+    topic: pick("topic") || DEFAULT_TOPIC,
     message: pick("message"),
   };
 
-  if (payload.name.length < 2 || payload.name.length > 100) return null;
-  if (payload.email.length < 5 || payload.email.length > 200) return null;
+  if (payload.name.length < 2 || payload.name.length > MAX_NAME) return null;
+  if (payload.email.length < 5 || payload.email.length > MAX_EMAIL) return null;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) return null;
+  if (payload.topic.length > MAX_TOPIC) return null;
   if (payload.message.length < MIN_MESSAGE || payload.message.length > MAX_MESSAGE) return null;
+
+  // Header injection guard: a newline in the topic or the name would let a
+  // visitor append mail headers through the subject built below.
+  if (CONTROL_CHARS.test(payload.name) || CONTROL_CHARS.test(payload.topic)) return null;
 
   return payload;
 }

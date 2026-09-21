@@ -8,14 +8,14 @@ import { useSiteText } from "@/content/ContentProvider";
 import { profile } from "@/data/portfolio";
 
 export const navItems = [
-  { to: "/", label: "Home", key: "nav.home", index: "01" },
-  { to: "/career", label: "Career", key: "nav.career", index: "02" },
-  { to: "/projects", label: "Projects", key: "nav.projects", index: "03" },
-  { to: "/skills", label: "Skills", key: "nav.skills", index: "04" },
-  { to: "/credentials", label: "Credentials", key: "nav.credentials", index: "05" },
-  { to: "/about", label: "About", key: "nav.about", index: "06" },
-  { to: "/contact", label: "Contact", key: "nav.contact", index: "07" },
-  { to: "/about-steadbyte", label: "About Steadbyte", key: "nav.steadbyte", index: "08" },
+  { to: "/", label: "Home", key: "nav.home" },
+  { to: "/career", label: "Career", key: "nav.career" },
+  { to: "/projects", label: "Projects", key: "nav.projects" },
+  { to: "/skills", label: "Skills", key: "nav.skills" },
+  { to: "/credentials", label: "Credentials", key: "nav.credentials" },
+  { to: "/about", label: "About", key: "nav.about" },
+  { to: "/contact", label: "Contact", key: "nav.contact" },
+  { to: "/about-steadbyte", label: "About Steadbyte", key: "nav.steadbyte" },
 ];
 
 export function SiteHeader() {
@@ -94,9 +94,6 @@ export function SiteHeader() {
               >
                 {({ isActive }) => (
                   <>
-                    <span className="mr-1.5 align-super text-[8px] text-primary/70">
-                      {item.index}
-                    </span>
                     {t(item.key)}
                     {isActive && (
                       <motion.span
@@ -170,7 +167,6 @@ export function SiteHeader() {
                       )
                     }
                   >
-                    <span className="font-mono text-[11px] text-muted-foreground">{item.index}</span>
                     {t(item.key)}
                   </NavLink>
                 </motion.div>
@@ -179,6 +175,8 @@ export function SiteHeader() {
                 <ThemeToggle />
                 <a
                   href={mailtoHref(t("global.profile.email")) || undefined}
+                  target="_blank"
+                  rel="noreferrer noopener"
                   className="font-mono text-[12px] uppercase tracking-[0.12em] text-primary"
                 >
                   {t("global.profile.email")}

@@ -58,7 +58,7 @@ export const GLOBAL_CONTENT: ContentEntry[] = [
     page: "global",
     label: "Contact email address",
     default: profile.email,
-    hint: "Shown in the header, footer, and About. The mailto link and the contact form follow this value, so the displayed text and the link always match.",
+    hint: "Shown in the header, footer, and About. The compose link and the contact form follow this value, so the displayed text and the link always match.",
   },
   {
     key: "global.profile.availability",

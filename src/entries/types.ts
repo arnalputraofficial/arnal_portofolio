@@ -98,6 +98,20 @@ export interface ProjectCurvePoint {
   impact: number;
 }
 
+/**
+ * One row of a chart the owner set by hand.
+ *
+ * A chart is drawn either from the entry tables, from a number written into the
+ * bundle, or from a running total, and none of those can be nudged from the
+ * panel. A row is a label plus the numbers under it, keyed by the field names
+ * the chart reads. A chart with no rows stored is the signal to fall back to
+ * its computed values rather than plot nothing.
+ */
+export interface ChartRow {
+  name: string;
+  values: Record<string, number>;
+}
+
 /** The payload of the portfolio_entries() function. */
 export interface EntrySnapshot {
   version: number;
@@ -254,6 +268,41 @@ function parseImage(row: Raw): CertificationImage {
     byteSize: asOptionalNumber(row.byteSize),
     sortOrder: asNumber(row.sortOrder),
   };
+}
+
+/** Every number under one row, dropping anything that is not a finite number. */
+function asNumberMap(value: unknown): Record<string, number> {
+  if (typeof value !== "object" || value === null) return {};
+
+  const out: Record<string, number> = {};
+  for (const [key, held] of Object.entries(value as Raw)) {
+    if (typeof held === "number" && Number.isFinite(held)) out[key] = held;
+  }
+  return out;
+}
+
+function parseChartRow(row: Raw): ChartRow {
+  return { name: asText(row.name), values: asNumberMap(row.values) };
+}
+
+/**
+ * The hand set chart numbers, keyed by chart name.
+ *
+ * Read straight from the table rather than through the snapshot function, so a
+ * chart the owner has never touched simply arrives missing instead of as an
+ * empty list. Both mean the same thing to the chart, which falls back to its
+ * computed values either way.
+ */
+export function parseChartSeries(value: unknown): Record<string, ChartRow[]> {
+  const out: Record<string, ChartRow[]> = {};
+
+  for (const row of asRows(value)) {
+    const chart = asText(row.chart);
+    if (chart.length === 0) continue;
+    out[chart] = asRows(row.rows).map(parseChartRow);
+  }
+
+  return out;
 }
 
 /** Returns null when the payload is not the expected shape at all. */

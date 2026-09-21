@@ -534,7 +534,9 @@ export const profile = {
   socials: [
     { label: "GitHub", href: "https://github.com/" },
     { label: "LinkedIn", href: "https://www.linkedin.com/" },
-    { label: "Email", href: "mailto:halo@arnal.dev" },
+    // A marker, not a destination: the email channel renders whatever address
+    // the owner typed in the profile, by way of mailtoHref.
+    { label: "Email", href: "mailto:" },
   ],
 };
 

@@ -41,6 +41,8 @@ export function SiteFooter() {
           <div className="mt-7 space-y-2.5">
             <a
               href={mailtoHref(t("global.profile.email")) || undefined}
+              target="_blank"
+              rel="noreferrer noopener"
               className="group inline-flex items-center gap-2 font-mono text-sm text-ink-200 transition-colors hover:text-rust-400"
             >
               <Mail className="size-4 text-rust-500" />
@@ -68,7 +70,6 @@ export function SiteFooter() {
                   to={item.to}
                   className="group inline-flex items-baseline gap-2 text-sm text-ink-300 transition-colors hover:text-rust-400"
                 >
-                  <span className="font-mono text-[10px] text-ink-600">{item.index}</span>
                   <span className="border-b border-transparent transition-colors group-hover:border-rust-500">
                     {t(item.key)}
                   </span>

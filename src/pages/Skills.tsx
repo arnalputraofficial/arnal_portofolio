@@ -342,7 +342,6 @@ export default function Skills() {
   return (
     <>
       <PageIntro
-        index={t("skills.intro.index")}
         eyebrow={t("skills.eyebrow")}
         title={t("skills.title")}
         lead={t("skills.lead")}
@@ -381,7 +380,6 @@ export default function Skills() {
       {/* 01 - spread */}
       <PageSection>
         <SectionHeading
-          index={t("skills.section.spread.index")}
           eyebrow={t("skills.spread.eyebrow")}
           title={t("skills.spread.title")}
           description={t("skills.selfrating.note")}
@@ -397,7 +395,7 @@ export default function Skills() {
                 { label: t("skills.chart.radar.series.evidence"), color: CHART_COLORS.moss },
               ]}
             >
-              <SkillBalanceRadar data={skills} />
+              <SkillBalanceRadar />
             </ChartFrame>
           </Reveal>
 
@@ -440,7 +438,6 @@ export default function Skills() {
       {/* 02 - self rating */}
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
-          index={t("skills.section.selfrating.index")}
           eyebrow={t("skills.selfrating.eyebrow")}
           title={t("skills.selfrating.title", { count: String(totalSkills) })}
           description={t("skills.selfrating.description")}
@@ -520,7 +517,6 @@ export default function Skills() {
       {/* 03 - registry */}
       <PageSection>
         <SectionHeading
-          index={t("skills.section.registry.index")}
           eyebrow={t("skills.registry.eyebrow")}
           title={t("skills.registry.title")}
           description={t("skills.registry.description")}

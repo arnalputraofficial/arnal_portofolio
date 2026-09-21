@@ -12,36 +12,57 @@ import {
 import { CHART_COLORS, TooltipShell, AxisTick } from "@/components/charts/ChartFrame";
 import { useSiteText } from "@/content/ContentProvider";
 import { useEntries } from "@/entries/EntriesProvider";
-import { humanDuration, monthsBetween } from "@/lib/utils";
+import { chartValue } from "@/entries/chartSeries";
+import { humanDuration } from "@/lib/utils";
 
 /**
  * Role turnover per year: stacked bars that separate time spent as an
  * individual contributor from time spent leading a team.
  * The point is to show trajectory, not just a list of dates.
+ *
+ * The bars come from the "career-tenure" chart, which is the counts worked out
+ * from the job history until the panel stores something else. One chained role
+ * is one bar in both cases. The positions named in the tooltip are looked up
+ * from the job history, so a year the history does not mention simply has none.
  */
 export function CareerTenureChart() {
   const t = useSiteText();
-  const { career } = useEntries();
+  const { career, chartRows } = useEntries();
 
-  const data = React.useMemo(() => {
-    const years = new Map<number, { year: number; ic: number; lead: number; roles: string[] }>();
+  const rolesByYear = React.useMemo(() => {
+    const map = new Map<number, string[]>();
 
     career.forEach((role) => {
       const startYear = Number(role.start.slice(0, 4));
       const endYear = role.end ? Number(role.end.slice(0, 4)) : new Date().getFullYear();
-      const isLead = role.level !== "IC";
+      if (!Number.isFinite(startYear)) return;
 
-      for (let y = startYear; y <= endYear; y++) {
-        const entry = years.get(y) ?? { year: y, ic: 0, lead: 0, roles: [] };
-        if (isLead) entry.lead += 1;
-        else entry.ic += 1;
-        if (!entry.roles.includes(role.title)) entry.roles.push(role.title);
-        years.set(y, entry);
+      for (let year = startYear; year <= endYear; year++) {
+        const held = map.get(year) ?? [];
+        if (!held.includes(role.title)) held.push(role.title);
+        map.set(year, held);
       }
     });
 
-    return [...years.values()].sort((a, b) => a.year - b.year);
+    return map;
   }, [career]);
+
+  const data = React.useMemo(
+    () =>
+      chartRows("career-tenure")
+        .map((row) => {
+          const year = Number(row.name);
+          return {
+            name: row.name,
+            year,
+            ic: chartValue(row, "ic"),
+            lead: chartValue(row, "lead"),
+            positions: rolesByYear.get(year) ?? [],
+          };
+        })
+        .sort((a, b) => a.year - b.year),
+    [chartRows, rolesByYear],
+  );
 
   return (
     <ResponsiveContainer width="100%" height={280}>
@@ -78,7 +99,7 @@ export function CareerTenureChart() {
                     value: t("career.chart.value.roles", { count: row.lead }),
                     color: CHART_COLORS.rust,
                   },
-                  { label: t("career.chart.tenure.row.positions"), value: row.roles.join(", ") },
+                  { label: t("career.chart.tenure.row.positions"), value: row.positions.join(", ") },
                 ]}
               />
             );
@@ -110,18 +131,42 @@ export function CareerTenureChart() {
 /**
  * Scatter map: tenure length versus the size of the team led.
  * The X axis is deliberately tenure, not the year, so the comparison is fair.
+ *
+ * The months come from the "role-scope" chart, worked out from the dates on
+ * each role until the panel stores something else. The company, duration in
+ * words, and headcount stay attached per role, so a hand set month count
+ * changes the bar without erasing what the row is.
  */
 export function RoleScopeScatter() {
   const t = useSiteText();
-  const { career } = useEntries();
+  const { career, chartRows } = useEntries();
 
-  const data = career.map((role) => ({
-    name: role.title,
-    company: role.company,
-    months: monthsBetween(role.start, role.end),
-    headcount: role.headcount,
-    durationLabel: humanDuration(monthsBetween(role.start, role.end)),
-  }));
+  const factsByName = React.useMemo(() => {
+    const map = new Map<string, { company: string; headcount: number }>();
+
+    career.forEach((role) => {
+      map.set(role.title, { company: role.company, headcount: role.headcount });
+    });
+
+    return map;
+  }, [career]);
+
+  const data = React.useMemo(
+    () =>
+      chartRows("role-scope").map((row) => {
+        const months = chartValue(row, "months");
+        const known = factsByName.get(row.name);
+
+        return {
+          name: row.name,
+          months,
+          company: known?.company ?? "",
+          headcount: known?.headcount ?? 0,
+          durationLabel: humanDuration(months),
+        };
+      }),
+    [chartRows, factsByName],
+  );
 
   return (
     <ResponsiveContainer width="100%" height={280}>

@@ -35,7 +35,6 @@ export default function Career() {
   return (
     <>
       <PageIntro
-        index={t("career.intro.index")}
         eyebrow={t("career.eyebrow")}
         title={
           career.length > 0
@@ -81,7 +80,6 @@ export default function Career() {
       {/* ------------------------------------------------------------- charts */}
       <PageSection>
         <SectionHeading
-          index={t("career.section.shape.index")}
           eyebrow={t("career.shape.eyebrow")}
           title={t("career.shape.title")}
           description={t("career.shape.description")}
@@ -119,7 +117,6 @@ export default function Career() {
       {/* ------------------------------------------------------------ timeline */}
       <PageSection className="pt-0">
         <SectionHeading
-          index={t("career.section.timeline.index")}
           eyebrow={t("career.timeline.eyebrow")}
           title={t("career.timeline.title")}
           description={t("career.timeline.description")}
@@ -217,7 +214,6 @@ export default function Career() {
       {/* --------------------------------------------------------------- table */}
       <PageSection className="pt-0">
         <SectionHeading
-          index={t("career.table.index")}
           eyebrow={t("career.table.eyebrow")}
           title={t("career.table.title")}
           description={t("career.table.description")}

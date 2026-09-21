@@ -133,7 +133,6 @@ export function CertificateSlideshow() {
     <>
       <PageSection className="border-y border-border bg-card/25">
         <SectionHeading
-          index="04"
           eyebrow="Scans"
           title={`${slides.length} scans across ${groups.length} ${groups.length === 1 ? "certificate" : "certificates"}`}
           description="The paper itself, filed in the order I keep it. Pictures open full screen, issued PDFs open as documents. Step through the rest with the arrow keys."

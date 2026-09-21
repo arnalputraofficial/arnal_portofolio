@@ -70,6 +70,23 @@ const IDLE_TIMEOUT_MS = 3 * 60 * 60 * 1000;
 const LAST_ACTIVITY_KEY = "arnal:admin-last-activity";
 const SESSION_ID_KEY = "arnal:admin-session-id";
 
+/**
+ * Every tab of this browser shares one admin session, so a sign out in one tab
+ * has to reach the rest. Supabase keeps its own session in localStorage, which
+ * all tabs read, but it never announces that the session was dropped.
+ */
+const AUTH_CHANNEL_NAME = "arnal:admin-auth";
+const SIGNED_OUT_MESSAGE = "signed-out";
+
+function authChannel(): BroadcastChannel | null {
+  try {
+    if (typeof BroadcastChannel === "undefined") return null;
+    return new BroadcastChannel(AUTH_CHANNEL_NAME);
+  } catch {
+    return null;
+  }
+}
+
 function getOrCreateSessionId(): string {
   try {
     let sid = localStorage.getItem(SESSION_ID_KEY);
@@ -121,7 +138,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [identity, setIdentity] = React.useState<AdminIdentity | null>(null);
 
   /**
-   * Reads the allowlist state for the current session. Null means "not an admin".
+   * Reads the allowlist state for the current session.
+   *
+   * Three answers, and the difference matters. An identity means the account is
+   * on the allowlist. Null means the database refused the caller, which is a
+   * deliberate 42501 and never worth retrying. Undefined means the answer could
+   * not be read at all, and that must never be treated as a refusal: doing so
+   * signed an owner out over one flaky request and sent them back to an empty
+   * password box for a password the server had already accepted.
    *
    * The result is keyed by the session's user id and kept for this mount, so
    * the several auth events that describe the same session do not each pay for
@@ -129,44 +153,60 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
    */
   const identityCache = React.useRef(new Map<string, AdminIdentity | null>());
 
-  const loadIdentity = React.useCallback(async (userId: string): Promise<AdminIdentity | null> => {
-    if (!supabase) return null;
+  const loadIdentity = React.useCallback(
+    async (userId: string): Promise<AdminIdentity | null | undefined> => {
+      if (!supabase) return undefined;
 
-    const cached = identityCache.current.get(userId);
-    if (cached) return cached;
+      const cached = identityCache.current.get(userId);
+      if (cached) return cached;
 
-    // Retry up to 3 times with brief delays to withstand JWT token attachment
-    // timing issues or temporary network hiccups during initial login.
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (attempt > 0) {
-        await new Promise((res) => setTimeout(res, 150 * attempt));
-      }
+      // Retry up to 3 times with brief delays to withstand JWT token attachment
+      // timing issues or temporary network hiccups during initial login.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          await new Promise((res) => setTimeout(res, 150 * attempt));
+        }
 
-      const { data, error } = await supabase.rpc("portfolio_admin_state");
+        const { data, error } = await supabase.rpc("portfolio_admin_state");
 
-      if (error) {
-        // 42501 is the deliberate refusal raised by the function for a caller
-        // that is not on the allowlist. If 42501, do not retry — caller is not an admin.
-        if (error.code === "42501") {
+        if (error) {
+          // 42501 is the deliberate refusal raised by the function for a caller
+          // that is not on the allowlist. If 42501, do not retry, the caller is
+          // not an admin.
+          if (error.code === "42501") {
+            identityCache.current.set(userId, null);
+            return null;
+          }
+          console.warn(`[admin] attempt ${attempt + 1} could not read admin state:`, error.message);
+          continue;
+        }
+
+        const row = (data as AdminStateRow[] | null)?.[0];
+        if (!row) {
+          identityCache.current.set(userId, null);
           return null;
         }
-        console.warn(`[admin] attempt ${attempt + 1} could not read admin state:`, error.message);
-        continue;
+
+        const next = { email: row.email, mustChangePassword: row.must_change_password };
+        identityCache.current.set(userId, next);
+        return next;
       }
 
-      const row = (data as AdminStateRow[] | null)?.[0];
-      if (!row) return null;
-
-      const next = { email: row.email, mustChangePassword: row.must_change_password };
-      identityCache.current.set(userId, next);
-      return next;
-    }
-
-    return null;
-  }, []);
+      return undefined;
+    },
+    [],
+  );
 
   /**
    * Records this browser as an active admin session.
+   *
+   * This is the only call allowed to claim a session id, because it runs only
+   * when a password has just been accepted. A browser whose session id was
+   * revoked earlier therefore gets a working session again on the next sign in,
+   * instead of staying locked out behind a dead row the panel refuses to reuse.
+   *
+   * The row is awaited before sign in reports success, so the panel never opens
+   * before the heartbeat has something to find.
    *
    * postgrest-js only sends the request when the builder is awaited, so this
    * must never be written as a bare `void supabase.rpc(...)`: that sends
@@ -200,6 +240,18 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
    */
   const applySeq = React.useRef(0);
 
+  /**
+   * Ends the session without touching the server, for the case where it is
+   * already gone. The rows in the database are left alone on purpose: a revoked
+   * one is the record that the owner closed that device, and sign in clears it
+   * again on the next successful password.
+   */
+  const endSessionLocally = React.useCallback(() => {
+    clearActivity();
+    setIdentity(null);
+    setStatus("signed-out");
+  }, []);
+
   const applySession = React.useCallback(
     async (session: Session | null) => {
       const seq = ++applySeq.current;
@@ -215,33 +267,42 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!effective) {
-        clearActivity();
-        setIdentity(null);
-        setStatus("signed-out");
+        endSessionLocally();
         return;
       }
 
       if (isIdleExpired()) {
+        // This browser was left idle for longer than the window, and the server
+        // will refuse the session from here on. Clearing it locally is the
+        // quiet path: calling signOut would fire another auth event while this
+        // one is still being handled.
         clearActivity();
-        await supabase?.auth.signOut();
+        await supabase?.auth.signOut({ scope: "local" });
         if (seq !== applySeq.current) return;
-        setIdentity(null);
-        setStatus("signed-out");
+        endSessionLocally();
         return;
       }
 
       const next = await loadIdentity(effective.user.id);
       if (seq !== applySeq.current) return;
 
-      if (!next) {
-        clearActivity();
+      // Undefined is a read failure, not a refusal. Leaving the current status
+      // alone keeps the owner inside the panel while the network is flaky; the
+      // next auth event or heartbeat retries, and only an explicit 42501 from
+      // the database is allowed to end the session.
+      if (next === undefined) {
+        console.warn("[admin] admin state could not be read; keeping the current status");
+        return;
+      }
+
+      if (next === null) {
         // A signed in account that is not on the allowlist gets no access to
-        // anything and loses its session, so a self service signup cannot be
-        // used to probe the panel.
-        await supabase?.auth.signOut();
+        // anything, so a self service signup cannot be used to probe the panel.
+        // The session is dropped locally rather than through signOut, which
+        // would fire another auth event while this one is still being handled.
+        await supabase?.auth.signOut({ scope: "local" });
         if (seq !== applySeq.current) return;
-        setIdentity(null);
-        setStatus("signed-out");
+        endSessionLocally();
         return;
       }
 
@@ -253,13 +314,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         // Ignore storage errors
       }
 
-      await registerSession();
-      if (seq !== applySeq.current) return;
-
+      // No register here on purpose. This runs for every auth event, including
+      // a token refresh and the initial session on a reload, and registering
+      // clears a revocation. Doing it here would let a device the owner closed
+      // from another machine walk back in on its next token refresh. Claiming
+      // the session id belongs to signIn alone, where a password was just
+      // accepted; the heartbeat creates the row if it is somehow missing.
       setIdentity(next);
       setStatus("signed-in");
     },
-    [loadIdentity, registerSession],
+    [loadIdentity, endSessionLocally],
   );
 
   React.useEffect(() => {
@@ -304,7 +368,19 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
       const next = await loadIdentity(data.session.user.id);
 
-      if (!next) {
+      if (next === undefined) {
+        // The password was accepted, so the session is real. Only the allowlist
+        // check failed to come back, and reporting that as a rejected account
+        // sent the owner back to an empty password box for a password the
+        // server had already taken. The session is left in place so the next
+        // event can finish the job.
+        return {
+          ok: false,
+          message: "The admin list could not be checked. Check the connection and try again.",
+        };
+      }
+
+      if (next === null) {
         await supabase.auth.signOut();
         return { ok: false, message: "This account is not on the admin list for this site." };
       }
@@ -324,7 +400,6 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = React.useCallback(async () => {
-    clearActivity();
     const sid = getOrCreateSessionId();
     try {
       await supabase?.rpc("portfolio_revoke_session", { p_session_id: sid });
@@ -332,9 +407,33 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       // Ignore if cannot contact db during logout
     }
     await supabase?.auth.signOut();
-    setIdentity(null);
-    setStatus("signed-out");
-  }, []);
+
+    // Supabase clears the storage all tabs share, but a tab sitting in the
+    // background will not look at it until its next heartbeat. Announcing the
+    // sign out closes the panel everywhere at once, which is what a single
+    // shared session is supposed to mean.
+    const channel = authChannel();
+    if (channel) {
+      channel.postMessage(SIGNED_OUT_MESSAGE);
+      channel.close();
+    }
+
+    endSessionLocally();
+  }, [endSessionLocally]);
+
+  /**
+   * Follows a sign out that happened in another tab of this browser.
+   */
+  React.useEffect(() => {
+    const channel = authChannel();
+    if (!channel) return;
+
+    channel.onmessage = (event: MessageEvent) => {
+      if (event.data === SIGNED_OUT_MESSAGE) endSessionLocally();
+    };
+
+    return () => channel.close();
+  }, [endSessionLocally]);
 
   /**
    * Tracks user interaction (mouse/touch/keyboard/scroll) while signed in,
@@ -368,22 +467,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       // Check if session was revoked remotely
       if (!supabase) return;
 
-      const sid = getOrCreateSessionId();
+      // Touch is the heartbeat: it moves last_active_at and answers false only
+      // for a session the owner revoked from another device. Registering again
+      // here was the old way out of a missing row, but it also made a revoked
+      // session look alive again, so the answer is now taken as final.
       const { data, error } = await supabase.rpc("portfolio_touch_session", {
-        p_session_id: sid,
+        p_session_id: getOrCreateSessionId(),
       });
       if (error || data !== false) return;
 
-      // False covers two cases: the row was revoked on purpose, or there is no
-      // row at all. Registering again is safe because it never clears a
-      // revocation, so only a second false is the real thing.
-      await registerSession();
-      const { data: afterRegister } = await supabase.rpc("portfolio_touch_session", {
-        p_session_id: sid,
-      });
-      if (afterRegister === false) {
-        void signOut();
-      }
+      void signOut();
     };
 
     const events: (keyof WindowEventMap)[] = ["pointerdown", "keydown", "scroll", "touchstart"];
@@ -405,7 +498,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("visibilitychange", onFocusOrVisible);
       window.removeEventListener("focus", onFocusOrVisible);
     };
-  }, [status, signOut, registerSession]);
+  }, [status, signOut]);
 
   const sendPasswordReset = React.useCallback(
     async (emailOrUsername: string): Promise<SignInOutcome> => {

@@ -675,9 +675,9 @@ export default function ContentEditor() {
         <h3 className="font-display text-lg leading-snug">What this editor does not do</h3>
         <ul className="mt-4 space-y-3 text-[13px] leading-relaxed text-muted-foreground text-pretty">
           <li>
-            Only strings listed in the content registry can be edited. Project rows, chart numbers,
-            certifications, and skill levels still come from the bundle, and a key that is not
-            registered cannot be invented here.
+            Only strings listed in the content registry can be edited. Project rows, certifications,
+            and skill levels are rows in the entry tables, and the numbers a chart draws are set on
+            the Charts tab. A key that is not registered cannot be invented here.
           </li>
           <li>
             There is no staging site. Publishing writes to the same table the public site reads, so

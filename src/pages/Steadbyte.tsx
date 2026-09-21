@@ -118,7 +118,6 @@ export default function Steadbyte() {
   return (
     <>
       <PageIntro
-        index={t("steadbyte.intro.index")}
         eyebrow={t("steadbyte.eyebrow")}
         title={t("steadbyte.title")}
         lead={t("steadbyte.lead")}
@@ -152,7 +151,6 @@ export default function Steadbyte() {
       {/* 01 - what it is and where it stands */}
       <PageSection>
         <SectionHeading
-          index={t("steadbyte.section.summary.index")}
           eyebrow={t("steadbyte.summary.eyebrow")}
           title={t("steadbyte.summary.title")}
           description={t("steadbyte.summary.description")}
@@ -204,7 +202,6 @@ export default function Steadbyte() {
       {/* 02 - the problems it solves */}
       <PageSection className="border-t border-border bg-card/25">
         <SectionHeading
-          index={t("steadbyte.section.problem.index")}
           eyebrow={t("steadbyte.problem.eyebrow")}
           title={t("steadbyte.problem.title")}
           description={t("steadbyte.problem.description")}
@@ -230,7 +227,6 @@ export default function Steadbyte() {
       {/* 03 - my role and the decisions behind it */}
       <PageSection>
         <SectionHeading
-          index={t("steadbyte.section.role.index")}
           eyebrow={t("steadbyte.role.eyebrow")}
           title={t("steadbyte.role.title")}
           description={t("steadbyte.role.description")}
@@ -279,7 +275,6 @@ export default function Steadbyte() {
       {/* 04 - the honest footnote */}
       <PageSection className="border-t border-border bg-card/25">
         <SectionHeading
-          index={t("steadbyte.section.honest.index")}
           eyebrow={t("steadbyte.honest.eyebrow")}
           title={t("steadbyte.honest.title")}
           description={t("steadbyte.honest.description")}

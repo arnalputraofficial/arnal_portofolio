@@ -17,6 +17,7 @@ import {
 import { CHART_COLORS, TooltipShell } from "@/components/charts/ChartFrame";
 import { useSiteText } from "@/content/ContentProvider";
 import { useEntries } from "@/entries/EntriesProvider";
+import { chartValue } from "@/entries/chartSeries";
 import type { Skill } from "@/data/portfolio";
 
 /** Levels are a 1 to 10 self rating, where 10 is the strongest. */
@@ -30,30 +31,30 @@ const SKILL_SCALE_MAX = 10;
  * Levels are a 1 to 10 self rating while evidence is a 0 to 100 count, so the
  * rating is drawn as its share of the scale. That keeps one axis for both
  * series; the labels still speak in tenths.
+ *
+ * Both series come from the "skill-balance" rows, which the panel can set by
+ * hand. With nothing set they are averaged from the skills, so the radar reads
+ * exactly as it did before the owner could change it.
  */
-export function SkillBalanceRadar({ data }: { data: Skill[] }) {
+export function SkillBalanceRadar() {
   const t = useSiteText();
-  const grouped = React.useMemo(() => {
-    const map = new Map<string, { total: number; count: number; evidence: number }>();
-    data.forEach((s) => {
-      const cur = map.get(s.category) ?? { total: 0, count: 0, evidence: 0 };
-      cur.total += s.level;
-      cur.count += 1;
-      cur.evidence += s.evidence.length;
-      map.set(s.category, cur);
-    });
-    return [...map.entries()].map(([category, v]) => {
-      const level = v.total / v.count;
-      return {
-        category,
-        level: Math.round((level / SKILL_SCALE_MAX) * 100),
-        /** The same rating on the 1 to 10 scale, for the tooltip. */
-        levelOf10: Math.round(level * 10) / 10,
-        // evidence normalized to a 0-100 scale so both series share one chart
-        evidence: Math.min(100, Math.round((v.evidence / 9) * 100)),
-      };
-    });
-  }, [data]);
+  const { chartRows } = useEntries();
+
+  const grouped = React.useMemo(
+    () =>
+      chartRows("skill-balance").map((row) => {
+        const level = chartValue(row, "level");
+        return {
+          category: row.name,
+          level: Math.round((level / SKILL_SCALE_MAX) * 100),
+          /** The same rating on the 1 to 10 scale, for the tooltip. */
+          levelOf10: level,
+          // evidence normalized to a 0-100 scale so both series share one chart
+          evidence: Math.min(100, Math.round((chartValue(row, "evidence") / 9) * 100)),
+        };
+      }),
+    [chartRows],
+  );
 
   return (
     <ResponsiveContainer width="100%" height={340}>
@@ -112,12 +113,40 @@ export function SkillBalanceRadar({ data }: { data: Skill[] }) {
   );
 }
 
-/** The ten skills with the highest self rating. */
+/**
+ * The ten skills with the highest self rating.
+ *
+ * The names, levels, and evidence counts come from the "skill-top" series. When
+ * nothing is set the ten strongest skills are picked from the entries, which is
+ * what this chart did before the owner could set it.
+ */
 export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: number }) {
   const t = useSiteText();
+  const { chartRows } = useEntries();
+
+  const factsByName = React.useMemo(() => {
+    const map = new Map<string, Skill>();
+    data.forEach((skill) => map.set(skill.name, skill));
+    return map;
+  }, [data]);
+
   const top = React.useMemo(
-    () => [...data].sort((a, b) => b.level - a.level).slice(0, limit),
-    [data, limit],
+    () =>
+      chartRows("skill-top")
+        .slice(0, limit)
+        .map((row) => {
+          const level = chartValue(row, "level");
+          const known = factsByName.get(row.name);
+          return {
+            name: row.name,
+            level,
+            years: known?.years ?? 0,
+            since: known?.since ?? "",
+            evidence: known?.evidence ?? [],
+            evidenceCount: chartValue(row, "evidence"),
+          };
+        }),
+    [chartRows, factsByName, limit],
   );
 
   return (
@@ -144,7 +173,7 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
           cursor={{ fill: "hsl(var(--muted) / 0.4)" }}
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
-            const row = payload[0].payload as Skill;
+            const row = payload[0].payload as (typeof top)[number];
             return (
               <TooltipShell
                 title={row.name}
@@ -161,7 +190,7 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
                   { label: t("skills.chart.top.row.since"), value: String(row.since) },
                   {
                     label: t("skills.chart.top.row.evidence"),
-                    value: t("skills.chart.value.items", { count: row.evidence.length }),
+                    value: t("skills.chart.value.items", { count: row.evidenceCount }),
                     color: CHART_COLORS.moss,
                   },
                 ]}
@@ -170,9 +199,9 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
           }}
         />
         <Bar dataKey="level" radius={[0, 3, 3, 0]}>
-          {top.map((s) => (
+          {top.map((s, index) => (
             <Cell
-              key={s.id}
+              key={`${s.name}-${index}`}
               fill={s.level >= 8 ? CHART_COLORS.rustDeep : s.level >= 5 ? CHART_COLORS.rust : CHART_COLORS.moss}
             />
           ))}
@@ -185,25 +214,23 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
 /**
  * Skills against projects: which tools each kind of project actually needs.
  * Helps show where a technology is genuinely used, not just mentioned.
+ *
+ * The counts come from the "stack-usage" series. With nothing set they are
+ * tallied from the projects, keeping only the tools that appear in two or more
+ * of them, which is what this chart has always drawn.
  */
 export function StackUsageChart() {
   const t = useSiteText();
-  const { projects } = useEntries();
+  const { chartRows } = useEntries();
 
-  const data = React.useMemo(() => {
-    const counts = new Map<string, { stack: string; count: number; newness: number }>();
-    projects.forEach((p) => {
-      p.stack.forEach((s) => {
-        const cur = counts.get(s) ?? { stack: s, count: 0, newness: 0 };
-        cur.count += 1;
-        counts.set(s, cur);
-      });
-    });
-    return [...counts.values()]
-      .filter((d) => d.count >= 2)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 12);
-  }, [projects]);
+  const data = React.useMemo(
+    () =>
+      chartRows("stack-usage").map((row) => ({
+        stack: row.name,
+        count: chartValue(row, "count"),
+      })),
+    [chartRows],
+  );
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -258,18 +285,17 @@ export function StackUsageChart() {
 /** Distribution of years of experience per skill category. */
 export function ExperienceSpreadChart() {
   const t = useSiteText();
-  const { skills } = useEntries();
+  const { chartRows } = useEntries();
 
-  const data = React.useMemo(() => {
-    const map = new Map<string, { category: string; years: number; count: number }>();
-    skills.forEach((s) => {
-      const cur = map.get(s.category) ?? { category: s.category, years: 0, count: 0 };
-      cur.years = Math.max(cur.years, s.years);
-      cur.count += 1;
-      map.set(s.category, cur);
-    });
-    return [...map.values()].sort((a, b) => b.years - a.years);
-  }, [skills]);
+  const data = React.useMemo(
+    () =>
+      chartRows("experience-spread").map((row) => ({
+        category: row.name,
+        years: chartValue(row, "years"),
+        count: chartValue(row, "count"),
+      })),
+    [chartRows],
+  );
 
   return (
     <ResponsiveContainer width="100%" height={260}>
