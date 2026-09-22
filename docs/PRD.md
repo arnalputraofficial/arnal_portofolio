@@ -227,6 +227,9 @@ Status per 2026-09-15.
 | FR-73 | Kartu detail node 3D pada Beranda muncul dan hilang dengan animasi yang sama durasinya, tertutup otomatis saat node lain diklik (kartu baru menunggu kartu lama selesai menutup), tertutup saat klik kiri di luar area kluster, dan tertutup lewat tombol tutup | Selesai |
 | FR-80 | Judul yang tampil berbaris disimpan sebagai satu field, bukan satu field per baris. Satu baris pada field itu menjadi satu baris di halaman, dan baris yang diapit tanda bintang dirender dengan warna gayanya sendiri (aksen pada judul hero Beranda, warna redup pada pernyataan penutup footer) tanpa ikut menampilkan tanda bintangnya | Selesai |
 | FR-84 | Masuk ke panel tidak pernah terlempar kembali ke kotak kata sandi selama kata sandinya benar. Seluruh tab pada satu browser berbagi satu sesi, sehingga keluar dari satu tab mengeluarkan semua tab, dan gangguan jaringan saat memeriksa daftar izin menahan sesi yang sedang berjalan alih-alih mengakhirinya | Selesai |
+| FR-95 | Tab Content mengelompokkan field kotak per kotak mengikuti alur halaman dari atas ke bawah, dengan judul grup berbahasa manusia (bukan potongan kunci), dan kunci intro datar (`eyebrow`, `title`, `lead`) masuk ke grup "Page intro" | Selesai |
+| FR-96 | Field pendek berbagi baris dalam grid 2 kolom (3 di layar lebar); paragraf, field foto, serta judul dan lead hero tetap selebar kotak, dan field satu baris memakai tinggi yang lebih rapat | Selesai |
+| FR-97 | Kunci konten mati sisa penomoran dekoratif dihapus dari registry, sehingga tidak lagi tampil sebagai kolom yang bisa disunting di panel admin | Selesai |
 
 ### 5.12 Pengelolaan entri portofolio
 
@@ -567,6 +570,17 @@ Daftar ini menjelaskan hal yang sengaja tidak dikerjakan, agar tidak menimbulkan
 
 ## 15. Riwayat Perubahan
 
+### 2026-09-22
+
+- **FR-95 sampai FR-97 Panel Content Mengikuti Kotak Halaman dan Lebih Rapat**: permintaan pemilik, "Pada admin, tidak sesuai dan terlalu kompleks dari segi fieldnya. Saya ingin editnya pada admin untuk pov portonya adalah: Kotak per kotak lebih tergrouping ... Terus juga untuk box fieldnya juga disesuaikan (jadi lebih compact tapi kalo misalkan untuk hero dia tetap panjang)".
+  - Kebutuhan: panel Content mengelompokkan field dari segmen kunci mentah (`hero`, `stat`, `form`, `table`, `eyebrow`, `title`, `lead`), sehingga judul grupnya berupa potongan kunci dan urutannya tidak mengikuti alur halaman. Setiap field juga memakan satu baris penuh dengan tinggi `h-11`, sehingga daftarnya panjang dan sulit dipindai. Pemilik memilih kunci mati dihapus dari registry dan kerapatan **2 kolom, 3 di layar lebar**, dengan field hero tetap panjang.
+  - Perubahan kode:
+    1. `src/content/types.ts`: `ContentEntry` mendapat field opsional `group`, sebagai override pengelompokan di panel saja. Kunci tetap satu satunya identitas permanen dan tidak menyentuh basis data.
+    2. `src/admin/ContentEditor.tsx`: tabel `GROUP_TITLES` memetakan tiap kotak ke nama manusiawi (Profile, Hero, Call to action, Data table), tabel `PAGE_GROUP_ORDER` mengatur urutan kotak per halaman dari atas ke bawah, dan `rawGroup()` memetakan kunci ke kotaknya (kunci intro datar `eyebrow/title/lead` masuk "Page intro", kunci `projects.card.*` masuk "Featured work", dengan fallback ke grup kemunculan pertama agar tidak ada field yang hilang).
+    3. Grid field pendek menjadi `sm:grid-cols-2 2xl:grid-cols-3`; paragraf, field foto, dan judul serta lead hero tetap selebar kotak. Field satu baris turun ke `h-9 text-[13px]`, textarea memakai padding `px-3 py-1.5`.
+  - Verifikasi: `npx tsc --noEmit` keluar 0, `npm run build` sukses (2846 modul), dan halaman utama menjawab 200 pada peladen pengembangan.
+  - Status: Selesai.
+
 ### 2026-09-21
 
 - **FR-93 dan FR-94 Tautan Surel Membuka Compose Gmail**: permintaan pemilik, "Ini existing sekarang untuk email jika diklik masuknya ke outlook, saya ingin defaultnya agar mengcompose new message ke gmail dengan to nya ke email yang saya tampilkan".
@@ -611,7 +625,7 @@ Daftar ini menjelaskan hal yang sengaja tidak dikerjakan, agar tidak menimbulkan
     4. `src/components/layout/SiteFooter.tsx`: span nomor dihapus dari daftar tautan.
     5. `src/pages/NotFound.tsx`: span `{route.index}` dihapus dari kartu tautan rute dan field `index` dibersihkan dari delapan entri `ROUTES`.
     6. Sembilan berkas halaman (`Home`, `About`, `Steadbyte`, `Skills`, `Projects`, `Contact`, `Credentials`, `Career`) dan `src/components/CertificateSlideshow.tsx`: seluruh pemakaian `index=` pada `PageIntro`/`SectionHeading` dihapus.
-  - Catatan: kunci konten `*.intro.index`, `*.section.*.index`, serta `home.trail.index`, `home.projects.index`, `home.records.index` **sengaja tidak dihapus**. Kunci itu kini tidak dibaca siapa pun tetapi masih hidup di registry `src/content/`, dan membersihkannya bukan bagian dari permintaan ini. Akibatnya, field tersebut masih tampil sebagai kolom yang bisa disunting di tab Content pada panel admin. Bila pemilik ingin panelnya bersih, itu pekerjaan terpisah.
+  - Catatan: kunci konten `*.intro.index`, `*.section.*.index`, serta `home.trail.index`, `home.projects.index`, `home.records.index` sempat dibiarkan hidup di registry sebagai pekerjaan terpisah. Pembersihan itu sudah dikerjakan pada 2026-09-22 sebagai FR-97, sehingga field tersebut tidak lagi tampil di tab Content.
   - Verifikasi: `Grep` untuk `index=`, `route.index`, `item.index`, dan `index: "<digit>"` tidak menemukan sisa apa pun. `npx tsc --noEmit` keluar 0 dan `npm run build` sukses (2844 modul).
   - Status: Selesai.
 - **FR-84 Sesi Admin Satu Browser: Login Tidak Lagi Terlempar ke Kotak Sandi**: keluhan pemilik, "Login enggak bisa, setelah enter malah disuruh isi password lagi", ditelusuri lewat log Supabase dan bukan dugaan.

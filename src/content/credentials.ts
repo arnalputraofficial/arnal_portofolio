@@ -49,12 +49,6 @@ export const CREDENTIALS_CONTENT: ContentEntry[] = [
     default: "Total invested",
   },
   {
-    key: "credentials.intro.index",
-    page: "credentials",
-    label: "Intro index marker",
-    default: "05",
-  },
-  {
     key: "credentials.stat.active.hint",
     page: "credentials",
     label: "Stat hint: active credentials",
@@ -91,12 +85,6 @@ export const CREDENTIALS_CONTENT: ContentEntry[] = [
     page: "credentials",
     label: "Stat suffix: investment counter",
     default: "m",
-  },
-  {
-    key: "credentials.validity.index",
-    page: "credentials",
-    label: "Validity section index marker",
-    default: "01",
   },
   {
     key: "credentials.validity.description",
@@ -344,12 +332,6 @@ export const CREDENTIALS_CONTENT: ContentEntry[] = [
     default: "Related skills",
   },
   {
-    key: "credentials.composition.index",
-    page: "credentials",
-    label: "Composition section index marker",
-    default: "02",
-  },
-  {
     key: "credentials.composition.description",
     page: "credentials",
     label: "Composition section description",
@@ -392,12 +374,6 @@ export const CREDENTIALS_CONTENT: ContentEntry[] = [
     page: "credentials",
     label: "Composition bullet body: renewal load",
     default: "Every certificate here has a real renewal date attached to it, tracked in the table below.",
-  },
-  {
-    key: "credentials.table.index",
-    page: "credentials",
-    label: "Table section index marker",
-    default: "03",
   },
   {
     key: "credentials.validity.eyebrow",

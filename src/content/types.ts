@@ -28,6 +28,12 @@ export interface ContentEntry {
   default: string;
   /** Render a textarea instead of a single line field. */
   multiline?: boolean;
+  /**
+   * Admin grouping override, for example "hero". When set, the content panel
+   * groups the field under this box instead of deriving one from the key.
+   * Keys stay the only permanent identifier; this never touches the database.
+   */
+  group?: string;
   /** Where the string appears, plus any tokens it accepts. */
   hint?: string;
 }

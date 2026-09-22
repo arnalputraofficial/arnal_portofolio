@@ -345,39 +345,7 @@ export const PROJECTS_CONTENT: ContentEntry[] = [
     default: "Impact score",
   },
 
-  // ------------------------------------------------------ page furniture
-  {
-    key: "projects.intro.index",
-    page: "projects",
-    label: "Page intro number",
-    default: "03",
-    hint: "The number printed on the page intro above the title.",
-  },
-  {
-    key: "projects.section.map.index",
-    page: "projects",
-    label: "Section number: project map",
-    default: "01",
-    hint: "The large faded numeral beside the section heading.",
-  },
-  {
-    key: "projects.section.featured.index",
-    page: "projects",
-    label: "Section number: featured work",
-    default: "02",
-  },
-  {
-    key: "projects.section.composition.index",
-    page: "projects",
-    label: "Section number: composition",
-    default: "03",
-  },
-  {
-    key: "projects.section.table.index",
-    page: "projects",
-    label: "Section number: full file",
-    default: "04",
-  },
+  // -------------------------------------------------------------- stats
   {
     key: "projects.stat.hint.months",
     page: "projects",

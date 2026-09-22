@@ -29,13 +29,6 @@ export const STEADBYTE_CONTENT: ContentEntry[] = [
     multiline: true,
   },
   {
-    key: "steadbyte.intro.index",
-    page: "steadbyte",
-    label: "Intro index marker",
-    default: "08",
-    hint: "The small section number shown next to the eyebrow.",
-  },
-  {
     key: "steadbyte.stat.stack",
     page: "steadbyte",
     label: "Stat label: stack",
@@ -103,12 +96,6 @@ export const STEADBYTE_CONTENT: ContentEntry[] = [
   },
 
   // -------------------------------------------- 01 - summary and current state
-  {
-    key: "steadbyte.section.summary.index",
-    page: "steadbyte",
-    label: "Summary section index marker",
-    default: "01",
-  },
   {
     key: "steadbyte.summary.eyebrow",
     page: "steadbyte",
@@ -217,12 +204,6 @@ export const STEADBYTE_CONTENT: ContentEntry[] = [
 
   // ------------------------------------------------ 02 - the problem it solves
   {
-    key: "steadbyte.section.problem.index",
-    page: "steadbyte",
-    label: "Problem section index marker",
-    default: "02",
-  },
-  {
     key: "steadbyte.problem.eyebrow",
     page: "steadbyte",
     label: "Problem eyebrow",
@@ -286,12 +267,6 @@ export const STEADBYTE_CONTENT: ContentEntry[] = [
   },
 
   // ------------------------------------- 03 - my role and the technical choices
-  {
-    key: "steadbyte.section.role.index",
-    page: "steadbyte",
-    label: "Role section index marker",
-    default: "03",
-  },
   {
     key: "steadbyte.role.eyebrow",
     page: "steadbyte",
@@ -424,12 +399,6 @@ export const STEADBYTE_CONTENT: ContentEntry[] = [
   },
 
   // -------------------------------------------------- 04 - the honest footnote
-  {
-    key: "steadbyte.section.honest.index",
-    page: "steadbyte",
-    label: "Honest notes section index marker",
-    default: "04",
-  },
   {
     key: "steadbyte.honest.eyebrow",
     page: "steadbyte",

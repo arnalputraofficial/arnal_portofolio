@@ -49,12 +49,6 @@ export const ABOUT_CONTENT: ContentEntry[] = [
     default: "Tools used along the way",
   },
   {
-    key: "about.intro.index",
-    page: "about",
-    label: "Intro index marker",
-    default: "06",
-  },
-  {
     key: "about.stat.tenure.suffix",
     page: "about",
     label: "Stat suffix: tenure counter",
@@ -90,30 +84,6 @@ export const ABOUT_CONTENT: ContentEntry[] = [
     page: "about",
     label: "Stat hint: tools touched",
     default: "Spread across real projects, not a wish list",
-  },
-  {
-    key: "about.section.working.index",
-    page: "about",
-    label: "Working style section index marker",
-    default: "01",
-  },
-  {
-    key: "about.section.principles.index",
-    page: "about",
-    label: "Principles section index marker",
-    default: "02",
-  },
-  {
-    key: "about.section.missteps.index",
-    page: "about",
-    label: "Missteps section index marker",
-    default: "03",
-  },
-  {
-    key: "about.section.faq.index",
-    page: "about",
-    label: "FAQ section index marker",
-    default: "04",
   },
   {
     key: "about.working.eyebrow",

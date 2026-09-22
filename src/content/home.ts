@@ -262,12 +262,6 @@ export const HOME_CONTENT: ContentEntry[] = [
 
   // -------------------------------------------------------------- trail
   {
-    key: "home.trail.index",
-    page: "home",
-    label: "Trail section: index marker",
-    default: "01",
-  },
-  {
     key: "home.trail.eyebrow",
     page: "home",
     label: "Trail section: eyebrow",
@@ -321,12 +315,6 @@ export const HOME_CONTENT: ContentEntry[] = [
   },
 
   // ----------------------------------------------------------- projects
-  {
-    key: "home.projects.index",
-    page: "home",
-    label: "Projects section: index marker",
-    default: "02",
-  },
   {
     key: "home.projects.eyebrow",
     page: "home",
@@ -406,12 +394,6 @@ export const HOME_CONTENT: ContentEntry[] = [
 
   // ------------------------------------------------------------ records
   {
-    key: "home.records.index",
-    page: "home",
-    label: "Records section: index marker",
-    default: "03",
-  },
-  {
     key: "home.records.eyebrow",
     page: "home",
     label: "Records section: eyebrow",
@@ -475,32 +457,5 @@ export const HOME_CONTENT: ContentEntry[] = [
     label: "Closing block: secondary button",
     default: "Read the working approach",
     hint: "Links to the about page.",
-  },
-
-  // ------------------------------------------------------ section indexes
-  {
-    key: "home.section.trail.index",
-    page: "home",
-    label: "Section number: career trail",
-    default: "01",
-    hint: "The large faded numeral beside the section heading.",
-  },
-  {
-    key: "home.section.projects.index",
-    page: "home",
-    label: "Section number: projects",
-    default: "02",
-  },
-  {
-    key: "home.section.records.index",
-    page: "home",
-    label: "Section number: records table",
-    default: "03",
-  },
-  {
-    key: "home.section.principles.index",
-    page: "home",
-    label: "Section number: principles",
-    default: "04",
   },
 ];

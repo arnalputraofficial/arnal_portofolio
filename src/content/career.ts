@@ -43,12 +43,6 @@ export const CAREER_CONTENT: ContentEntry[] = [
     default: "Largest team",
   },
   {
-    key: "career.intro.index",
-    page: "career",
-    label: "Intro index marker",
-    default: "02",
-  },
-  {
     key: "career.title.withData",
     page: "career",
     label: "Intro heading when roles exist",
@@ -100,12 +94,6 @@ export const CAREER_CONTENT: ContentEntry[] = [
     default: "Sectors covered",
   },
   {
-    key: "career.section.shape.index",
-    page: "career",
-    label: "Shape section index marker",
-    default: "01",
-  },
-  {
     key: "career.chart.tenure.legend.ic",
     page: "career",
     label: "Tenure chart legend: individual contributor",
@@ -130,12 +118,6 @@ export const CAREER_CONTENT: ContentEntry[] = [
     default: "Purely technical",
   },
   {
-    key: "career.section.timeline.index",
-    page: "career",
-    label: "Timeline section index marker",
-    default: "02",
-  },
-  {
     key: "career.timeline.period.now",
     page: "career",
     label: "Timeline: open-ended role end",
@@ -152,12 +134,6 @@ export const CAREER_CONTENT: ContentEntry[] = [
     page: "career",
     label: "Timeline badge: latest",
     default: "latest",
-  },
-  {
-    key: "career.table.index",
-    page: "career",
-    label: "Table section index marker",
-    default: "03",
   },
   {
     key: "career.chart.tenure.title",

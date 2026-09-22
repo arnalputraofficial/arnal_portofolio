@@ -11,13 +11,6 @@ export const CONTACT_CONTENT: ContentEntry[] = [
     default: "Contact File",
   },
   {
-    key: "contact.intro.index",
-    page: "contact",
-    label: "Page index marker",
-    default: "07",
-    hint: "The small section number shown next to the eyebrow.",
-  },
-  {
     key: "contact.title",
     page: "contact",
     label: "Page main heading",
@@ -94,12 +87,6 @@ export const CONTACT_CONTENT: ContentEntry[] = [
     label: "Stat hint: status",
     default: "Open to {roles}",
     hint: "Token: {roles} is the role scope the owner is open to.",
-  },
-  {
-    key: "contact.section.form.index",
-    page: "contact",
-    label: "Form section index marker",
-    default: "01",
   },
   {
     key: "contact.form.eyebrow",

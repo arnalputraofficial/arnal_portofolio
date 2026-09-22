@@ -192,30 +192,6 @@ export const SKILLS_CONTENT: ContentEntry[] = [
     default: "Skill count",
   },
   {
-    key: "skills.intro.index",
-    page: "skills",
-    label: "Page index marker",
-    default: "04",
-  },
-  {
-    key: "skills.section.spread.index",
-    page: "skills",
-    label: "Section index: spread",
-    default: "01",
-  },
-  {
-    key: "skills.section.selfrating.index",
-    page: "skills",
-    label: "Section index: self rating",
-    default: "02",
-  },
-  {
-    key: "skills.section.registry.index",
-    page: "skills",
-    label: "Section index: registry",
-    default: "03",
-  },
-  {
     key: "skills.stat.tracked.hint",
     page: "skills",
     label: "Stat hint: tracked skills",

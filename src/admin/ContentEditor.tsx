@@ -38,10 +38,13 @@ import { supabase } from "@/lib/supabase";
 import { publicImageUrl } from "@/entries/types";
 
 const FIELD =
-  "flex w-full rounded-notch border border-input bg-background/60 px-3.5 py-2 " +
+  "flex w-full rounded-notch border border-input bg-background/60 px-3 py-1.5 " +
   "font-mono text-[13px] text-foreground placeholder:text-muted-foreground/70 " +
   "transition-colors duration-200 hover:border-foreground/25 " +
   "focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35";
+
+/** Single line fields share the same compact height as the textarea lines. */
+const FIELD_INPUT = "mt-2 h-9 px-3 text-[13px]";
 
 type ValueMap = Record<string, string>;
 
@@ -80,7 +83,7 @@ export default function ContentEditor() {
   );
 
   const entries = React.useMemo(() => entriesForPage(pageId), [pageId]);
-  const sections = React.useMemo(() => groupBySection(entries), [entries]);
+  const sections = React.useMemo(() => groupBySection(entries, pageId), [entries, pageId]);
 
   /**
    * What the database currently holds for a key. The draft wins over the
@@ -428,7 +431,7 @@ export default function ContentEditor() {
       ) : null}
 
       {sections.map((section) => (
-        <section key={section.title} className="space-y-4">
+        <section key={section.id} className="space-y-3">
           <div className="flex items-center gap-4">
             <h3 className="eyebrow">{section.title}</h3>
             <span className="hairline flex-1" />
@@ -437,7 +440,7 @@ export default function ContentEditor() {
             </span>
           </div>
 
-          <div className="grid gap-4">
+          <div className="grid items-start gap-3 sm:grid-cols-2 2xl:grid-cols-3">
             {section.entries.map((entry) => {
               const stored = drafts[entry.key];
               const dirty = dirtyKeys.includes(entry.key);
@@ -453,11 +456,20 @@ export default function ContentEditor() {
               const tokens =
                 entry.key === "global.profile.avatar" ? [] : tokensForEntry(entry);
 
+              // Paragraphs and the hero heading stay the width of the box.
+              // Short fields share the row so the panel reads as a grid.
+              const fullWidth =
+                entry.multiline === true ||
+                entry.key === "global.profile.avatar" ||
+                entry.key === "home.hero.title" ||
+                entry.key === "home.hero.lead";
+
               return (
                 <div
                   key={entry.key}
                   className={cn(
-                    "panel p-4",
+                    "panel min-w-0 p-3",
+                    fullWidth && "sm:col-span-2 2xl:col-span-3",
                     dirty && "border-primary/40",
                     !dirty && pending && "border-moss-600/40",
                   )}
@@ -589,7 +601,7 @@ export default function ContentEditor() {
                         value={valueOf(entry.key)}
                         onChange={(event) => setField(entry.key, event.target.value)}
                         placeholder="Or type/paste storage path or full image URL"
-                        className="mt-2"
+                        className={FIELD_INPUT}
                       />
                       {/* The upload reaches the bucket immediately, but the public
                           site reads published values only, so a photo that looks
@@ -627,7 +639,7 @@ export default function ContentEditor() {
                       }}
                       value={valueOf(entry.key)}
                       onChange={(event) => setField(entry.key, event.target.value)}
-                      className="mt-2"
+                      className={FIELD_INPUT}
                     />
                   )}
 
@@ -710,29 +722,164 @@ function pageMeta(id: ContentPageId) {
 }
 
 interface Section {
+  id: string;
   title: string;
   entries: ContentEntry[];
 }
 
+/** Human names for the boxes, so the panel reads like the page, not the keys. */
+const GROUP_TITLES: Record<string, string> = {
+  profile: "Profile",
+  nav: "Navigation",
+  header: "Header",
+  footer: "Footer",
+  table: "Data table",
+  hero: "Hero",
+  stack: "Stack strip",
+  health: "Health",
+  summary: "Summary",
+  trail: "Career trail",
+  projects: "Projects",
+  records: "Records",
+  principles: "Principles",
+  call: "Call to action",
+  intro: "Page intro",
+  stat: "Statistics",
+  shape: "Shape",
+  timeline: "Timeline",
+  chart: "Chart labels",
+  cta: "Call to action",
+  quickread: "Quick read",
+  featured: "Featured work",
+  composition: "Composition",
+  hold: "On hold",
+  cards: "Cards",
+  detail: "Project detail",
+  validity: "Validity",
+  related: "Related links",
+  spread: "Spread",
+  selfrating: "Self rating",
+  registry: "Registry",
+  clarify: "Clarify",
+  map: "Map",
+  honesty: "Honesty",
+  working: "Working style",
+  missteps: "Missteps",
+  faq: "FAQ",
+  form: "Form",
+  sidebar: "Sidebar",
+  channels: "Channels",
+  problem: "Problem",
+  role: "Role",
+  honest: "Honest notes",
+  closing: "Closing",
+  aside: "Aside",
+  mistyped: "Mistyped",
+  shortcuts: "Shortcuts",
+  available: "Available routes",
+  routes: "Routes",
+  beyond: "Beyond",
+  report: "Report",
+};
+
 /**
- * Groups entries by the middle segment of the key, which is the section naming
- * scheme the registry already follows. Order of first appearance is kept, so
- * the panel reads in the same order as the page.
+ * The boxes in page order, so the panel follows the page from top to bottom.
+ * A group missing here still renders, after the listed ones.
  */
-function groupBySection(entries: ContentEntry[]): Section[] {
-  const order: string[] = [];
+const PAGE_GROUP_ORDER: Record<ContentPageId, string[]> = {
+  global: ["profile", "nav", "header", "footer", "table"],
+  home: ["hero", "health", "summary", "trail", "projects", "records", "principles", "call", "stack"],
+  career: ["intro", "stat", "shape", "timeline", "table", "chart", "cta"],
+  projects: [
+    "intro",
+    "stat",
+    "quickread",
+    "featured",
+    "composition",
+    "table",
+    "hold",
+    "cta",
+    "chart",
+    "detail",
+  ],
+  credentials: ["intro", "stat", "validity", "composition", "table", "cta", "related"],
+  skills: [
+    "intro",
+    "stat",
+    "spread",
+    "selfrating",
+    "registry",
+    "chart",
+    "cards",
+    "clarify",
+    "map",
+    "summary",
+    "honesty",
+    "cta",
+  ],
+  about: ["intro", "stat", "profile", "working", "principles", "missteps", "faq", "cta"],
+  contact: ["intro", "stat", "form", "sidebar", "channels", "cta"],
+  steadbyte: ["intro", "stat", "summary", "problem", "role", "honest", "closing"],
+  notfound: ["intro", "cta", "aside", "mistyped", "shortcuts", "available", "routes", "beyond", "report"],
+};
+
+/**
+ * Maps a key to its box on the page. The registry naming already follows the
+ * page boxes, so the middle key segment is the group, except for the flat
+ * intro keys (eyebrow, title, lead) and a few page specific aliases.
+ */
+function rawGroup(pageId: ContentPageId, entry: ContentEntry): string {
+  if (entry.group) return entry.group;
+
+  const parts = entry.key.split(".");
+
+  if (pageId === "global") {
+    if (parts[0] === "nav") return "nav";
+    if (parts[0] === "header") return "header";
+    if (parts[0] === "footer") return "footer";
+    return parts[1] ?? "profile";
+  }
+
+  const seg = parts[1] ?? entry.key;
+
+  if (seg === "eyebrow" || seg === "title" || seg === "lead") return "intro";
+  if (pageId === "skills" && (seg === "card" || seg === "entry" || seg === "entries" || seg === "toggle")) {
+    return "cards";
+  }
+  if (pageId === "projects" && seg === "card") return "featured";
+  if (pageId === "about" && seg === "mistakes") return "missteps";
+  if (pageId === "about" && seg === "projects") return "cta";
+  if (pageId === "notfound" && seg === "code") return "intro";
+  if (pageId === "notfound" && seg === "route") return "routes";
+
+  return seg;
+}
+
+/**
+ * Groups entries box by box in page order. Order of first appearance is kept
+ * for anything the order table does not list, so nothing ever goes missing.
+ */
+function groupBySection(entries: ContentEntry[], pageId: ContentPageId): Section[] {
+  const firstSeen: string[] = [];
   const buckets = new Map<string, ContentEntry[]>();
 
   for (const entry of entries) {
-    const title = entry.key.split(".")[1] ?? entry.key;
+    const id = rawGroup(pageId, entry);
 
-    if (!buckets.has(title)) {
-      buckets.set(title, []);
-      order.push(title);
+    if (!buckets.has(id)) {
+      buckets.set(id, []);
+      firstSeen.push(id);
     }
 
-    buckets.get(title)?.push(entry);
+    buckets.get(id)?.push(entry);
   }
 
-  return order.map((title) => ({ title, entries: buckets.get(title) ?? [] }));
+  const listed = PAGE_GROUP_ORDER[pageId] ?? [];
+  const order = [...listed.filter((id) => buckets.has(id)), ...firstSeen.filter((id) => !listed.includes(id))];
+
+  return order.map((id) => ({
+    id,
+    title: GROUP_TITLES[id] ?? id,
+    entries: buckets.get(id) ?? [],
+  }));
 }
