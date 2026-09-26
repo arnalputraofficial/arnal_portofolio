@@ -35,10 +35,36 @@ import {
 import type { ChartRow } from "@/entries/types";
 import { cn } from "@/lib/utils";
 
-export default function ChartsPanel() {
+interface ChartsPanelProps {
+  specIds?: string[];
+  openSpecId?: string;
+  onOpenSpecChange?: (id: string | null) => void;
+}
+
+export default function ChartsPanel({
+  specIds,
+  openSpecId: propOpenSpecId,
+  onOpenSpecChange,
+}: ChartsPanelProps = {}) {
   const { storedCharts } = useEntries();
   const writer = useEntryWriter();
-  const [open, setOpen] = React.useState<string | null>(CHART_SPECS[0]?.id ?? null);
+
+  const specs = React.useMemo(() => {
+    if (!specIds || specIds.length === 0) return CHART_SPECS;
+    return CHART_SPECS.filter((s) => specIds.includes(s.id));
+  }, [specIds]);
+
+  const [internalOpen, setInternalOpen] = React.useState<string | null>(specs[0]?.id ?? null);
+  const open = propOpenSpecId !== undefined ? propOpenSpecId : internalOpen;
+
+  const handleToggle = (id: string) => {
+    const next = open === id ? null : id;
+    if (onOpenSpecChange) {
+      onOpenSpecChange(next);
+    } else {
+      setInternalOpen(next);
+    }
+  };
 
   function setStored(id: string, rows: ChartRow[]) {
     // The writer reports its own success and failure through the status block,
@@ -55,7 +81,7 @@ export default function ChartsPanel() {
               {writer.busy ? "writing" : "ready"}
             </Badge>
             <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-              {Object.keys(storedCharts).length} of {CHART_SPECS.length} charts set by hand
+              {Object.keys(storedCharts).filter((k) => specs.some((s) => s.id === k)).length} of {specs.length} charts set by hand
             </span>
           </div>
 
@@ -98,12 +124,12 @@ export default function ChartsPanel() {
       </div>
 
       <div className="space-y-3">
-        {CHART_SPECS.map((spec) => (
+        {specs.map((spec) => (
           <ChartCard
             key={spec.id}
             spec={spec}
             open={open === spec.id}
-            onToggle={() => setOpen((current) => (current === spec.id ? null : spec.id))}
+            onToggle={() => handleToggle(spec.id)}
             stored={storedCharts[spec.id]}
             onSave={setStored}
             busy={writer.busy}

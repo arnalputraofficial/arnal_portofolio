@@ -238,6 +238,7 @@ Status per 2026-09-15.
 | FR-103 | Panel menyediakan toggle Live Preview (draf terlihat di tab publik) dan Search Console global (`Ctrl+K`) untuk navigasi cepat ke panel maupun entri spesifik | Selesai |
 | FR-104 | Monogram default editorial diubah dari "AF" menjadi "AP" (`global.profile.monogram`) | Selesai |
 | FR-105 | Antarmuka admin dan halaman publik optimal di perangkat mobile (iPhone basic/ProMax, Samsung Galaxy A/S Series): touch target minimal 44px, navigasi sidebar berubah menjadi horizontal scroll di layar sempit, modal Blogspot memiliki sticky action bar, form input tidak memicu zoom iOS, tabel data mendukung momentum scroll horizontal, dan HeroScene 3D tidak memblokir scroll vertikal | Selesai |
+| FR-106 | Navigasi admin berbasis halaman (page-first): sidebar dibagi menjadi grup **Halaman** (Global, Home, Career, Projects, Credentials, Skills, About, Contact, Steadbyte, 404) dan grup **Sistem** (Inbox, Sessions, Revisions, Account). Content, Entries, dan Charts bukan lagi tujuan utama, melainkan fungsi (sub-tab) yang dipilih di dalam tiap halaman yang relevan. URL memakai pola `/admin/<halaman>?fn=<content\|entries\|charts>`; alias lama (`/admin/content`, `/admin/entries`, `/admin/charts`, `/admin/inbox`, `/admin/revisions`) di-redirect ke halaman+fungsi yang setara. Panel Content/Entries/Charts menerima prop scope (`pageId`, `table`, `specIds`) sehingga hanya menampilkan data milik halaman tersebut, dan Search Console (`Ctrl+K`) menavigasi ke halaman pemilik fungsi/entri | Selesai |
 
 ### 5.12 Pengelolaan entri portofolio
 
@@ -579,6 +580,21 @@ Daftar ini menjelaskan hal yang sengaja tidak dikerjakan, agar tidak menimbulkan
 ## 15. Riwayat Perubahan
 
 ### 2026-09-26
+
+- **FR-106 Restrukturisasi Navigasi Admin Berbasis Halaman (page-first)**: permintaan pemilik, "Content, Entries dan Chart belum digabung ke dalam main page seperti Home, Career, Projects dan lain-lain. Seharusnya mereka menjadi fungsi yang bisa dipilih di dalam Home, Career, Projects dan lainnya."
+  - Kebutuhan: halaman (Home, Career, dst.) menjadi destinasi utama sidebar; Content/Entries/Charts turun menjadi fungsi (sub-tab) yang dipilih di dalam tiap halaman yang relevan, bukan lagi tujuan navigasi terpisah.
+  - Perubahan kode:
+    1. `src/pages/AdminDashboard.tsx`: `NAV_ITEMS`/`resolveActiveTab` lama dihapus, diganti `PAGE_NAV` (dari `PAGE_META`) + `SYSTEM_NAV` (Inbox, Sessions, Revisions, Account). Ditambahkan `PAGE_SCOPE` (pemetaan halaman→tabel entri & chart spec), `functionsFor(pageId)`, `resolveRoute(pathname, search)` untuk URL `/admin/<halaman>?fn=<fungsi>`, `LEGACY_PATHS` (redirect alias lama content/entries/charts/inbox/revisions), `entriesPathFor(table)` untuk melompat ke halaman pemilik tabel, dan komponen `NavButton` bersama (touch target 44px). Main content merender `role="tablist"` fungsi + panel scope-aware (`ContentEditor pageId hidePageSelector`, `EntriesPanel table hideTableSelector`, `ChartsPanel specIds`). Search Console (`Ctrl+K`) memakai memo `searchDestinations` dan hasil entri menavigasi via `entriesPathFor(...)`.
+    2. `src/admin/ChartsPanel.tsx`: penyesuaian kecil agar render memetakan `specs` hasil filter `specIds` dan `handleToggle(spec.id)`.
+    3. `src/admin/ContentEditor.tsx` & `src/admin/EntriesPanel.tsx`: sudah scope-aware (`pageId`/`hidePageSelector`, `table`/`hideTableSelector`) — dipakai sebagai controlled panel per halaman.
+  - Verifikasi: `npx tsc --noEmit` (exit 0), `npm run build` (exit 0), dev server boot bersih, `/admin/login` render normal.
+  - Catatan temuan: warning "Maximum update depth exceeded" pada jalur **belum terautentikasi** berasal dari `RequireAdmin` (`<Navigate>` di dalam `AnimatePresence mode="wait"`), sudah ada sebelum perubahan ini dan tidak dipengaruhi FR-106 karena `AdminDashboard` baru ter-mount setelah autentikasi lolos.
+
+- **Audit keamanan basis data (via MCP `supabase_arnal`)**: verifikasi menyeluruh sebelum restrukturisasi.
+  - 19 tabel seluruhnya memiliki Row Level Security aktif. `portfolio_admins` & `portfolio_admin_sessions` sengaja tanpa policy sehingga tidak terjangkau PostgREST secara langsung.
+  - 21 fungsi tulis admin terverifikasi memanggil `portfolio_is_admin()` dengan ACL hanya untuk role `authenticated`, dan `search_path` di-pin (`public, pg_temp` / `pg_catalog, pg_temp`).
+  - Fungsi publik (`portfolio_entries`, `portfolio_is_admin`, `portfolio_send_message`) ter-flag advisor namun merupakan false positive/by-design.
+  - Temuan valid yang perlu tindakan pemilik di Dashboard: **Leaked Password Protection** masih nonaktif (Authentication → Password Security).
 
 - **FR-105 Optimasi Mobile Menyeluruh untuk Admin dan Halaman Publik**: permintaan pemilik, "implementasi dan pengujian mendalam untuk mengaktifkan dukungan tampilan mobile yang optimal pada antarmuka Admin dan Porto Anda. Terapkan desain responsif yang mendukung berbagai rasio aspek layar, dengan fokus utama pada perangkat: iPhone varian basic dan iPhone ProMax, serta smartphone Samsung lini A Series dan S Series."
   - Kebutuhan: sebagian besar aktivitas input dan pengelolaan konten dilakukan melalui perangkat mobile. Antarmuka harus nyaman dioperasikan satu tangan, bebas tumpang tindih elemen, dan tidak memicu zoom berulang.

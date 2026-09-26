@@ -225,12 +225,31 @@ function useValueLists(): ValueListsValue {
   return { lists, reload: load };
 }
 
-export default function EntriesPanel() {
+interface EntriesPanelProps {
+  table?: EntryTable;
+  onTableChange?: (table: EntryTable) => void;
+  hideTableSelector?: boolean;
+}
+
+export default function EntriesPanel({
+  table: propTable,
+  onTableChange,
+  hideTableSelector = false,
+}: EntriesPanelProps = {}) {
   const { all, isSample } = useEntries();
   const writer = useEntryWriter();
   const { lists, reload: reloadLists } = useValueLists();
 
-  const [table, setTable] = React.useState<EntryTable>("career");
+  const [internalTable, setInternalTable] = React.useState<EntryTable>("career");
+  const table = propTable ?? internalTable;
+
+  const handleTableSelect = (t: EntryTable) => {
+    if (onTableChange) {
+      onTableChange(t);
+    } else {
+      setInternalTable(t);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -284,39 +303,41 @@ export default function EntriesPanel() {
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-1 border-b border-border pb-px">
-        {TABS.map((entry) => {
-          const active = entry.table === table;
-          const hidden = all[entry.table].filter((row) => !row.visible).length;
+      {!hideTableSelector ? (
+        <div className="flex flex-wrap items-center gap-1 border-b border-border pb-px">
+          {TABS.map((entry) => {
+            const active = entry.table === table;
+            const hidden = all[entry.table].filter((row) => !row.visible).length;
 
-          return (
-            <button
-              key={entry.table}
-              type="button"
-              onClick={() => setTable(entry.table)}
-              aria-current={active ? "true" : undefined}
-              className={cn(
-                "relative inline-flex items-center gap-2 border-b-2 px-3.5 py-2.5",
-                "font-mono text-[12px] uppercase tracking-[0.1em]",
-                "transition-all duration-200 ease-out-expo",
-                active
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {entry.label}
-              <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-                {all[entry.table].length}
-              </span>
-              {hidden > 0 ? (
-                <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">
-                  {hidden} hidden
+            return (
+              <button
+                key={entry.table}
+                type="button"
+                onClick={() => handleTableSelect(entry.table)}
+                aria-current={active ? "true" : undefined}
+                className={cn(
+                  "relative inline-flex items-center gap-2 border-b-2 px-3.5 py-2.5",
+                  "font-mono text-[12px] uppercase tracking-[0.1em]",
+                  "transition-all duration-200 ease-out-expo",
+                  active
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {entry.label}
+                <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                  {all[entry.table].length}
                 </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
+                {hidden > 0 ? (
+                  <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">
+                    {hidden} hidden
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       {table === "career" ? (
         <EntryList

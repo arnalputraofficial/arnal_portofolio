@@ -59,12 +59,31 @@ const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
  */
 const MAX_PHOTO_SOURCE_BYTES = 25 * 1024 * 1024;
 
-export default function ContentEditor() {
+interface ContentEditorProps {
+  pageId?: ContentPageId;
+  onPageChange?: (pageId: ContentPageId) => void;
+  hidePageSelector?: boolean;
+}
+
+export default function ContentEditor({
+  pageId: propPageId,
+  onPageChange,
+  hidePageSelector = false,
+}: ContentEditorProps = {}) {
   const { overrides, drafts, previewing, setPreviewing } = useContent();
   const { identity } = useAdminAuth();
   const editor = useAdminEditor();
 
-  const [pageId, setPageId] = React.useState<ContentPageId>(PAGE_META[0]?.id ?? "global");
+  const [internalPageId, setInternalPageId] = React.useState<ContentPageId>(PAGE_META[0]?.id ?? "global");
+  const pageId = propPageId ?? internalPageId;
+
+  const handlePageSelect = (id: ContentPageId) => {
+    if (onPageChange) {
+      onPageChange(id);
+    } else {
+      setInternalPageId(id);
+    }
+  };
   const [local, setLocal] = React.useState<ValueMap>({});
 
   /**
@@ -385,38 +404,40 @@ export default function ContentEditor() {
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-1 border-b border-border pb-px">
-        {PAGE_META.map((page) => {
-          const active = page.id === pageId;
-          const pending = entriesForPage(page.id).filter(
-            (entry) => drafts[entry.key] !== undefined,
-          ).length;
+      {!hidePageSelector ? (
+        <div className="flex flex-wrap items-center gap-1 border-b border-border pb-px">
+          {PAGE_META.map((page) => {
+            const active = page.id === pageId;
+            const pending = entriesForPage(page.id).filter(
+              (entry) => drafts[entry.key] !== undefined,
+            ).length;
 
-          return (
-            <button
-              key={page.id}
-              type="button"
-              onClick={() => setPageId(page.id)}
-              aria-current={active ? "true" : undefined}
-              className={cn(
-                "relative inline-flex items-center gap-2 border-b-2 px-3.5 py-2.5",
-                "font-mono text-[12px] uppercase tracking-[0.1em]",
-                "transition-all duration-200 ease-out-expo",
-                active
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {page.title}
-              {pending > 0 ? (
-                <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">
-                  {pending}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
+            return (
+              <button
+                key={page.id}
+                type="button"
+                onClick={() => handlePageSelect(page.id)}
+                aria-current={active ? "true" : undefined}
+                className={cn(
+                  "relative inline-flex items-center gap-2 border-b-2 px-3.5 py-2.5",
+                  "font-mono text-[12px] uppercase tracking-[0.1em]",
+                  "transition-all duration-200 ease-out-expo",
+                  active
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {page.title}
+                {pending > 0 ? (
+                  <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">
+                    {pending}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       {pageMeta(pageId) ? (
         <p className="max-w-2xl text-[14px] leading-relaxed text-muted-foreground text-pretty">
