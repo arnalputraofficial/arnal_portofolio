@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AdminAuthProvider } from "@/admin/AdminAuthProvider";
@@ -97,15 +97,13 @@ function AdminRoutes({ location }: { location: ReturnType<typeof useLocation> })
           <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
           <Route path="/admin/reset-password" element={<AdminResetPassword />} />
           <Route
-            path="/admin"
+            path="/admin/*"
             element={
               <RequireAdmin>
                 <AdminDashboard />
               </RequireAdmin>
             }
           />
-          {/* An unknown address under /admin is a typo, not a missing page. */}
-          <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </PageShell>
     </AnimatePresence>

@@ -36,6 +36,13 @@ export interface ContentEntry {
   group?: string;
   /** Where the string appears, plus any tokens it accepts. */
   hint?: string;
+  /**
+   * Fixed choices for this string. When set, the admin panel renders a select
+   * instead of a text field, so a value that has to read a certain way cannot
+   * be mistyped. The stored value stays a plain string, so no key, row, or
+   * published override changes shape.
+   */
+  options?: readonly string[];
 }
 
 export interface ContentPageMeta {

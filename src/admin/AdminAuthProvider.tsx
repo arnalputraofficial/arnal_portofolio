@@ -170,10 +170,29 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         const { data, error } = await supabase.rpc("portfolio_admin_state");
 
         if (error) {
-          // 42501 is the deliberate refusal raised by the function for a caller
-          // that is not on the allowlist. If 42501, do not retry, the caller is
-          // not an admin.
-          if (error.code === "42501") {
+          // Two different failures arrive as 42501, and only one of them is a
+          // verdict.
+          //
+          // portfolio_admin_state raises it on purpose, with the message "Not an
+          // admin account", for a caller that is not on the allowlist. That one
+          // is final and must never be retried.
+          //
+          // Postgres raises the very same code as "permission denied for
+          // function" when the request went out without a user token, because
+          // the function is granted to authenticated only, so an anonymous
+          // caller is refused at the privilege layer before its body ever runs.
+          // That one is a timing failure, not an answer: the password was just
+          // accepted, and the token had not settled onto the request yet.
+          //
+          // Reading the second as the first is what made a correct password need
+          // two submits. It cached "not an admin", signed the accepted session
+          // straight back out, and left the owner at an empty password box; the
+          // retry then worked only because the token had settled by then.
+          const message = (error.message ?? "").toLowerCase();
+          const refusedByAllowlist =
+            error.code === "42501" && !message.includes("permission denied");
+
+          if (refusedByAllowlist) {
             identityCache.current.set(userId, null);
             return null;
           }
@@ -248,6 +267,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
    */
   const endSessionLocally = React.useCallback(() => {
     clearActivity();
+    // Forget every verdict about every account. The cache exists to spare the
+    // database a repeat read for the several auth events that describe one
+    // session, so its useful life ends with that session. A "not an admin"
+    // answer kept alive past a sign out is worse than no answer at all: it is
+    // read again on the next sign in, before that attempt has said anything,
+    // and one bad read then survives logging back in with the same correct
+    // password.
+    identityCache.current.clear();
     setIdentity(null);
     setStatus("signed-out");
   }, []);
@@ -384,6 +411,17 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.auth.signOut();
         return { ok: false, message: "This account is not on the admin list for this site." };
       }
+
+      // Claim the write slot. signInWithPassword resolves only after every auth
+      // subscriber has run, so the applySession calls those subscribers started
+      // are already in flight and are not ordered against this promise. Without
+      // a claim of its own, a slower one of them could land after this and write
+      // a status that predates the password the server just accepted, which
+      // reads to the owner as a dashboard that opened and then closed itself.
+      // Every await below has finished by now, so the claim is taken as late as
+      // it can be and only cancels work that started before the password was
+      // known to be good.
+      applySeq.current += 1;
 
       touchActivity();
       setIdentity(next);

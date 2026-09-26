@@ -51,6 +51,12 @@ export const GLOBAL_CONTENT: ContentEntry[] = [
     page: "global",
     label: "Timezone",
     default: profile.timezone,
+    // A closed list, because this string is shown verbatim in the header meta
+    // line and the footer. Typed by hand, "WIB", "UTC+7", and "Asia/Jakarta"
+    // all described the same zone, and the page read three different ways.
+    // The first entry is the compiled default, so an existing value still
+    // matches and nothing stored has to be rewritten.
+    options: ["WIB (UTC+7)", "WITA (UTC+8)", "WIT (UTC+9)"],
     hint: "Used in the header meta line and the footer.",
   },
   {
@@ -122,7 +128,7 @@ export const GLOBAL_CONTENT: ContentEntry[] = [
     key: "header.monogram",
     page: "global",
     label: "Header monogram",
-    default: "AF",
+    default: "AP",
     hint: "Two letters shown in the square mark next to your name.",
   },
   {

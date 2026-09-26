@@ -33,6 +33,13 @@ export type ProjectInput = Input<ProjectEntry>;
 export type CertificationInput = Input<CertificationEntry>;
 export type SkillInput = Input<SkillEntry>;
 
+/**
+ * The two status lists the owner maintains. They are separate lists, because
+ * "on-hold" says nothing about a certificate and "renewing" says nothing about
+ * a project, so one shared list would offer each table values it never uses.
+ */
+export type StatusScope = "project" | "certification";
+
 export interface ImageInput {
   certificationId: string;
   storagePath: string;
@@ -72,6 +79,18 @@ export interface EntryWriterValue {
   saveSkill: (input: SkillInput) => Promise<string | null>;
   /** Adds one skill category to the shared list. Returns its id, or null. */
   addSkillCategory: (name: string) => Promise<string | null>;
+  /** Adds one role level to the shared list. Returns its id, or null. */
+  addRoleLevel: (name: string) => Promise<string | null>;
+  /** Renames a level, rewriting every job row that pointed at the old name. */
+  renameRoleLevel: (from: string, to: string) => Promise<boolean>;
+  /** Removes a level. Refused while a job entry still uses it. */
+  deleteRoleLevel: (name: string) => Promise<boolean>;
+  /** Adds one status to a list. */
+  addStatusOption: (scope: StatusScope, name: string) => Promise<boolean>;
+  /** Renames a status, rewriting every row that pointed at the old name. */
+  renameStatusOption: (scope: StatusScope, from: string, to: string) => Promise<boolean>;
+  /** Removes a status. Refused while a row still uses it. */
+  deleteStatusOption: (scope: StatusScope, name: string) => Promise<boolean>;
   setVisible: (table: EntryTable, id: string, visible: boolean) => Promise<boolean>;
   removeEntry: (table: EntryTable, id: string) => Promise<boolean>;
   reorderEntries: (table: EntryTable, ids: string[]) => Promise<boolean>;
@@ -270,6 +289,89 @@ export function useEntryWriter(): EntryWriterValue {
         "The category was not added.",
       );
       return result.ok ? String(result.data) : null;
+    },
+    [call],
+  );
+
+  const addRoleLevel = React.useCallback(
+    async (name: string) => {
+      const result = await call(
+        "portfolio_add_role_level",
+        { p_name: name },
+        `The level "${name.trim()}" was added.`,
+        "The level was not added.",
+      );
+      return result.ok ? String(result.data) : null;
+    },
+    [call],
+  );
+
+  const renameRoleLevel = React.useCallback(
+    async (from: string, to: string) => {
+      const result = await call(
+        "portfolio_rename_role_level",
+        { p_from: from, p_to: to },
+        `The level "${from.trim()}" is now "${to.trim()}".`,
+        "The level was not renamed.",
+      );
+      return result.ok;
+    },
+    [call],
+  );
+
+  const deleteRoleLevel = React.useCallback(
+    async (name: string) => {
+      const result = await call(
+        "portfolio_delete_role_level",
+        { p_name: name },
+        `The level "${name.trim()}" was deleted.`,
+        "The level was not deleted.",
+      );
+      return result.ok;
+    },
+    [call],
+  );
+
+  /**
+   * The three status list writes. They mirror the level and category writes
+   * above: the boolean says whether it landed, and the caller re-reads the
+   * lists so the dropdown shows the order the database now holds.
+   */
+  const addStatusOption = React.useCallback(
+    async (scope: StatusScope, name: string) => {
+      const result = await call(
+        "portfolio_add_status_option",
+        { p_scope: scope, p_name: name },
+        `The status "${name.trim()}" was added.`,
+        "The status was not added.",
+      );
+      return result.ok;
+    },
+    [call],
+  );
+
+  const renameStatusOption = React.useCallback(
+    async (scope: StatusScope, from: string, to: string) => {
+      const result = await call(
+        "portfolio_rename_status_option",
+        { p_scope: scope, p_from: from, p_to: to },
+        `The status "${from.trim()}" is now "${to.trim()}".`,
+        "The status was not renamed.",
+      );
+      return result.ok;
+    },
+    [call],
+  );
+
+  const deleteStatusOption = React.useCallback(
+    async (scope: StatusScope, name: string) => {
+      const result = await call(
+        "portfolio_delete_status_option",
+        { p_scope: scope, p_name: name },
+        `The status "${name.trim()}" was deleted.`,
+        "The status was not deleted.",
+      );
+      return result.ok;
     },
     [call],
   );
@@ -473,6 +575,12 @@ export function useEntryWriter(): EntryWriterValue {
     saveCertification,
     saveSkill,
     addSkillCategory,
+    addRoleLevel,
+    renameRoleLevel,
+    deleteRoleLevel,
+    addStatusOption,
+    renameStatusOption,
+    deleteStatusOption,
     setVisible,
     removeEntry,
     reorderEntries,

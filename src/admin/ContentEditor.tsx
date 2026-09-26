@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useContent } from "@/content/ContentProvider";
 import { CONTENT_DEFAULTS, entriesForPage, PAGE_META, tokensForEntry } from "@/content/registry";
@@ -620,6 +621,33 @@ export default function ContentEditor() {
                         </p>
                       ) : null}
                     </div>
+                  ) : entry.options ? (
+                    <Select
+                      value={valueOf(entry.key)}
+                      onValueChange={(next) => setField(entry.key, next)}
+                    >
+                      <SelectTrigger id={fieldId} className={cn(FIELD_INPUT, "justify-between")}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {/*
+                          A value saved before this field became a list may sit
+                          outside it. That value is kept selectable, so opening
+                          the panel and saving never silently rewrites a
+                          published string to the first option.
+                        */}
+                        {(entry.options.includes(valueOf(entry.key))
+                          ? entry.options
+                          : [valueOf(entry.key), ...entry.options]
+                        )
+                          .filter((option) => option.length > 0)
+                          .map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                   ) : entry.multiline ? (
                     <textarea
                       id={fieldId}

@@ -170,7 +170,7 @@ function parseCareer(row: Raw): CareerEntry {
     location: asText(row.location),
     start: asText(row.start),
     end: asOptionalText(row.end),
-    level: asText(row.level) as Role["level"],
+    level: asText(row.level),
     headcount: asNumber(row.headcount),
     summary: asText(row.summary),
     highlights: asList(row.highlights),

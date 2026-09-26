@@ -26,7 +26,6 @@ import {
   ArrowUp,
   CalendarClock,
   Check,
-  ChevronDown,
   ChevronRight,
   CircleAlert,
   Eye,
@@ -80,14 +79,14 @@ import type {
 } from "@/entries/types";
 
 const FIELD =
-  "flex w-full rounded-notch border border-input bg-background/60 px-3.5 py-2 " +
-  "font-mono text-[13px] text-foreground placeholder:text-muted-foreground/70 " +
+  "flex w-full rounded-notch border border-input bg-background/60 px-3.5 py-2.5 " +
+  "font-mono text-[14px] text-foreground placeholder:text-muted-foreground/70 " +
   "transition-colors duration-200 hover:border-foreground/25 " +
-  "focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35";
+  "focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 touch-manipulation min-h-[44px]";
 
-/** Status values are a check constraint, so they are not fetched. */
-const STATUS_OPTIONS = ["live", "active", "completed", "on-hold"] as const;
-const CERT_STATUS_OPTIONS = ["active", "expired", "renewing"] as const;
+/** The two lists the panel may show before the database answers. */
+const FALLBACK_PROJECT_STATUSES = ["live", "active", "completed", "on-hold"] as const;
+const FALLBACK_CERT_STATUSES = ["active", "expired", "renewing"] as const;
 
 /** The bucket, its size cap, and its MIME allowlist all live in the database. */
 const MEDIA_BUCKET = "portfolio-media";
@@ -151,6 +150,8 @@ interface ValueLists {
   domains: string[];
   categories: string[];
   levels: string[];
+  projectStatuses: string[];
+  certStatuses: string[];
 }
 
 const FALLBACK_LISTS: ValueLists = {
@@ -172,6 +173,8 @@ const FALLBACK_LISTS: ValueLists = {
   ],
   categories: ["Leadership", "Infrastructure", "Engineering", "Security", "Data", "Operations"],
   levels: ["IC", "Lead", "SPV", "Manager"],
+  projectStatuses: [...FALLBACK_PROJECT_STATUSES],
+  certStatuses: [...FALLBACK_CERT_STATUSES],
 };
 
 const TABS: Array<{ table: EntryTable; label: string }> = [
@@ -187,7 +190,7 @@ interface ValueListsValue {
   reload: () => Promise<void>;
 }
 
-/** The four value lists, read once for the whole panel. */
+/** The six value lists, read once for the whole panel. */
 function useValueLists(): ValueListsValue {
   const [lists, setLists] = React.useState<ValueLists>(FALLBACK_LISTS);
 
@@ -195,18 +198,23 @@ function useValueLists(): ValueListsValue {
     const client = supabase;
     if (!client) return;
 
-    const [kinds, domains, categories, levels] = await Promise.all([
-      client.rpc("portfolio_project_kinds"),
-      client.rpc("portfolio_certification_domains"),
-      client.rpc("portfolio_skill_categories"),
-      client.rpc("portfolio_role_levels"),
-    ]);
+    const [kinds, domains, categories, levels, projectStatuses, certStatuses] =
+      await Promise.all([
+        client.rpc("portfolio_project_kinds"),
+        client.rpc("portfolio_certification_domains"),
+        client.rpc("portfolio_skill_categories"),
+        client.rpc("portfolio_role_levels"),
+        client.rpc("portfolio_statuses", { p_scope: "project" }),
+        client.rpc("portfolio_statuses", { p_scope: "certification" }),
+      ]);
 
     setLists({
       kinds: kinds.data ?? FALLBACK_LISTS.kinds,
       domains: domains.data ?? FALLBACK_LISTS.domains,
       categories: categories.data ?? FALLBACK_LISTS.categories,
       levels: levels.data ?? FALLBACK_LISTS.levels,
+      projectStatuses: projectStatuses.data ?? FALLBACK_LISTS.projectStatuses,
+      certStatuses: certStatuses.data ?? FALLBACK_LISTS.certStatuses,
     });
   }, []);
 
@@ -323,7 +331,13 @@ export default function EntriesPanel() {
             meta: `${row.company} · ${row.start} to ${row.end ?? "now"} · ${row.level} · ${row.headcount} people`,
           })}
           renderForm={({ entry, onClose }) => (
-            <CareerForm writer={writer} lists={lists} entry={entry} onClose={onClose} />
+            <CareerForm
+              writer={writer}
+              lists={lists}
+              entry={entry}
+              onClose={onClose}
+              onLevelsChanged={reloadLists}
+            />
           )}
         />
       ) : null}
@@ -342,7 +356,13 @@ export default function EntriesPanel() {
             meta: `${row.kind} · ${row.year} · ${row.status} · impact ${row.impact}/100`,
           })}
           renderForm={({ entry, onClose }) => (
-            <ProjectForm writer={writer} lists={lists} entry={entry} onClose={onClose} />
+            <ProjectForm
+              writer={writer}
+              lists={lists}
+              entry={entry}
+              onClose={onClose}
+              onStatusesChanged={reloadLists}
+            />
           )}
         />
       ) : null}
@@ -360,7 +380,13 @@ export default function EntriesPanel() {
             meta: `${row.issuer} · ${row.domain} · ${row.status} · issued ${row.issued}`,
           })}
           renderForm={({ entry, onClose }) => (
-            <CertificationForm writer={writer} lists={lists} entry={entry} onClose={onClose} />
+            <CertificationForm
+              writer={writer}
+              lists={lists}
+              entry={entry}
+              onClose={onClose}
+              onStatusesChanged={reloadLists}
+            />
           )}
         />
       ) : null}
@@ -583,8 +609,8 @@ function EntryList<T extends StoredEntry>({
           if (!open) setEditing(null);
         }}
       >
-        <DialogContent>
-          <DialogTitle>{editing?.entry ? "Edit the row" : addLabel}</DialogTitle>
+        <DialogContent className="max-w-4xl lg:max-w-5xl">
+          <DialogTitle>{editing?.entry ? "Edit row" : addLabel}</DialogTitle>
           <DialogDescription>
             {editing?.entry
               ? "Saving replaces the stored row. The site reads it on the next load."
@@ -607,42 +633,49 @@ interface EntryFormProps<T> {
   onClose: () => void;
 }
 
-function FormGrid({ children }: { children: React.ReactNode }) {
-  return <div className="grid gap-4 sm:grid-cols-2">{children}</div>;
+/** Forms whose status is picked from a list the owner maintains. */
+interface StatusListProps {
+  /** Re-reads the status lists after one is added, renamed, or deleted. */
+  onStatusesChanged: () => Promise<void>;
 }
 
 /**
- * The fields that are not worth a scroll every time.
- *
- * A project row has eleven numbers and three free text boxes, and most visits
- * here only touch the name, the year, and the score. The rest sit behind one
- * click so the dialog opens on the short version. They are translated into a
- * full width cell of their own grid, which keeps the same two column rhythm
- * as the fields above without repeating every col-span.
+ * Editorial Blogspot-style form layout:
+ * - Prominent title and main rich fields in the wide primary column
+ * - Metadata, taxonomy, dates and status in the right sidebar
+ * - Consistent Save/Cancel actions
  */
-function FoldedFields({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = React.useState(false);
-
+function BlogspotFormLayout({
+  mainContent,
+  sidebarContent,
+  actions,
+}: {
+  mainContent: React.ReactNode;
+  sidebarContent: React.ReactNode;
+  actions: React.ReactNode;
+}) {
   return (
-    <div className="sm:col-span-2">
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-notch border border-border bg-background/40 px-3.5 py-2.5 text-left transition-colors hover:bg-muted"
-      >
-        {open ? (
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        ) : (
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        )}
-        <span className="font-mono text-[12px] uppercase tracking-[0.1em]">More fields</span>
-        <span className="font-mono text-[10px] text-muted-foreground">
-          role, location, months, team, stack, featured
-        </span>
-      </button>
+    <div className="space-y-6">
+      <div className="grid items-start gap-6 lg:grid-cols-12">
+        {/* Main Content Column (Left/Center) */}
+        <div className="space-y-4 lg:col-span-7 xl:col-span-8">
+          {mainContent}
+        </div>
 
-      {open ? <div className="mt-4 grid gap-4 sm:grid-cols-2">{children}</div> : null}
+        {/* Sidebar Metadata Column (Right on Desktop, Stacked below on Mobile) */}
+        <aside className="space-y-4 rounded-lg border border-border/80 bg-muted/20 p-4 lg:col-span-5 xl:col-span-4">
+          <div className="border-b border-border/60 pb-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+            Metadata & Settings
+          </div>
+          <div className="space-y-3.5">
+            {sidebarContent}
+          </div>
+        </aside>
+      </div>
+
+      <div className="sticky bottom-0 -mx-6 -mb-6 border-t border-border/80 bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:mb-0 sm:border-t-0 sm:bg-transparent sm:p-0">
+        {actions}
+      </div>
     </div>
   );
 }
@@ -657,13 +690,25 @@ function FormActions({
   label: string;
 }) {
   return (
-    <div className="mt-6 flex flex-wrap items-center justify-end gap-2">
-      <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={busy}>
+    <div className="flex items-center justify-end gap-2.5">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onCancel}
+        disabled={busy}
+        className="h-10 min-w-[80px] font-mono text-xs touch-manipulation active:scale-[0.98]"
+      >
         Cancel
       </Button>
-      <Button type="submit" size="sm" disabled={busy}>
-        {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Save aria-hidden />}
-        {label}
+      <Button
+        type="submit"
+        size="sm"
+        disabled={busy}
+        className="h-10 min-w-[100px] font-mono text-xs touch-manipulation active:scale-[0.98]"
+      >
+        {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
+        <span>{label}</span>
       </Button>
     </div>
   );
@@ -896,7 +941,7 @@ function ScaleField({
       <div
         role="group"
         aria-label={label}
-        className="mt-1.5 flex w-full items-end gap-1.5 rounded-notch border border-input bg-background/60 px-3 py-2.5"
+        className="mt-1.5 flex w-full items-end gap-1 sm:gap-1.5 rounded-notch border border-input bg-background/60 px-2.5 sm:px-3 py-2.5 touch-manipulation min-h-[44px]"
       >
         {LEVEL_SCALE.map((step) => (
           <button
@@ -904,10 +949,10 @@ function ScaleField({
             type="button"
             aria-pressed={value === step}
             onClick={() => onChange(step)}
-            style={{ height: `${0.9 + step * 0.34}rem` }}
+            style={{ height: `${1.1 + step * 0.32}rem` }}
             className={cn(
               "flex-1 rounded-sm border transition-colors duration-200 focus-visible:outline-none " +
-                "focus-visible:ring-2 focus-visible:ring-primary/35",
+                "focus-visible:ring-2 focus-visible:ring-primary/35 touch-manipulation active:scale-[0.95]",
               step <= value
                 ? "border-primary/60 bg-primary"
                 : "border-input bg-foreground/5 hover:bg-foreground/15",
@@ -985,7 +1030,7 @@ function CategoryField({
       </div>
 
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="mt-1.5">
+        <SelectTrigger className="mt-1.5 h-11 touch-manipulation">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -1022,6 +1067,217 @@ function CategoryField({
             Added categories join the list for every skill, and show up on the public page as their
             own group.
           </FieldHint>
+          {error ? <PanelMessage>{error}</PanelMessage> : null}
+        </div>
+      ) : null}
+
+      {hint ? <FieldHint>{hint}</FieldHint> : null}
+    </div>
+  );
+}
+
+/**
+ * A dropdown over a list the owner maintains, with the three things a list
+ * needs: add, rename, and delete.
+ *
+ * Rename and delete act on whichever value is selected, because that is the one
+ * the reader is already looking at. A rename rewrites every row that pointed at
+ * the old name, so no row is stranded. A delete is refused while a row still
+ * uses the value, and the refusal names how many.
+ *
+ * The noun and the button label are the only things that change between the
+ * level list and a status list, so both use this one component.
+ */
+function OptionsField({
+  label,
+  value,
+  onChange,
+  options,
+  onAdd,
+  onRename,
+  onDelete,
+  noun,
+  editLabel,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly string[];
+  onAdd: (name: string) => Promise<boolean>;
+  onRename: (from: string, to: string) => Promise<boolean>;
+  onDelete: (name: string) => Promise<boolean>;
+  /** Singular name for the values, used in labels and messages. */
+  noun: string;
+  /** Text on the button that opens the add/rename/delete panel. */
+  editLabel: string;
+  hint?: string;
+}) {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState("");
+  const [renamed, setRenamed] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const all = options.includes(value) ? options : value.length > 0 ? [value, ...options] : options;
+
+  function toggle() {
+    setEditing((current) => !current);
+    setRenamed(value);
+    setError(null);
+  }
+
+  async function add() {
+    const name = draft.trim();
+    if (name.length === 0) return;
+
+    setBusy(true);
+    setError(null);
+    const ok = await onAdd(name);
+    setBusy(false);
+
+    if (ok) {
+      onChange(name);
+      setDraft("");
+      setError(null);
+      return;
+    }
+
+    setError(`"${name}" was not added. It may already be on the list.`);
+  }
+
+  async function rename() {
+    const to = renamed.trim();
+    if (to.length === 0 || to === value) return;
+
+    setBusy(true);
+    setError(null);
+    const ok = await onRename(value, to);
+    setBusy(false);
+
+    if (ok) {
+      onChange(to);
+      return;
+    }
+
+    setError(`"${value}" was not renamed to "${to}".`);
+  }
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    const ok = await onDelete(value);
+    setBusy(false);
+
+    if (ok) {
+      onChange(all.find((option) => option !== value) ?? "");
+      setRenamed("");
+      return;
+    }
+
+    setError(`"${value}" was not deleted. Something still uses it.`);
+  }
+
+  return (
+    <div className="block">
+      <div className="flex items-center justify-between gap-2">
+        <FieldLabel>{label}</FieldLabel>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-pressed={editing}
+          onClick={toggle}
+        >
+          {editing ? "Close" : editLabel}
+          {editing ? <X aria-hidden /> : <Pencil aria-hidden />}
+        </Button>
+      </div>
+
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="mt-1.5">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {all.map((option) => (
+            <SelectItem key={option} value={option}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {editing ? (
+        <div className="mt-2 rounded-notch border border-dashed border-input p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void add();
+                }
+              }}
+              placeholder={`New ${noun}`}
+              aria-label={`New ${noun}`}
+              maxLength={80}
+              className="min-w-[12rem] flex-1"
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy || draft.trim().length === 0}
+              onClick={() => void add()}
+            >
+              {busy ? "Working" : "Add"}
+            </Button>
+          </div>
+
+          {value.length > 0 ? (
+            <div className="mt-3 border-t border-border pt-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  value={renamed}
+                  onChange={(event) => setRenamed(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void rename();
+                    }
+                  }}
+                  placeholder="Rename selected"
+                  aria-label={`Rename the selected ${noun}`}
+                  maxLength={80}
+                  className="min-w-[12rem] flex-1"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={busy || renamed.trim().length === 0 || renamed.trim() === value}
+                  onClick={() => void rename()}
+                >
+                  Rename
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => void remove()}
+                >
+                  <Trash2 aria-hidden />
+                  Delete
+                </Button>
+              </div>
+              <FieldHint>
+                Renaming moves every entry that used "{value}" onto the new name. A {noun} can
+                only be deleted once nothing uses it.
+              </FieldHint>
+            </div>
+          ) : null}
+
           {error ? <PanelMessage>{error}</PanelMessage> : null}
         </div>
       ) : null}
@@ -1156,7 +1412,12 @@ function FieldHint({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CareerForm({ writer, lists, entry, onClose }: EntryFormProps<CareerEntry>) {
+interface CareerFormProps extends EntryFormProps<CareerEntry> {
+  /** Re-reads the shared value lists after a level is added, renamed, or deleted. */
+  onLevelsChanged: () => Promise<void>;
+}
+
+function CareerForm({ writer, lists, entry, onClose, onLevelsChanged }: CareerFormProps) {
   const [form, setForm] = React.useState<CareerInput>(() => ({
     id: entry?.id,
     sortOrder: entry?.sortOrder,
@@ -1184,60 +1445,121 @@ function CareerForm({ writer, lists, entry, onClose }: EntryFormProps<CareerEntr
     if (id) onClose();
   }
 
+  async function addLevel(name: string) {
+    const id = await writer.addRoleLevel(name);
+    if (!id) return false;
+    await onLevelsChanged();
+    return true;
+  }
+
+  async function renameLevel(from: string, to: string) {
+    const ok = await writer.renameRoleLevel(from, to);
+    if (!ok) return false;
+    await onLevelsChanged();
+    return true;
+  }
+
+  async function deleteLevel(name: string) {
+    const ok = await writer.deleteRoleLevel(name);
+    if (!ok) return false;
+    await onLevelsChanged();
+    return true;
+  }
+
   return (
     <form onSubmit={submit}>
-      <FormGrid>
-        <TextField label="Job title" value={form.title} onChange={(v) => set("title", v)} />
-        <TextField label="Company" value={form.company} onChange={(v) => set("company", v)} />
-        <TextField
-          label="Sector"
-          value={form.sector}
-          onChange={(v) => set("sector", v)}
-          placeholder="Multi-site Retail"
-        />
-        <TextField
-          label="Location"
-          value={form.location}
-          onChange={(v) => set("location", v)}
-          placeholder="Jakarta"
-        />
-        <MonthRangeField
-          start={form.start}
-          end={form.end}
-          onStartChange={(v) => set("start", v)}
-          onEndChange={(v) => set("end", v)}
-          hint="Start month is required. Both use yyyy-mm."
-        />
-        <SelectField
-          label="Level"
-          value={form.level}
-          onChange={(v) => set("level", v as CareerInput["level"])}
-          options={lists.levels}
-        />
-        <NumberField
-          label="People led"
-          value={form.headcount}
-          onChange={(v) => set("headcount", v)}
-          min={0}
-          max={500}
-          hint="Direct reports, not the whole department."
-        />
-        <TextAreaField
-          label="Summary"
-          value={form.summary}
-          onChange={(v) => set("summary", v)}
-        />
-        <ListField
-          label="Highlights"
-          value={form.highlights}
-          onChange={(v) => set("highlights", v)}
-          hint="One per line. Write what changed, not what you were responsible for."
-        />
-        <ListField label="Working stack" value={form.stack} onChange={(v) => set("stack", v)} />
-        <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
-      </FormGrid>
-
-      <FormActions busy={writer.busy} onCancel={onClose} label={entry ? "Save changes" : "Save entry"} />
+      <BlogspotFormLayout
+        mainContent={
+          <>
+            <TextField
+              label="Job title"
+              value={form.title}
+              onChange={(v) => set("title", v)}
+              placeholder="e.g. Lead Process Engineer / Senior Technical Lead"
+              hint="Required. Enter full official role title."
+              wide
+            />
+            <TextAreaField
+              label="Summary"
+              value={form.summary}
+              onChange={(v) => set("summary", v)}
+              rows={4}
+              hint="High-level mission and context of this role."
+            />
+            <ListField
+              label="Highlights"
+              value={form.highlights}
+              onChange={(v) => set("highlights", v)}
+              hint="One per line. Write what changed, key wins, not just responsibilities."
+            />
+            <ListField
+              label="Working stack"
+              value={form.stack}
+              onChange={(v) => set("stack", v)}
+              hint="Technologies, frameworks, tools used in this position."
+            />
+          </>
+        }
+        sidebarContent={
+          <>
+            <TextField
+              label="Company"
+              value={form.company}
+              onChange={(v) => set("company", v)}
+              placeholder="e.g. Acme Corp"
+            />
+            <TextField
+              label="Sector"
+              value={form.sector}
+              onChange={(v) => set("sector", v)}
+              placeholder="e.g. Retail / FinTech"
+            />
+            <TextField
+              label="Location"
+              value={form.location}
+              onChange={(v) => set("location", v)}
+              placeholder="e.g. Jakarta, Indonesia"
+            />
+            <MonthRangeField
+              start={form.start}
+              end={form.end}
+              onStartChange={(v) => set("start", v)}
+              onEndChange={(v) => set("end", v)}
+              hint="Start month is required (yyyy-mm)."
+            />
+            <OptionsField
+              label="Level"
+              value={form.level}
+              onChange={(v) => set("level", v)}
+              options={
+                lists.levels.includes(form.level) ? lists.levels : [...lists.levels, form.level]
+              }
+              onAdd={addLevel}
+              onRename={renameLevel}
+              onDelete={deleteLevel}
+              noun="level"
+              editLabel="Edit levels"
+              hint="Filter category on the career page."
+            />
+            <NumberField
+              label="People led"
+              value={form.headcount}
+              onChange={(v) => set("headcount", v)}
+              min={0}
+              max={500}
+              hint="Direct reports headcount."
+            />
+            <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
+          </>
+        }
+        actions={
+          <FormActions
+            busy={writer.busy}
+            onCancel={onClose}
+            label={entry ? "Save changes" : "Save entry"}
+          />
+        }
+      />
     </form>
   );
 }
@@ -1761,20 +2083,22 @@ function parsePastedProjects(
       (option) => option.toLowerCase() === held.kind.toLowerCase(),
     ) ??
       (held.kind.length > 0 ? held.kind : "Internal Systems")) as ProjectInput["kind"];
-    const status = STATUS_OPTIONS.find(
+    const status = lists.projectStatuses.find(
       (option) => option.toLowerCase() === held.status.toLowerCase(),
     );
 
     if (held.status.length > 0 && !status) {
       problems.push(
-        `Line ${lineNumber}: "${held.status}" is not a status, so it was saved as active.`,
+        `Line ${lineNumber}: "${held.status}" is not on your project status list, so it was saved as the first one.`,
       );
     }
 
     rows.push({
       name: held.name,
       kind,
-      status: status ?? "active",
+      // The list is owner-maintained now, so a status outside the union is
+      // still a valid row. The form casts the same way when one is picked.
+      status: (status ?? lists.projectStatuses[0] ?? "active") as ProjectInput["status"],
       role: held.role,
       location: held.location,
       year,
@@ -1925,7 +2249,13 @@ function ProjectPaste({ writer, lists }: { writer: EntryWriterValue; lists: Valu
   );
 }
 
-function ProjectForm({ writer, lists, entry, onClose }: EntryFormProps<ProjectEntry>) {
+function ProjectForm({
+  writer,
+  lists,
+  entry,
+  onClose,
+  onStatusesChanged,
+}: EntryFormProps<ProjectEntry> & StatusListProps) {
   const [form, setForm] = React.useState<ProjectInput>(() => ({
     id: entry?.id,
     sortOrder: entry?.sortOrder,
@@ -1955,109 +2285,171 @@ function ProjectForm({ writer, lists, entry, onClose }: EntryFormProps<ProjectEn
     if (id) onClose();
   }
 
+  async function addStatus(name: string) {
+    const ok = await writer.addStatusOption("project", name);
+    if (!ok) return false;
+    await onStatusesChanged();
+    return true;
+  }
+
+  async function renameStatus(from: string, to: string) {
+    const ok = await writer.renameStatusOption("project", from, to);
+    if (!ok) return false;
+    await onStatusesChanged();
+    return true;
+  }
+
+  async function deleteStatus(name: string) {
+    const ok = await writer.deleteStatusOption("project", name);
+    if (!ok) return false;
+    await onStatusesChanged();
+    return true;
+  }
+
   return (
     <form onSubmit={submit}>
-      <FormGrid>
-        <TextField
-          label="Project name"
-          value={form.name}
-          onChange={(v) => set("name", v)}
-          wide
-        />
-        <SelectField
-          label="Kind"
-          value={form.kind}
-          onChange={(v) => set("kind", v as ProjectInput["kind"])}
-          options={lists.kinds}
-        />
-        <SelectField
-          label="Status"
-          value={form.status}
-          onChange={(v) => set("status", v as ProjectInput["status"])}
-          options={STATUS_OPTIONS}
-        />
-        <NumberField
-          label="Year"
-          value={form.year}
-          onChange={(v) => set("year", v)}
-          min={1980}
-          max={2100}
-        />
-        <NumberField
-          label="Budget"
-          value={form.budgetM}
-          onChange={(v) => set("budgetM", v)}
-          min={0}
-          step={0.1}
-          hint="In millions of rupiah. Use 0 when there was no budget to own."
-        />
-        <NumberField
-          label="Impact score"
-          value={form.impact}
-          onChange={(v) => set("impact", v)}
-          min={0}
-          max={100}
-          hint="Your own rubric, out of 100. It is presented as a claim, not an audit."
-        />
-        <TextAreaField label="Summary" value={form.summary} onChange={(v) => set("summary", v)} />
-        <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
+      <BlogspotFormLayout
+        mainContent={
+          <>
+            <TextField
+              label="Project name"
+              value={form.name}
+              onChange={(v) => set("name", v)}
+              placeholder="e.g. Automated Inventory Dispatch & Warehouse BI"
+              hint="Required. Clear, descriptive name of the project or initiative."
+              wide
+            />
+            <TextAreaField
+              label="Summary"
+              value={form.summary}
+              onChange={(v) => set("summary", v)}
+              rows={4}
+              hint="High-level description: problem statement, technical solution, and measurable business outcome."
+            />
+            <ListField
+              label="Working stack"
+              value={form.stack}
+              onChange={(v) => set("stack", v)}
+              hint="One tool/tech per line or comma-separated (e.g. BigQuery, dbt, React, Go)."
+            />
 
-        <FoldedFields>
-          <TextField label="Your role" value={form.role} onChange={(v) => set("role", v)} />
-          <TextField
-            label="Location"
-            value={form.location}
-            onChange={(v) => set("location", v)}
-            placeholder="Jakarta & 34 stores"
+            <div className="pt-2">
+              {entry ? (
+                <ProjectPhotos writer={writer} projectId={entry.id} />
+              ) : (
+                <div>
+                  <FieldLabel>Photos</FieldLabel>
+                  <FieldHint>
+                    Save the project first to attach photos to a stored row. Reopen the row to upload.
+                  </FieldHint>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2">
+              <ProjectCurveEditor writer={writer} />
+            </div>
+          </>
+        }
+        sidebarContent={
+          <>
+            <SelectField
+              label="Kind"
+              value={form.kind}
+              onChange={(v) => set("kind", v as ProjectInput["kind"])}
+              options={lists.kinds}
+            />
+            <OptionsField
+              label="Status"
+              value={form.status}
+              onChange={(v) => set("status", v as ProjectInput["status"])}
+              options={
+                lists.projectStatuses.includes(form.status)
+                  ? lists.projectStatuses
+                  : [form.status, ...lists.projectStatuses]
+              }
+              onAdd={addStatus}
+              onRename={renameStatus}
+              onDelete={deleteStatus}
+              noun="status"
+              editLabel="Edit statuses"
+              hint="Status badge on project cards."
+            />
+            <TextField
+              label="Your role"
+              value={form.role}
+              onChange={(v) => set("role", v)}
+              placeholder="e.g. Lead Architect"
+            />
+            <TextField
+              label="Location"
+              value={form.location}
+              onChange={(v) => set("location", v)}
+              placeholder="e.g. Jakarta & 34 stores"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField
+                label="Year"
+                value={form.year}
+                onChange={(v) => set("year", v)}
+                min={1980}
+                max={2100}
+              />
+              <NumberField
+                label="Months"
+                value={form.months}
+                onChange={(v) => set("months", v)}
+                min={0}
+                max={600}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField
+                label="Team size"
+                value={form.teamSize}
+                onChange={(v) => set("teamSize", v)}
+                min={0}
+                max={500}
+              />
+              <NumberField
+                label="Budget (M Rp)"
+                value={form.budgetM}
+                onChange={(v) => set("budgetM", v)}
+                min={0}
+                step={0.1}
+              />
+            </div>
+            <NumberField
+              label="Impact score (0-100)"
+              value={form.impact}
+              onChange={(v) => set("impact", v)}
+              min={0}
+              max={100}
+            />
+            <div>
+              <FieldLabel>Featured</FieldLabel>
+              <Button
+                type="button"
+                variant={form.featured ? "outline" : "solid"}
+                size="sm"
+                onClick={() => set("featured", !form.featured)}
+                aria-pressed={form.featured}
+                className="mt-1.5 w-full"
+              >
+                {form.featured ? "Featured on home" : "Not featured"}
+              </Button>
+            </div>
+            <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
+          </>
+        }
+        actions={
+          <FormActions
+            busy={writer.busy}
+            onCancel={onClose}
+            label={entry ? "Save changes" : "Save project"}
           />
-          <NumberField
-            label="Months"
-            value={form.months}
-            onChange={(v) => set("months", v)}
-            min={0}
-            max={600}
-          />
-          <NumberField
-            label="Team size"
-            value={form.teamSize}
-            onChange={(v) => set("teamSize", v)}
-            min={0}
-            max={500}
-          />
-          <ListField label="Working stack" value={form.stack} onChange={(v) => set("stack", v)} />
-
-          <div>
-            <FieldLabel>Featured</FieldLabel>
-            <Button
-              type="button"
-              variant={form.featured ? "outline" : "solid"}
-              size="sm"
-              onClick={() => set("featured", !form.featured)}
-              aria-pressed={form.featured}
-              className="mt-1.5"
-            >
-              {form.featured ? "Featured on the home page" : "Not featured"}
-            </Button>
-            <FieldHint>Featured projects are the ones the home page leads with.</FieldHint>
-          </div>
-        </FoldedFields>
-
-        {entry ? (
-          <ProjectPhotos writer={writer} projectId={entry.id} />
-        ) : (
-          <div className="sm:col-span-2">
-            <FieldLabel>Photos</FieldLabel>
-            <FieldHint>
-              Save the project first. A photo hangs off a stored row, so this form has nothing to
-              attach one to yet. Reopen the row to upload.
-            </FieldHint>
-          </div>
-        )}
-
-        <ProjectCurveEditor writer={writer} />
-      </FormGrid>
-
-      <FormActions busy={writer.busy} onCancel={onClose} label={entry ? "Save changes" : "Save project"} />
+        }
+      />
     </form>
   );
 }
@@ -2277,7 +2669,8 @@ function CertificationForm({
   lists,
   entry,
   onClose,
-}: EntryFormProps<CertificationEntry>) {
+  onStatusesChanged,
+}: EntryFormProps<CertificationEntry> & StatusListProps) {
   const [form, setForm] = React.useState<CertificationInput>(() => ({
     id: entry?.id,
     sortOrder: entry?.sortOrder,
@@ -2303,74 +2696,122 @@ function CertificationForm({
     if (id) onClose();
   }
 
+  async function addStatus(name: string) {
+    const ok = await writer.addStatusOption("certification", name);
+    if (!ok) return false;
+    await onStatusesChanged();
+    return true;
+  }
+
+  async function renameStatus(from: string, to: string) {
+    const ok = await writer.renameStatusOption("certification", from, to);
+    if (!ok) return false;
+    await onStatusesChanged();
+    return true;
+  }
+
+  async function deleteStatus(name: string) {
+    const ok = await writer.deleteStatusOption("certification", name);
+    if (!ok) return false;
+    await onStatusesChanged();
+    return true;
+  }
+
   return (
     <form onSubmit={submit}>
-      <FormGrid>
-        <TextField
-          label="Certificate name"
-          value={form.name}
-          onChange={(v) => set("name", v)}
-          wide
-        />
-        <TextField label="Issuer" value={form.issuer} onChange={(v) => set("issuer", v)} />
-        <SelectField
-          label="Domain"
-          value={form.domain}
-          onChange={(v) => set("domain", v as CertificationInput["domain"])}
-          options={lists.domains}
-        />
-        <MonthField label="Issued" value={form.issued} onChange={(v) => set("issued", v)} />
-        <MonthField
-          label="Expires"
-          value={form.expires ?? ""}
-          onChange={(v) => set("expires", v === "" ? null : v)}
-          hint="Leave empty only when it genuinely never expires."
-        />
-        <SelectField
-          label="Status"
-          value={form.status}
-          onChange={(v) => set("status", v as CertificationInput["status"])}
-          options={CERT_STATUS_OPTIONS}
-        />
-        <NumberField
-          label="Cost"
-          value={form.cost}
-          onChange={(v) => set("cost", v)}
-          min={0}
-          step={0.1}
-          hint="In millions of rupiah. 0 is a fair answer for a free certificate."
-        />
-        <TextField
-          label="Credential ID"
-          value={form.credentialId}
-          onChange={(v) => set("credentialId", v)}
-        />
-        <TextField
-          label="Credential link"
-          value={form.credentialUrl}
-          onChange={(v) => set("credentialUrl", v)}
-          placeholder="https://"
-          hint="Must start with https:// or the database will refuse it."
-        />
-        <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
+      <BlogspotFormLayout
+        mainContent={
+          <>
+            <TextField
+              label="Certificate name"
+              value={form.name}
+              onChange={(v) => set("name", v)}
+              placeholder="e.g. AWS Certified Solutions Architect - Professional"
+              hint="Required. Official certificate title as issued."
+              wide
+            />
+            <TextField
+              label="Credential ID"
+              value={form.credentialId}
+              onChange={(v) => set("credentialId", v)}
+              placeholder="e.g. AWS-PSA-12345678"
+              hint="Optional identifier code from the certificate issuer."
+            />
+            <TextField
+              label="Credential link"
+              value={form.credentialUrl}
+              onChange={(v) => set("credentialUrl", v)}
+              placeholder="https://www.credly.com/badges/..."
+              hint="Public verification URL (must start with https://)."
+            />
 
-        {entry ? (
-          <CertificateScans writer={writer} certificationId={entry.id} />
-        ) : (
-          <div className="sm:col-span-2">
-            <FieldLabel>Scans</FieldLabel>
-            <FieldHint>
-              Save the certificate first. A scan hangs off a stored row, so this form has
-              nothing to attach one to yet. Reopen the row to upload.
-            </FieldHint>
-          </div>
-        )}
-      </FormGrid>
-
-      <FormActions
-        busy={writer.busy}
-        onCancel={onClose}
-        label={entry ? "Save changes" : "Save certificate"}
+            <div className="pt-2">
+              {entry ? (
+                <CertificateScans writer={writer} certificationId={entry.id} />
+              ) : (
+                <div>
+                  <FieldLabel>Scans & Documents</FieldLabel>
+                  <FieldHint>
+                    Save the certificate first to attach document scans. Reopen the row to upload.
+                  </FieldHint>
+                </div>
+              )}
+            </div>
+          </>
+        }
+        sidebarContent={
+          <>
+            <TextField
+              label="Issuer"
+              value={form.issuer}
+              onChange={(v) => set("issuer", v)}
+              placeholder="e.g. Amazon Web Services"
+            />
+            <SelectField
+              label="Domain"
+              value={form.domain}
+              onChange={(v) => set("domain", v as CertificationInput["domain"])}
+              options={lists.domains}
+            />
+            <MonthField label="Issued date" value={form.issued} onChange={(v) => set("issued", v)} />
+            <MonthField
+              label="Expires date"
+              value={form.expires ?? ""}
+              onChange={(v) => set("expires", v === "" ? null : v)}
+              hint="Leave empty if it never expires."
+            />
+            <OptionsField
+              label="Status"
+              value={form.status}
+              onChange={(v) => set("status", v as CertificationInput["status"])}
+              options={
+                lists.certStatuses.includes(form.status)
+                  ? lists.certStatuses
+                  : [form.status, ...lists.certStatuses]
+              }
+              onAdd={addStatus}
+              onRename={renameStatus}
+              onDelete={deleteStatus}
+              noun="status"
+              editLabel="Edit statuses"
+            />
+            <NumberField
+              label="Cost (M Rp)"
+              value={form.cost}
+              onChange={(v) => set("cost", v)}
+              min={0}
+              step={0.1}
+            />
+            <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
+          </>
+        }
+        actions={
+          <FormActions
+            busy={writer.busy}
+            onCancel={onClose}
+            label={entry ? "Save changes" : "Save certificate"}
+          />
+        }
       />
     </form>
   );
@@ -2413,52 +2854,72 @@ function SkillForm({ writer, lists, entry, onClose, onCategoryAdded }: SkillForm
 
   return (
     <form onSubmit={submit}>
-      <FormGrid>
-        <TextField label="Skill" value={form.name} onChange={(v) => set("name", v)} />
-        <CategoryField
-          label="Category"
-          value={form.category}
-          onChange={(v) => set("category", v)}
-          options={
-            lists.categories.includes(form.category)
-              ? lists.categories
-              : [...lists.categories, form.category]
-          }
-          onAdd={addCategory}
-          hint="Add your own if none of these fit. It becomes its own group on the skills page."
-        />
-        <ScaleField
-          label="Level"
-          value={form.level}
-          onChange={(v) => set("level", v)}
-          hint="Your own mastery rating from 1 to 10, where 10 is the strongest. It is labelled as a self rating on the page."
-        />
-        <NumberField
-          label="Years"
-          value={form.years}
-          onChange={(v) => set("years", v)}
-          min={0}
-          max={60}
-          hint="How long the skill has been in use, in years."
-        />
-        <NumberField
-          label="Since"
-          value={form.since}
-          onChange={(v) => set("since", v)}
-          min={1980}
-          max={2100}
-          hint="The year you picked this skill up. The page counts how long you have held it from here."
-        />
-        <ListField
-          label="Evidence"
-          value={form.evidence}
-          onChange={(v) => set("evidence", v)}
-          hint="One entry id per line, taken from a project, a certificate, or a role. Leave empty rather than inventing one."
-        />
-        <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
-      </FormGrid>
-
-      <FormActions busy={writer.busy} onCancel={onClose} label={entry ? "Save changes" : "Save skill"} />
+      <BlogspotFormLayout
+        mainContent={
+          <>
+            <TextField
+              label="Skill"
+              value={form.name}
+              onChange={(v) => set("name", v)}
+              placeholder="e.g. Distributed Systems Architecture & PostgreSQL Optimization"
+              hint="Required. Specific technical or leadership competency."
+              wide
+            />
+            <ListField
+              label="Evidence & References"
+              value={form.evidence}
+              onChange={(v) => set("evidence", v)}
+              hint="One entry ID or key point per line, linking back to a project, certificate, or career role."
+            />
+          </>
+        }
+        sidebarContent={
+          <>
+            <CategoryField
+              label="Category"
+              value={form.category}
+              onChange={(v) => set("category", v)}
+              options={
+                lists.categories.includes(form.category)
+                  ? lists.categories
+                  : [...lists.categories, form.category]
+              }
+              onAdd={addCategory}
+              hint="Group on the skills page."
+            />
+            <ScaleField
+              label="Proficiency Level (1-10)"
+              value={form.level}
+              onChange={(v) => set("level", v)}
+              hint="Self rating scale from 1 to 10."
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField
+                label="Years"
+                value={form.years}
+                onChange={(v) => set("years", v)}
+                min={0}
+                max={60}
+              />
+              <NumberField
+                label="Since"
+                value={form.since}
+                onChange={(v) => set("since", v)}
+                min={1980}
+                max={2100}
+              />
+            </div>
+            <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />
+          </>
+        }
+        actions={
+          <FormActions
+            busy={writer.busy}
+            onCancel={onClose}
+            label={entry ? "Save changes" : "Save skill"}
+          />
+        }
+      />
     </form>
   );
 }

@@ -2,9 +2,9 @@
 
 **Pemilik produk:** Arnal Putra
 **Peran yang ditargetkan:** IT Lead / Supervisor (Head of IT)
-**Versi dokumen:** 1.1
-**Terakhir diperbarui:** 2026-09-15
-**Status produk:** Implementasi awal selesai, panel admin berjalan, entri portofolio dapat dikelola sendiri, siap diisi data asli
+**Versi dokumen:** 1.2
+**Terakhir diperbarui:** 2026-09-26
+**Status produk:** Implementasi awal selesai, panel admin berjalan, entri portofolio dapat dikelola sendiri, optimasi mobile menyeluruh selesai, siap diisi data asli
 
 > Dokumen ini adalah sumber kebenaran requirement. Setiap penambahan fitur atau perubahan
 > requirement wajib dicatat di sini, termasuk pada bagian Riwayat Perubahan.
@@ -230,6 +230,14 @@ Status per 2026-09-15.
 | FR-95 | Tab Content mengelompokkan field kotak per kotak mengikuti alur halaman dari atas ke bawah, dengan judul grup berbahasa manusia (bukan potongan kunci), dan kunci intro datar (`eyebrow`, `title`, `lead`) masuk ke grup "Page intro" | Selesai |
 | FR-96 | Field pendek berbagi baris dalam grid 2 kolom (3 di layar lebar); paragraf, field foto, serta judul dan lead hero tetap selebar kotak, dan field satu baris memakai tinggi yang lebih rapat | Selesai |
 | FR-97 | Kunci konten mati sisa penomoran dekoratif dihapus dari registry, sehingga tidak lagi tampil sebagai kolom yang bisa disunting di panel admin | Selesai |
+| FR-98 | Form login admin tahan race condition: submit pertama tidak lagi memicu error allowlist 42501 palsu, dan sesi tetap valid selama kata sandi benar | Selesai |
+| FR-99 | Field status entri memakai dropdown dinamis dari tabel `portfolio_status_options` dengan dukungan CRUD opsi langsung dari panel form, bukan placeholder fungsi mentah `{}` | Selesai |
+| FR-100 | Navigasi admin berupa sidebar utama 2 kolom terpadu (`/admin/content`, `/admin/entries`, `/admin/charts`, `/admin/messages`, `/admin/sessions`, `/admin/history`, `/admin/account`) dengan sinkronisasi URL penuh | Selesai |
+| FR-101 | Formulir entri memakai tata letak bergaya Blogspot (`BlogspotFormLayout`): judul dan konten editorial utama di kolom luas, metadata dan status di bilah kanan, tombol Save/Cancel konsisten | Selesai |
+| FR-102 | Setiap field penting memiliki helper text, label wajib, dan placeholder realistis (judul, slug, credential, stack) | Selesai |
+| FR-103 | Panel menyediakan toggle Live Preview (draf terlihat di tab publik) dan Search Console global (`Ctrl+K`) untuk navigasi cepat ke panel maupun entri spesifik | Selesai |
+| FR-104 | Monogram default editorial diubah dari "AF" menjadi "AP" (`global.profile.monogram`) | Selesai |
+| FR-105 | Antarmuka admin dan halaman publik optimal di perangkat mobile (iPhone basic/ProMax, Samsung Galaxy A/S Series): touch target minimal 44px, navigasi sidebar berubah menjadi horizontal scroll di layar sempit, modal Blogspot memiliki sticky action bar, form input tidak memicu zoom iOS, tabel data mendukung momentum scroll horizontal, dan HeroScene 3D tidak memblokir scroll vertikal | Selesai |
 
 ### 5.12 Pengelolaan entri portofolio
 
@@ -569,6 +577,39 @@ Daftar ini menjelaskan hal yang sengaja tidak dikerjakan, agar tidak menimbulkan
 8. Berbagi otomatis ke media sosial.
 
 ## 15. Riwayat Perubahan
+
+### 2026-09-26
+
+- **FR-105 Optimasi Mobile Menyeluruh untuk Admin dan Halaman Publik**: permintaan pemilik, "implementasi dan pengujian mendalam untuk mengaktifkan dukungan tampilan mobile yang optimal pada antarmuka Admin dan Porto Anda. Terapkan desain responsif yang mendukung berbagai rasio aspek layar, dengan fokus utama pada perangkat: iPhone varian basic dan iPhone ProMax, serta smartphone Samsung lini A Series dan S Series."
+  - Kebutuhan: sebagian besar aktivitas input dan pengelolaan konten dilakukan melalui perangkat mobile. Antarmuka harus nyaman dioperasikan satu tangan, bebas tumpang tindih elemen, dan tidak memicu zoom berulang.
+  - Perubahan kode:
+    1. `src/pages/AdminDashboard.tsx`: navigasi sidebar berubah dari `lg:flex-col` menjadi horizontal scroll di layar sempit (`no-scrollbar flex gap-1 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:flex-col lg:overflow-x-visible lg:pb-0`), setiap item navigasi mendapat `min-h-[44px] touch-manipulation active:scale-[0.98]`, header bar fleksibel (`flex-col sm:flex-row sm:items-center sm:justify-between`), dialog Quick Search Console disesuaikan (`w-[95vw] max-h-[85vh]`, input `text-[14px]`, list item `min-h-[44px]`).
+    2. `src/admin/EntriesPanel.tsx`: base class `FIELD` diubah menjadi `px-3.5 py-2.5 font-mono text-[14px] touch-manipulation min-h-[44px]` untuk mencegah iOS Safari auto-zoom, `BlogspotFormLayout` mendapat sticky action bar (`sticky bottom-0 -mx-6 -mb-6 border-t border-border/80 bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:mb-0 sm:border-t-0 sm:bg-transparent sm:p-0`), tombol `ScaleField` diperbesar (`touch-manipulation min-h-[44px] active:scale-[0.95]`), `SelectTrigger` kategori menjadi `h-11 touch-manipulation`.
+    3. `src/components/ui/dialog.tsx`: sizing dinamis `w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] max-h-[92vh] sm:max-h-[88vh] p-5 sm:p-8` untuk akomodasi iPhone SE hingga Galaxy S24 Ultra.
+    4. `src/components/layout/SiteHeader.tsx`: hamburger button diperbesar dari `size-10` ke `size-11` dengan `touch-manipulation active:scale-95`, link navigasi mobile mendapat `onClick={() => setOpen(false)}` dan `touch-manipulation active:scale-[0.98]`, email link di mobile menu mendapat `min-h-[44px] py-3 px-2 -mr-2 touch-manipulation active:scale-95`.
+    5. `src/components/ui/table.tsx`: wrapper table mendapat `-webkit-overflow-scrolling-touch` untuk momentum scrolling di iOS Safari dan Samsung Internet.
+    6. `src/components/three/HeroScene.tsx`: tombol close (X) pada skill card diperbesar (`p-2 min-h-[44px] min-w-[44px] touch-manipulation active:scale-95`), link "All skills" mendapat touch target lebih besar (`py-2 px-3 -mx-1 rounded min-h-[44px] touch-manipulation active:scale-95`).
+  - Standar teknis yang diterapkan:
+    - Touch target minimal 44x44px (Apple Human Interface Guidelines & Material Design).
+    - `touch-manipulation` untuk menghilangkan delay 300ms pada tap.
+    - Font size minimal 14px pada input form untuk mencegah iOS Safari auto-zoom.
+    - Sticky bottom action bar pada modal panjang agar tombol Save/Cancel selalu terjangkau.
+    - Horizontal scroll dengan momentum untuk tabel data dan navigasi sidebar.
+    - `active:scale-[0.98]` atau `active:scale-95` untuk umpan balik visual saat disentuh.
+  - Verifikasi: `npx tsc --noEmit` keluar 0, `npm run build` sukses (2846 modul, 15.39s).
+  - Status: Selesai.
+
+- **FR-98 sampai FR-104 Peningkatan Alur Kerja Admin Console, Dropdown Status, Flow Input Blogspot, dan Live Preview Search**:
+  - **TASK 1 (FR-98)**: Perbaikan race condition auth form login admin (mencegah error allowlist 42501 palsu pada submit pertama).
+  - **TASK 2 (FR-99)**: Pembersihan placeholder fungsi mentah `{}` pada field profil timezone, migrasi opsi status entri dinamis (`portfolio_status_options`) dengan dukungan CRUD opsi langsung dari panel form.
+  - **TASK 3 (FR-100)**: Penataan ulang navigasi admin menjadi sidebar utama 2 kolom terpadu (`/admin/content`, `/admin/entries`, `/admin/charts`, `/admin/messages`, `/admin/sessions`, `/admin/history`, `/admin/account`) dengan sinkronisasi URL penuh.
+  - **TASK 4 (FR-101)**: Penataan tata letak formulir modal bergaya Blogspot (`BlogspotFormLayout`) dengan pemisahan judul/konten editorial utama di kolom luas dan pengaturan metadata/status di bilah kanan.
+  - **TASK 5 (FR-102)**: Penyempurnaan helper text, label wajib, dan placeholder realistis pada field judul, slug, credential, dan stack.
+  - **TASK 6 (FR-103)**: Tombol toggle Live Preview (draft preview sync) dan Search Console global (`Ctrl+K`) untuk navigasi cepat ke panel maupun entri spesifik.
+  - **TASK 7 (FR-104)**: Penggantian nilai default monogram inisial editorial dari "AF" menjadi "AP" (`global.profile.monogram`).
+  - Berkas disentuh: `src/admin/AdminAuthProvider.tsx`, `src/pages/AdminDashboard.tsx`, `src/admin/EntriesPanel.tsx`, `src/content/global.ts`, `src/content/types.ts`, `src/entries/useEntryWriter.ts`, `src/App.tsx`, `supabase/migrations/20260927000000_portfolio_status_options.sql`.
+  - Verifikasi: `npx tsc --noEmit` keluar 0, `npm run build` sukses (2846 modul).
+  - Status: Selesai.
 
 ### 2026-09-22
 

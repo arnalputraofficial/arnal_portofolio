@@ -27,7 +27,8 @@ export interface Role {
   location: string;
   start: string; // yyyy-mm
   end: string | null; // null = still ongoing
-  level: "IC" | "Lead" | "SPV" | "Manager";
+  /** Any name from portfolio_role_levels(): IC, Lead, SPV, Manager, or a custom one. */
+  level: string;
   headcount: number; // people led directly
   summary: string;
   highlights: string[];

@@ -128,8 +128,8 @@ export function SiteHeader() {
               aria-expanded={open}
               aria-label={open ? "Close menu" : "Open menu"}
               className={cn(
-                "grid size-10 place-items-center rounded-notch border border-border lg:hidden",
-                "transition-colors hover:border-primary hover:text-primary",
+                "grid size-11 place-items-center rounded-notch border border-border lg:hidden",
+                "touch-manipulation active:scale-95 transition-all hover:border-primary hover:text-primary",
               )}
             >
               {open ? <X className="size-4" /> : <Menu className="size-4" />}
@@ -159,9 +159,10 @@ export function SiteHeader() {
                   <NavLink
                     to={item.to}
                     end={item.to === "/"}
+                    onClick={() => setOpen(false)}
                     className={({ isActive }) =>
                       cn(
-                        "flex items-baseline gap-4 border-b border-border/60 py-4",
+                        "flex items-baseline gap-4 border-b border-border/60 py-4 touch-manipulation active:scale-[0.98]",
                         "font-display text-3xl font-semibold tracking-tight transition-colors",
                         isActive ? "text-primary" : "text-foreground hover:text-primary",
                       )
@@ -177,7 +178,7 @@ export function SiteHeader() {
                   href={mailtoHref(t("global.profile.email")) || undefined}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="font-mono text-[12px] uppercase tracking-[0.12em] text-primary"
+                  className="font-mono text-[12px] uppercase tracking-[0.12em] text-primary touch-manipulation active:scale-95 py-3 px-2 -mr-2 min-h-[44px] inline-flex items-center"
                 >
                   {t("global.profile.email")}
                 </a>

@@ -533,10 +533,10 @@ export function HeroScene({
               <button
                 type="button"
                 onClick={() => closeCard()}
-                className="text-muted-foreground hover:text-foreground p-1 transition-colors shrink-0 -mr-1 -mt-1 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="text-muted-foreground hover:text-foreground touch-manipulation active:scale-95 transition-all shrink-0 -mr-1 -mt-1 rounded p-2 min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 aria-label="Close skill details"
               >
-                <X className="size-3.5" />
+                <X className="size-4" />
               </button>
             </div>
 
@@ -592,10 +592,10 @@ export function HeroScene({
             <div className="mt-3 pl-2 flex items-center justify-end gap-2 pt-1">
               <Link
                 to="/skills"
-                className="inline-flex items-center gap-1 font-mono text-[10px] text-primary hover:underline underline-offset-2"
+                className="inline-flex items-center gap-1.5 font-mono text-[11px] text-primary hover:underline underline-offset-2 touch-manipulation active:scale-95 transition-all py-2 px-3 -mx-1 rounded min-h-[44px]"
               >
                 All skills
-                <ArrowUpRight className="size-3" />
+                <ArrowUpRight className="size-3.5" />
               </Link>
             </div>
           </div>
