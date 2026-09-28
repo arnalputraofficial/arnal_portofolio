@@ -19,6 +19,7 @@ import {
   Layers,
   LogOut,
   Mail,
+  MonitorSmartphone,
   Search,
   Send,
   Sparkles,
@@ -48,6 +49,7 @@ import ContentEditor from "@/admin/ContentEditor";
 import EntriesPanel from "@/admin/EntriesPanel";
 import MessagesPanel from "@/admin/MessagesPanel";
 import HistoryPanel from "@/admin/HistoryPanel";
+import PreviewPanel from "@/admin/PreviewPanel";
 import { SessionsPanel } from "@/admin/SessionsPanel";
 import { cn } from "@/lib/utils";
 
@@ -123,6 +125,13 @@ const PAGE_NAV = PAGE_META.map((page) => ({
 }));
 
 const SYSTEM_NAV = [
+  {
+    id: "preview",
+    label: "Ratio preview",
+    path: "/admin/preview",
+    icon: MonitorSmartphone,
+    description: "Check a page at a fixed device aspect ratio",
+  },
   {
     id: "messages",
     label: "Inbox",
@@ -306,8 +315,13 @@ export default function AdminDashboard() {
   // Rewrite the address bar when it is bare /admin, an old function-first path,
   // or simply not stating the function the view resolved to.
   React.useEffect(() => {
-    if (route.redirectTo) navigate(route.redirectTo, { replace: true });
-  }, [route.redirectTo, navigate]);
+    if (route.redirectTo) {
+      const currentPath = location.pathname + location.search;
+      if (currentPath !== route.redirectTo) {
+        navigate(route.redirectTo, { replace: true });
+      }
+    }
+  }, [route.redirectTo, location.pathname, location.search, navigate]);
 
   // Drafts per page, so a sidebar row can say which page has unpublished work.
   const draftsByPage = React.useMemo(() => {
@@ -593,6 +607,8 @@ export default function AdminDashboard() {
               </div>
             </>
           ) : null}
+
+          {destination === "preview" ? <PreviewPanel /> : null}
 
           {destination === "messages" ? <MessagesPanel /> : null}
 

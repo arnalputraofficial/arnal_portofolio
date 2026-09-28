@@ -1,4 +1,5 @@
-import { Navigate, useLocation } from "react-router-dom";
+import * as React from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAdminAuth } from "@/admin/AdminAuthProvider";
 
@@ -13,6 +14,20 @@ import { useAdminAuth } from "@/admin/AdminAuthProvider";
 export function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { status, identity } = useAdminAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (status === "loading") return;
+
+    if (status !== "signed-in" || !identity) {
+      navigate("/admin/login", { replace: true, state: { from: location.pathname } });
+      return;
+    }
+
+    if (identity.mustChangePassword) {
+      navigate("/admin/login", { replace: true });
+    }
+  }, [status, identity, location.pathname, navigate]);
 
   if (status === "loading") {
     return (
@@ -26,13 +41,8 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (status !== "signed-in" || !identity) {
-    return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />;
-  }
-
-  // A placeholder password opens nothing until it has been replaced.
-  if (identity.mustChangePassword) {
-    return <Navigate to="/admin/login" replace />;
+  if (status !== "signed-in" || !identity || identity.mustChangePassword) {
+    return null;
   }
 
   return <>{children}</>;
