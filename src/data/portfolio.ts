@@ -474,6 +474,18 @@ export interface Skill {
   evidence: string[]; // project ids that back it up
 }
 
+/**
+ * Menghitung lama pengalaman (tahun) secara dinamis dari tahun awal (`since`)
+ * relatif terhadap tahun saat ini agar selalu terupdate otomatis di tampilan porto.
+ */
+export function getSkillYears(skill: { since?: number | null; years?: number | null }): number {
+  const currentYear = new Date().getFullYear();
+  if (skill.since && Number(skill.since) > 1900 && Number(skill.since) <= currentYear) {
+    return Math.max(0, currentYear - Number(skill.since));
+  }
+  return Number(skill.years) || 0;
+}
+
 export const skills: Skill[] = [
   // Leadership
   { id: "s01", name: "Technical Team Leadership", category: "Leadership", level: 8, years: 6, since: 2019, evidence: ["p01", "p07", "p08"] },

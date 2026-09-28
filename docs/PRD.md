@@ -314,6 +314,7 @@ Seluruh tautan surel di situs dan di panel admin membuka **compose Gmail** di ta
 | NFR-20 | Pengguna dapat memilih aspek rasio dari daftar preferensi yang dikelompokkan per jenis perangkat (smartphone: 20:9, 19.5:9, 16:9, 19:9; tablet: 4:3, 16:10, 3:2), dan pilihan itu bertahan selama pemakaian aplikasi | Selesai | `src/lib/aspectRatios.ts` menyimpan katalog; `localStorage` (`arnal.preview.aspectRatio`, `arnal.preview.orientation`, `arnal.preview.page`) mempertahankan pilihan lintas muat ulang. Diverifikasi 2026-09-26 |
 | NFR-21 | Sistem mendeteksi aspek rasio perangkat pengguna secara otomatis dan menandai opsi yang direkomendasikan sesuai jenis perangkat | Selesai | `readDevice()` membaca `window.screen` lalu `window.innerWidth/Height`, mencocokkan ke katalog dengan toleransi 0,12, dan menandai `recommended` pada keluarga perangkat terdeteksi serta `detected` pada opsi terdekat. Diverifikasi 2026-09-26 dengan tujuh profil perangkat |
 | NFR-22 | Konten pada setiap rasio yang didukung tidak terdistorsi, dan penyimpangan dilaporkan | Selesai | `frameSize()` mengunci bingkai pada rasio terpilih di lebar kolom berapa pun; `checkDistortion()` membandingkan rasio terukur dengan rasio diminta (toleransi 0,01) dan melaporkan `Stretched` bila menyimpang. Diuji untuk 7 rasio x 2 orientasi x 7 lebar kolom, semuanya `No distortion` |
+| NFR-23 | Lama pengalaman skill terhitung otomatis dari tahun mulai (`since`) sehingga tampilan portofolio selalu mutakhir tanpa penyuntingan ulang tiap tahun | Selesai | `getSkillYears()` di `src/data/portfolio.ts` menurunkan tahun berjalan dikurangi `since`; dipakai di kartu skill (`Skills.tsx`), kartu inspeksi hero (`HeroScene.tsx`), chart (`SkillCharts.tsx`, `chartSeries.ts`). Form admin menyinkronkan dua arah Years<->Since. Diverifikasi 2026-09-26 |
 
 ## 7. Requirement Teknis dan Teknologi
 
@@ -583,6 +584,18 @@ Daftar ini menjelaskan hal yang sengaja tidak dikerjakan, agar tidak menimbulkan
 ## 15. Riwayat Perubahan
 
 ### 2026-09-26
+
+- **FR-108 Lama pengalaman skill terhitung otomatis (NFR-23)**: permintaan pemilik, "Ini saya ingin agar ketika setting Skills dan Since -- saya ingin rangenya itu automatically terhitung jika kita set Month dan Year. Jadi didalam view portonya otomatis terhitung sudah berapa lama."
+  - Kebutuhan: (a) di form skill panel admin, mengubah salah satu dari Years atau Since langsung menghitung field satunya; (b) di halaman publik, lama pengalaman dihitung dari tahun mulai terhadap tahun berjalan, sehingga angka tidak basi saat tahun berganti.
+  - Perubahan kode:
+    1. `src/data/portfolio.ts`: ditambahkan `getSkillYears({ since, years })`. Tahun berjalan dikurangi `since` bila `since` wajar (di atas 1900 dan tidak melewati tahun berjalan); jika tidak, jatuh ke `years` tersimpan. Fungsi ini menjadi satu-satunya sumber kebenaran untuk "sudah berapa lama".
+    2. `src/admin/EntriesPanel.tsx` (`SkillForm`): `handleSinceChange()` mengisi Years dari `tahun berjalan - since`; `handleYearsChange()` mengisi Since dari `tahun berjalan - years`. Kedua field diberi hint "Auto-calculates Since" dan "Auto-calculates Years" agar perilakunya terlihat.
+    3. `src/pages/Skills.tsx`: kartu skill, statistik "longest held", dan `categoryStats.maxYears` memakai `getSkillYears()`.
+    4. `src/components/three/HeroScene.tsx`: kartu inspeksi memakai `getSkillYears(selectedSkill)`.
+    5. `src/components/charts/SkillCharts.tsx` dan `src/entries/chartSeries.ts` (`experience-spread`): perhitungan tahun memakai `getSkillYears()` agar chart tidak menyimpang dari kartu.
+  - Catatan desain: bulan tidak disimpan pada model skill (field `since` adalah tahun), jadi perhitungan bersifat tahunan. Nilai `years` tetap tersimpan di baris sebagai cadangan bila `since` di luar rentang wajar.
+  - Verifikasi otomatis: `npx tsc --noEmit -p tsconfig.json` exit 0; `npm run build` exit 0 (dist/assets/index-CXx0mcoR.js 2.536,10 kB / gzip 690,94 kB; CSS 61,97 kB / gzip 11,12 kB; peringatan chunk di atas 500 kB sudah diketahui); dev server `http://localhost:5173/` status 200; `src/data/portfolio.ts` termuat 200 dan memuat `getSkillYears`; `src/pages/Skills.tsx` termuat 200; log dev server tanpa error; pemeriksaan programatik pada tahun berjalan 2026 memastikan Years tampil selaras (`since` 2019 -> 7, 2020 -> 6, 2016 -> 10, 2015 -> 11, 2022 -> 4), yaitu angka tersimpan yang basi otomatis diperbarui.
+  - Batasan: pengukuran visual di browser dan pengujian pada perangkat fisik belum dilakukan asisten.
 
 - **NFR-6 Kunci gulir horizontal global (audit mobile lanjutan)**: permintaan pemilik, "Pada mobile view, masih harus di zoom out agar kelihatan semua. Bisakah untuk porto dan adminnya itu agar bisa fit di mobile view tanpa harus di zoom out. Jadi semua page nya itu dalam mobile view itu rapih dan tidak harus di zoom out."
   - Kebutuhan: seluruh halaman publik dan panel admin pas di layar mobile tanpa perlu zoom out dan tanpa gulir horizontal.

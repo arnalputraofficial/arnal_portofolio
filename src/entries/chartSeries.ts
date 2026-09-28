@@ -16,6 +16,7 @@
  * lists, which is what makes it usable from both sides.
  */
 import { monthsBetween } from "@/lib/utils";
+import { getSkillYears } from "@/data/portfolio";
 import type {
   CareerEntry,
   CertificationEntry,
@@ -380,7 +381,7 @@ export function computedChartRows(id: string, sources: ChartSources): ChartRow[]
       const byCategory = new Map<string, { years: number; count: number }>();
       sources.skills.forEach((skill) => {
         const held = byCategory.get(skill.category) ?? { years: 0, count: 0 };
-        held.years = Math.max(held.years, skill.years);
+        held.years = Math.max(held.years, getSkillYears(skill));
         held.count += 1;
         byCategory.set(skill.category, held);
       });

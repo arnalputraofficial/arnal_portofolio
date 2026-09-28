@@ -2844,20 +2844,43 @@ interface SkillFormProps extends EntryFormProps<SkillEntry> {
 }
 
 function SkillForm({ writer, lists, entry, onClose, onCategoryAdded }: SkillFormProps) {
-  const [form, setForm] = React.useState<SkillInput>(() => ({
-    id: entry?.id,
-    sortOrder: entry?.sortOrder,
-    name: entry?.name ?? "",
-    category: entry?.category ?? lists.categories[0] ?? "Engineering",
-    level: entry?.level ?? 3,
-    years: entry?.years ?? 0,
-    since: entry?.since ?? new Date().getFullYear(),
-    evidence: entry?.evidence ?? [],
-    visible: entry?.visible ?? true,
-  }));
+  const currentYear = new Date().getFullYear();
+  const [form, setForm] = React.useState<SkillInput>(() => {
+    const initialSince = entry?.since ?? currentYear;
+    const computedYears = entry?.years ?? (initialSince ? Math.max(0, currentYear - initialSince) : 0);
+    return {
+      id: entry?.id,
+      sortOrder: entry?.sortOrder,
+      name: entry?.name ?? "",
+      category: entry?.category ?? lists.categories[0] ?? "Engineering",
+      level: entry?.level ?? 3,
+      years: computedYears,
+      since: initialSince,
+      evidence: entry?.evidence ?? [],
+      visible: entry?.visible ?? true,
+    };
+  });
 
   function set<K extends keyof SkillInput>(key: K, value: SkillInput[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleSinceChange(newSince: number) {
+    const computedYears = newSince > 1900 && newSince <= currentYear ? Math.max(0, currentYear - newSince) : form.years;
+    setForm((current) => ({
+      ...current,
+      since: newSince,
+      years: computedYears,
+    }));
+  }
+
+  function handleYearsChange(newYears: number) {
+    const computedSince = newYears >= 0 && newYears <= 70 ? currentYear - newYears : form.since;
+    setForm((current) => ({
+      ...current,
+      years: newYears,
+      since: computedSince,
+    }));
   }
 
   async function addCategory(name: string) {
@@ -2918,16 +2941,18 @@ function SkillForm({ writer, lists, entry, onClose, onCategoryAdded }: SkillForm
               <NumberField
                 label="Years"
                 value={form.years}
-                onChange={(v) => set("years", v)}
+                onChange={handleYearsChange}
                 min={0}
                 max={60}
+                hint="Auto-calculates Since"
               />
               <NumberField
                 label="Since"
                 value={form.since}
-                onChange={(v) => set("since", v)}
+                onChange={handleSinceChange}
                 min={1980}
                 max={2100}
+                hint="Auto-calculates Years"
               />
             </div>
             <VisibilityField visible={form.visible} onChange={(v) => set("visible", v)} />

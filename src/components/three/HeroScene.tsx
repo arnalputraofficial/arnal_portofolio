@@ -6,7 +6,7 @@ import { X, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEntries } from "@/entries/EntriesProvider";
 import { useSiteText } from "@/content/ContentProvider";
-import type { Skill } from "@/data/portfolio";
+import { type Skill, getSkillYears } from "@/data/portfolio";
 
 /* --------------------------------------------------------------------------
    3D scene: an infrastructure skill-node cluster.
@@ -584,7 +584,7 @@ export function HeroScene({
                   Experience
                 </p>
                 <p className="font-display text-xs font-semibold tabular-nums text-foreground">
-                  {t("skills.card.years", { count: selectedSkill.years })}
+                  {t("skills.card.years", { count: getSkillYears(selectedSkill) })}
                 </p>
               </div>
             </div>

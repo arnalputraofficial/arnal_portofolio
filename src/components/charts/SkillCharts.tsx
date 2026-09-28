@@ -18,7 +18,7 @@ import { CHART_COLORS, TooltipShell } from "@/components/charts/ChartFrame";
 import { useSiteText } from "@/content/ContentProvider";
 import { useEntries } from "@/entries/EntriesProvider";
 import { chartValue } from "@/entries/chartSeries";
-import type { Skill } from "@/data/portfolio";
+import { type Skill, getSkillYears } from "@/data/portfolio";
 
 /** Levels are a 1 to 10 self rating, where 10 is the strongest. */
 const SKILL_SCALE_MAX = 10;
@@ -140,7 +140,7 @@ export function TopSkillsBar({ data, limit = 10 }: { data: Skill[]; limit?: numb
           return {
             name: row.name,
             level,
-            years: known?.years ?? 0,
+            years: known ? getSkillYears(known) : 0,
             since: known?.since ?? "",
             evidence: known?.evidence ?? [],
             evidenceCount: chartValue(row, "evidence"),

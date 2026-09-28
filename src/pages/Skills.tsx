@@ -33,7 +33,7 @@ import { useVerifiedSkills } from "@/hooks/useVerifiedSkills";
 import { competencyMap, summarize, type VerifiedSkill } from "@/lib/tasteskill";
 import { useEntries } from "@/entries/EntriesProvider";
 import { useSiteText } from "@/content/ContentProvider";
-import type { Skill } from "@/data/portfolio";
+import { type Skill, getSkillYears } from "@/data/portfolio";
 import { nf } from "@/lib/utils";
 
 const ALL = "__all__";
@@ -89,7 +89,7 @@ function SkillCard({ skill, labels }: { skill: Skill; labels: Map<string, string
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <Clock className="size-3.5" aria-hidden />
-          {t("skills.card.years", { count: skill.years })}
+          {t("skills.card.years", { count: getSkillYears(skill) })}
         </span>
         <span>{t("skills.card.since", { year: skill.since })}</span>
       </div>
@@ -304,7 +304,7 @@ export default function Skills() {
       ? Math.round((skills.reduce((acc, s) => acc + s.level, 0) / totalSkills) * 10) / 10
       : 0;
   const totalEvidence = skills.reduce((acc, s) => acc + s.evidence.length, 0);
-  const deepest = [...skills].sort((a, b) => b.years - a.years)[0] ?? null;
+  const deepest = [...skills].sort((a, b) => getSkillYears(b) - getSkillYears(a))[0] ?? null;
 
   /**
    * Skills held the longest: every skill I picked up earlier than I picked up
@@ -331,7 +331,7 @@ export default function Skills() {
         category,
         count: rows.length,
         avg: Math.round((rows.reduce((acc, s) => acc + s.level, 0) / rows.length) * 10) / 10,
-        maxYears: Math.max(...rows.map((s) => s.years)),
+        maxYears: Math.max(...rows.map((s) => getSkillYears(s))),
         evidence: rows.reduce((acc, s) => acc + s.evidence.length, 0),
       };
     })
@@ -360,7 +360,7 @@ export default function Skills() {
             },
             {
               label: t("skills.stat.longest"),
-              value: <Counter value={deepest?.years ?? 0} suffix=" yrs" />,
+              value: <Counter value={deepest ? getSkillYears(deepest) : 0} suffix=" yrs" />,
               hint: deepest
                 ? t("skills.stat.longest.hint", {
                     name: deepest.name,
