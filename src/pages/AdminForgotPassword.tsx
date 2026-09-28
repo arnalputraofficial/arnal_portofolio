@@ -47,8 +47,8 @@ export default function AdminForgotPassword() {
           </h1>
 
           <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-muted-foreground text-pretty">
-            Enter your registered admin username or email. If the account exists on the admin
-            allowlist, a secure recovery link will be sent to your email.
+            Enter your registered admin username or email. If it belongs to an administrator
+            account, a secure recovery link will be sent to that inbox.
           </p>
 
           <Separator dashed className="my-10" />
@@ -58,8 +58,8 @@ export default function AdminForgotPassword() {
               <ShieldCheck className="size-5 text-primary" aria-hidden />
               <h2 className="mt-3 font-display text-lg leading-snug">Restricted to Admins</h2>
               <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground text-pretty">
-                Only email addresses registered on the database allowlist can receive access to
-                reset their credentials.
+                Only addresses registered as administrators for this site can receive a reset
+                link. Anyone else is told the same thing and gets nothing.
               </p>
             </div>
             <div>

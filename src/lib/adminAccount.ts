@@ -17,6 +17,16 @@ export const ADMIN_ACCOUNTS: Record<string, string> = {
   arnalputra: "arnal@steadbyte.com",
 };
 
+/**
+ * Every address this site treats as an administrator. Derived from the map
+ * above so the two can never drift apart. Password resets are only ever sent
+ * to an address on this list, which keeps the form from becoming a way to
+ * probe for arbitrary accounts.
+ */
+export const ADMIN_EMAILS: string[] = Object.values(ADMIN_ACCOUNTS).map((email) =>
+  email.toLowerCase(),
+);
+
 /** Minimum length the new password has to reach. Supabase enforces its own too. */
 export const MIN_PASSWORD_LENGTH = 12;
 
@@ -32,16 +42,23 @@ export function resolveUsername(username: string): string | null {
 
 /**
  * Resolves a username or email input to an email address.
- * If input contains '@', it is treated as a direct email address.
- * Otherwise it looks up the username mapping.
+ *
+ * A username is looked up in the map above. An email is only accepted when it
+ * is already on the administrator list; anything else resolves to null so the
+ * caller can stay silent about which addresses exist.
  */
 export function resolveAdminEmail(input: string): string | null {
   const trimmed = input.trim().toLowerCase();
   if (!trimmed) return null;
-  if (trimmed.includes("@")) {
+
+  const direct = ADMIN_ACCOUNTS[trimmed];
+  if (direct) return direct;
+
+  if (trimmed.includes("@") && ADMIN_EMAILS.includes(trimmed)) {
     return trimmed;
   }
-  return ADMIN_ACCOUNTS[trimmed] ?? null;
+
+  return null;
 }
 
 export type PasswordProblem = "short" | "same" | "mismatch" | null;

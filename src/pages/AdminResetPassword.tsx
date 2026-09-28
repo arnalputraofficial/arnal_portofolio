@@ -10,7 +10,7 @@ import { checkNewPassword, MIN_PASSWORD_LENGTH, PASSWORD_PROBLEM_TEXT } from "@/
 
 export default function AdminResetPassword() {
   const navigate = useNavigate();
-  const { status, resetPasswordWithToken } = useAdminAuth();
+  const { status, recoveryReady, resetPasswordWithToken } = useAdminAuth();
 
   const [password, setPassword] = React.useState("");
   const [confirmation, setConfirmation] = React.useState("");
@@ -71,6 +71,19 @@ export default function AdminResetPassword() {
                 </div>
                 <Button onClick={() => navigate("/admin", { replace: true })} className="w-full">
                   Go to Admin Panel
+                </Button>
+              </div>
+            ) : !recoveryReady ? (
+              <div className="space-y-5">
+                <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-[14px] leading-relaxed text-pretty">
+                  <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden />
+                  <p>
+                    This page only works from the reset link in your email. Open that link, or
+                    request a new one, before choosing a password.
+                  </p>
+                </div>
+                <Button asChild className="w-full">
+                  <Link to="/admin/forgot-password">Request a new link</Link>
                 </Button>
               </div>
             ) : (

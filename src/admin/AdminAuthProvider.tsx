@@ -53,6 +53,12 @@ interface AdminAuthValue {
   signOut: () => Promise<void>;
   /** Requests a password reset email from Supabase Auth. */
   sendPasswordReset: (emailOrUsername: string) => Promise<SignInOutcome>;
+  /**
+   * True while the browser is holding a session that came from a reset link.
+   * The reset page uses it to refuse a password change that did not start
+   * from the inbox.
+   */
+  recoveryReady: boolean;
   /** Updates the user's password after following a reset link. */
   resetPasswordWithToken: (nextPassword: string) => Promise<SignInOutcome>;
   /** Sets a new password and clears the must change flag. */
@@ -77,6 +83,13 @@ const SESSION_ID_KEY = "arnal:admin-session-id";
  */
 const AUTH_CHANNEL_NAME = "arnal:admin-auth";
 const SIGNED_OUT_MESSAGE = "signed-out";
+
+/**
+ * Shown no matter whether the address exists on the allowlist. The reset form
+ * must not become a way to find out which addresses are registered.
+ */
+const RESET_SENT_MESSAGE =
+  "If that address belongs to an administrator account, a reset link is on its way. Check the inbox, including the spam folder.";
 
 function authChannel(): BroadcastChannel | null {
   try {
@@ -136,6 +149,14 @@ interface AdminStateRow {
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = React.useState<AdminStatus>("loading");
   const [identity, setIdentity] = React.useState<AdminIdentity | null>(null);
+
+  /**
+   * A reset link signs the browser in and arms this flag. Without it there is
+   * nothing separating "I followed the link in my inbox" from "I was already
+   * signed in", and the reset page would hand a password change to anyone
+   * sitting at an open panel.
+   */
+  const [recoveryReady, setRecoveryReady] = React.useState(false);
 
   /**
    * Reads the allowlist state for the current session.
@@ -277,6 +298,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     identityCache.current.clear();
     setIdentity(null);
     setStatus("signed-out");
+    setRecoveryReady(false);
   }, []);
 
   const applySession = React.useCallback(
@@ -365,8 +387,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     // finished starting up, and signIn() resolves only after every subscriber
     // has run, so it is the single source of truth here. A second getSession()
     // call would only add a competing answer that can be slower.
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (active) void applySession(session);
+    //
+    // PASSWORD_RECOVERY is the one event that proves a reset link was followed,
+    // so it is the only thing that arms recoveryReady. It arrives with a
+    // session, which applySession then settles like any other.
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      if (event === "PASSWORD_RECOVERY") setRecoveryReady(true);
+      void applySession(session);
     });
 
     return () => {
@@ -542,14 +570,12 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     async (emailOrUsername: string): Promise<SignInOutcome> => {
       if (!supabase) return { ok: false, message: MISSING_CONFIG_MESSAGE };
 
+      // resolveAdminEmail only returns an address that is already on the
+      // allowlist, so an unknown address never reaches Supabase and the form
+      // cannot be used to ask the service about arbitrary accounts.
       const email = resolveAdminEmail(emailOrUsername);
       if (!email) {
-        // Return success message to avoid email enumeration
-        return {
-          ok: true,
-          message:
-            "If that email belongs to an administrator account, a password reset link has been sent.",
-        };
+        return { ok: true, message: RESET_SENT_MESSAGE };
       }
 
       const redirectTo = `${window.location.origin}/admin/reset-password`;
@@ -557,14 +583,18 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         redirectTo,
       });
 
+      // A rate limit or an outage is worth saying out loud, because the owner
+      // can act on it. Everything else, including a delivery Supabase quietly
+      // declined, reads the same as an unknown address so the reply never
+      // reveals whether the address exists.
       if (error) {
-        return { ok: false, message: describeAuthError(error.message) };
+        const status = error.status ?? 0;
+        if (status === 429 || status >= 500) {
+          return { ok: false, message: describeAuthError(error.message) };
+        }
       }
 
-      return {
-        ok: true,
-        message: `Password reset link sent to ${email}. Check your inbox.`,
-      };
+      return { ok: true, message: RESET_SENT_MESSAGE };
     },
     [],
   );
@@ -573,11 +603,30 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     async (nextPassword: string): Promise<SignInOutcome> => {
       if (!supabase) return { ok: false, message: MISSING_CONFIG_MESSAGE };
 
+      // updateUser changes the password of whoever is signed in, so this call
+      // has to prove the session came from a reset link. Without the check an
+      // open panel on a borrowed machine is enough to take the account over,
+      // no inbox required. The flag is not trusted alone either: a session can
+      // expire between arming it and submitting, and the server is the one that
+      // decides whether a user is still there.
+      const { data: sessionCheck } = await supabase.auth.getSession();
+      if (!recoveryReady || !sessionCheck.session) {
+        return {
+          ok: false,
+          message:
+            "Open the reset link from your email to change the password. This page only works through that link.",
+        };
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({ password: nextPassword });
       if (updateError) return { ok: false, message: describeAuthError(updateError.message) };
 
       // Also ensure password changed flag is cleared if present
       await supabase.rpc("portfolio_password_changed");
+
+      // The link has been spent, so the page must not accept a second change
+      // without a fresh reset email.
+      setRecoveryReady(false);
 
       // The flag just moved in the database, so the cached answer is stale.
       const { data: sessionData } = await supabase.auth.getSession();
@@ -594,7 +643,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
       return { ok: true };
     },
-    [loadIdentity],
+    [loadIdentity, recoveryReady],
   );
 
   const changePassword = React.useCallback(
@@ -679,6 +728,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signOut,
       sendPasswordReset,
+      recoveryReady,
       resetPasswordWithToken,
       changePassword,
       listSessions,
@@ -691,6 +741,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signOut,
       sendPasswordReset,
+      recoveryReady,
       resetPasswordWithToken,
       changePassword,
       listSessions,

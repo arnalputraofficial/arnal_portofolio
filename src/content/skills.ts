@@ -77,7 +77,7 @@ export const SKILLS_CONTENT: ContentEntry[] = [
     page: "skills",
     label: "Self rating section description",
     default:
-      "Each card shows the level, years of experience, last year used, and evidence links. Pick a category to narrow the view.",
+      "Each card shows the level, years of experience, the year the skill was picked up, and evidence links. Pick a category to narrow the view.",
     multiline: true,
   },
   {
